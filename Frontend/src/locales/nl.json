@@ -1,0 +1,153 @@
+{
+  "app": {
+    "title": "WhytChat"
+  },
+  "conversations": {
+    "title": "Gesprekken",
+    "new": "Nieuw",
+    "empty": "Geen gesprekken",
+    "rename": "Hernoemen"
+  },
+  "nav": {
+    "chats": "Chats",
+    "contacts": "Contacten",
+    "settings": "Instellingen"
+  },
+  "chat": {
+    "assistant_name": "AI Assistent",
+    "status_online": "Online",
+    "input_placeholder": "Vraag iets...",
+    "generating": "Genereren...",
+    "mode_standard": "Standaard",
+    "mode_deep_analysis": "Diepgaande Analyse",
+    "actions": {
+      "copy": "Kopiëren",
+      "regenerate": "Opnieuw genereren",
+      "like": "Leuk",
+      "dislike": "Niet leuk",
+      "translate": "Vertalen",
+      "code": "Code",
+      "attach": "Bestand toevoegen",
+      "translate_prompt": "Vertaal het volgende:",
+      "code_prompt": "Schrijf code voor het volgende:"
+    },
+    "settings": {
+      "title": "Chat Instellingen",
+      "config_title": "Gespreksconfiguratie",
+      "system_prompt": "Systeeminstructies",
+      "user_persona": "Gebruikersprofiel",
+      "close": "Sluiten"
+    },
+    "knowledge": {
+      "title": "Kennisbank",
+      "add_doc": "Document Toevoegen",
+      "empty": "Geen documenten geïndexeerd.",
+      "drag_drop": "Sleep bestanden of klik op +",
+      "ready": "Gereed",
+      "delete": "Verwijderen",
+      "error_add": "Fout bij toevoegen document"
+    },
+    "orchestrator": {
+      "thinking": "Denken...",
+      "generating_insight": "Inzicht genereren...",
+      "reasoning": "Redeneren...",
+      "insight_generated": "Inzicht Gegenereerd"
+    },
+    "input": {
+      "send_to": "Bericht versturen naar",
+      "file_attached": "Bestand bijgevoegd:",
+      "moa_active": "Multi-Agent Modus (Actief)",
+      "moa_enable": "Multi-Agent Modus Inschakelen",
+      "select_create": "Selecteer of maak een gesprek",
+      "create_meeting": "Vergadering Maken"
+    }
+  },
+  "settings": {
+    "title": "Instellingen",
+    "config_title": "Configuratie",
+    "system_prompt": "Systeeminstructies",
+    "user_persona": "Gebruikersprofiel",
+    "close": "Sluiten",
+    "tabs": {
+      "general": "Algemeen",
+      "models": "Modellen",
+      "server": "Server",
+      "appearance": "Uiterlijk",
+      "privacy": "Privacy"
+    },
+    "general": {
+      "title": "Algemene Instellingen",
+      "language": "Interface Taal",
+      "language_desc": "Kies de weergavetaal",
+      "autostart": "Automatisch Starten",
+      "autostart_desc": "WhytChat starten bij systeemopstart",
+      "notifications": "Meldingen",
+      "notifications_desc": "Antwoordmeldingen inschakelen"
+    },
+    "models": {
+      "title": "AI Model Configuratie",
+      "active": "Actief",
+      "desc": "Meertalig model geoptimaliseerd voor code en tekst",
+      "temperature": "Temperatuur",
+      "temperature_desc": "Beheert creativiteit (0.1 = precies, 1.0 = creatief)",
+      "max_tokens": "Max Tokens",
+      "max_tokens_desc": "Maximale antwoordlengte",
+      "context": "Context",
+      "context_desc": "Contextvenster in tokens",
+      "system_prompt": "Systeemprompt (Globale Context)",
+      "system_prompt_desc": "Basisinstructies voor AI (bijv: 'Je bent een Rust expert')",
+      "user_persona": "Gebruikersprofiel (Persoonlijke Context)",
+      "user_persona_desc": "Informatie over jou (bijv: 'Ik ben een React beginner')"
+    },
+    "server": {
+      "title": "Server Configuratie",
+      "port": "Server Poort",
+      "port_desc": "Poort voor llama-server",
+      "gpu": "GPU Gebruik",
+      "gpu_desc": "Lagen laden op GPU (NVIDIA/AMD)",
+      "gpu_placeholder": "Aantal lagen",
+      "autostart": "Automatisch Starten",
+      "autostart_desc": "Server starten bij app opening"
+    },
+    "appearance": {
+      "title": "Uiterlijk",
+      "theme": "Thema",
+      "theme_desc": "Kies het app thema",
+      "themes": {
+        "dark": "Donker",
+        "light": "Licht",
+        "auto": "Automatisch"
+      },
+      "font_size": "Lettergrootte",
+      "font_size_desc": "Tekstgrootte aanpassen (live preview)",
+      "animations": "Animaties",
+      "animations_desc": "Interface animaties inschakelen"
+    },
+    "privacy": {
+      "title": "Privacy",
+      "local_history": "Lokale Geschiedenis",
+      "local_history_desc": "Gesprekken opslaan op dit apparaat",
+      "telemetry": "Telemetrie",
+      "telemetry_desc": "Anonieme gebruiksdata verzenden",
+      "danger_zone": "Gevarenzone",
+      "delete_all": "Alle gesprekken verwijderen",
+      "delete_confirm": "Weet je zeker dat je alle geschiedenis wilt wissen?",
+      "delete_btn": "Geschiedenis Wissen"
+    }
+  },
+  "setup": {
+    "error": "Installatiefout",
+    "complete": "Installatie Voltooid",
+    "first_run": "Eerste Keer",
+    "progress": "Voortgang",
+    "info": "AI-model en Llama-server automatisch installeren.\nDit kan enkele minuten duren..."
+  },
+  "loading": {
+    "initializing": "Initialiseren...",
+    "installing": "Server Installeren...",
+    "downloading": "Model Downloaden...",
+    "starting": "Server Starten...",
+    "error": "Fout",
+    "wait": "Even geduld"
+  }
+}

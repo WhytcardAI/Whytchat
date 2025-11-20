@@ -1,0 +1,153 @@
+{
+  "app": {
+    "title": "WhytChat"
+  },
+  "conversations": {
+    "title": "Conversazioni",
+    "new": "Nuova",
+    "empty": "Nessuna conversazione",
+    "rename": "Rinomina"
+  },
+  "nav": {
+    "chats": "Chat",
+    "contacts": "Contatti",
+    "settings": "Impostazioni"
+  },
+  "chat": {
+    "assistant_name": "Assistente IA",
+    "status_online": "Online",
+    "input_placeholder": "Chiedi qualsiasi cosa...",
+    "generating": "Generazione...",
+    "mode_standard": "Standard",
+    "mode_deep_analysis": "Analisi Profonda",
+    "actions": {
+      "copy": "Copia",
+      "regenerate": "Rigenera",
+      "like": "Mi piace",
+      "dislike": "Non mi piace",
+      "translate": "Traduci",
+      "code": "Codice",
+      "attach": "Allega file",
+      "translate_prompt": "Traduci quanto segue:",
+      "code_prompt": "Scrivi codice per quanto segue:"
+    },
+    "settings": {
+      "title": "Impostazioni Chat",
+      "config_title": "Configurazione Conversazione",
+      "system_prompt": "Istruzioni di Sistema",
+      "user_persona": "Persona Utente",
+      "close": "Chiudi"
+    },
+    "knowledge": {
+      "title": "Base di Conoscenza",
+      "add_doc": "Aggiungi Documento",
+      "empty": "Nessun documento indicizzato.",
+      "drag_drop": "Trascina file o clicca +",
+      "ready": "Pronto",
+      "delete": "Elimina",
+      "error_add": "Errore nell'aggiunta del documento"
+    },
+    "orchestrator": {
+      "thinking": "Pensando...",
+      "generating_insight": "Generando insight...",
+      "reasoning": "Ragionando...",
+      "insight_generated": "Insight Generato"
+    },
+    "input": {
+      "send_to": "Invia messaggio a",
+      "file_attached": "File allegato:",
+      "moa_active": "Modalità Multi-Agenti (Attiva)",
+      "moa_enable": "Abilita Modalità Multi-Agenti",
+      "select_create": "Seleziona o crea una conversazione",
+      "create_meeting": "Crea Riunione"
+    }
+  },
+  "settings": {
+    "title": "Impostazioni",
+    "config_title": "Configurazione",
+    "system_prompt": "Istruzioni di Sistema",
+    "user_persona": "Persona Utente",
+    "close": "Chiudi",
+    "tabs": {
+      "general": "Generale",
+      "models": "Modelli",
+      "server": "Server",
+      "appearance": "Aspetto",
+      "privacy": "Privacy"
+    },
+    "general": {
+      "title": "Impostazioni Generali",
+      "language": "Lingua Interfaccia",
+      "language_desc": "Scegli lingua di visualizzazione",
+      "autostart": "Avvio Automatico",
+      "autostart_desc": "Avvia WhytChat all'avvio del sistema",
+      "notifications": "Notifiche",
+      "notifications_desc": "Abilita notifiche di risposta"
+    },
+    "models": {
+      "title": "Configurazione Modello IA",
+      "active": "Attivo",
+      "desc": "Modello multilingue ottimizzato per codice e testo",
+      "temperature": "Temperatura",
+      "temperature_desc": "Controlla creatività (0.1 = preciso, 1.0 = creativo)",
+      "max_tokens": "Max Token",
+      "max_tokens_desc": "Lunghezza massima risposta",
+      "context": "Contesto",
+      "context_desc": "Finestra di contesto in token",
+      "system_prompt": "Prompt di Sistema (Contesto Globale)",
+      "system_prompt_desc": "Istruzioni base per l'IA (es: 'Sei un esperto Rust')",
+      "user_persona": "Profilo Utente (Contesto Personale)",
+      "user_persona_desc": "Informazioni su di te (es: 'Sono principiante React')"
+    },
+    "server": {
+      "title": "Configurazione Server",
+      "port": "Porta Server",
+      "port_desc": "Porta per llama-server",
+      "gpu": "Uso GPU",
+      "gpu_desc": "Carica layer su GPU (NVIDIA/AMD)",
+      "gpu_placeholder": "Numero di layer",
+      "autostart": "Avvio Automatico",
+      "autostart_desc": "Avvia server all'apertura app"
+    },
+    "appearance": {
+      "title": "Aspetto",
+      "theme": "Tema",
+      "theme_desc": "Scegli tema applicazione",
+      "themes": {
+        "dark": "Scuro",
+        "light": "Chiaro",
+        "auto": "Automatico"
+      },
+      "font_size": "Dimensione Font",
+      "font_size_desc": "Regola dimensione testo (anteprima in tempo reale)",
+      "animations": "Animazioni",
+      "animations_desc": "Abilita animazioni interfaccia"
+    },
+    "privacy": {
+      "title": "Privacy",
+      "local_history": "Cronologia Locale",
+      "local_history_desc": "Salva conversazioni su questo dispositivo",
+      "telemetry": "Telemetria",
+      "telemetry_desc": "Invia dati utilizzo anonimi",
+      "danger_zone": "Zona Pericolo",
+      "delete_all": "Elimina tutte le conversazioni",
+      "delete_confirm": "Sei sicuro di voler cancellare tutta la cronologia?",
+      "delete_btn": "Cancella Cronologia"
+    }
+  },
+  "setup": {
+    "error": "Errore Installazione",
+    "complete": "Installazione Completa",
+    "first_run": "Primo Avvio",
+    "progress": "Progresso",
+    "info": "Installazione automatica modello IA e server Llama.\nPotrebbe richiedere alcuni minuti..."
+  },
+  "loading": {
+    "initializing": "Inizializzazione...",
+    "installing": "Installazione Server...",
+    "downloading": "Scaricamento Modello...",
+    "starting": "Avvio Server...",
+    "error": "Errore",
+    "wait": "Attendere prego"
+  }
+}

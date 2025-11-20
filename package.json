@@ -1,0 +1,12 @@
+{
+  "name": "whytchat",
+  "private": true,
+  "version": "0.1.0",
+  "description": "WhytChat desktop app dev scripts",
+  "scripts": {
+    "start": "powershell -ExecutionPolicy Bypass -File ./scripts/prod/start.ps1",
+    "start:web": "powershell -ExecutionPolicy Bypass -File ./scripts/dev/start-frontend-only.ps1",
+    "dev": "powershell -ExecutionPolicy Bypass -File ./scripts/dev/dev.ps1",
+    "analyze": "powershell -ExecutionPolicy Bypass -File ./scripts/analysis/analyze-duplicates.ps1"
+  }
+}

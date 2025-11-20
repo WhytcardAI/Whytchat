@@ -1,0 +1,10 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# 1. Valider la structure du projet (composants, fichiers orphelins)
+echo "🔍 Validation de la structure..."
+npm run validate-structure --prefix Frontend || exit 1
+
+# 2. Linting et formatage des fichiers stagés
+echo "✨ Linting & Formatting..."
+cd Frontend && npx lint-staged

@@ -1,0 +1,142 @@
+# Internationalization (i18n) Guide
+
+This document defines the minimal, framework‑agnostic i18n conventions for WhytChat. It works with our current static HTML and scales to React later.
+
+## Goals
+
+- Keep it simple (no runtime dependency by default).
+- Deterministic keys and predictable fallbacks.
+- Easy to port to React/i18next if needed.
+
+## File Layout
+
+- Frontend translations live in `Frontend/translations/` as flat JSON files:
+  - `en.json` – the canonical source
+  - `fr.json`, `es.json`, ... – localized copies
+
+Example `Frontend/translations/en.json`:
+
+```json
+{
+  "app.title": "WhytChat",
+  "app.subtitle": "Minimal local chat",
+  "btn.health": "Health",
+  "btn.download": "Download model",
+  "btn.start": "Start server",
+  "btn.stop": "Stop server",
+  "chat.placeholder": "Type message...",
+  "chat.send": "Send",
+  "status.downloading": "Downloading model...",
+  "status.model_ready": "Model ready: {{path}}",
+  "status.starting": "Starting server...",
+  "status.started": "Server started on 127.0.0.1:8080",
+  "status.stopped": "Server stopped",
+  "error.generic": "Error: {{message}}"
+}
+```
+
+Notes:
+
+- Use dot‑separated keys (area.kind.action), all lowercase.
+- Use `{{...}}` placeholders for values that are interpolated at runtime.
+- English is the reference; other locales must keep identical keys.
+
+## Markup Conventions (Static HTML)
+
+- Add `data-i18n="key"` on elements to translate textContent.
+- For placeholder/value attributes, use `data-i18n-attr="placeholder|title|aria-label"` to list attributes to translate.
+
+Example snippet in `Frontend/index.html`:
+
+```html
+<h1 data-i18n="app.title"></h1>
+<p data-i18n="app.subtitle"></p>
+<button id="btn-health" data-i18n="btn.health"></button>
+<input id="msg" data-i18n="chat.placeholder" data-i18n-attr="placeholder" />
+<button id="send" data-i18n="chat.send"></button>
+```
+
+## Runtime Loader (Vanilla JS)
+
+Add a tiny loader to:
+
+- Detect browser locale (`navigator.language`), normalize to `en`, `fr`, etc.
+- Fetch `Frontend/translations/<locale>.json`, fallback to `en.json`.
+- Apply translations to elements marked with `data-i18n` and `data-i18n-attr`.
+- Provide a simple `t(key, vars)` function.
+
+Example loader (drop into `<script>` after DOM is ready):
+
+```js
+async function loadLocale(locale) {
+  const short = (locale || "en").split("-")[0];
+  async function fetchJson(lang) {
+    try {
+      return await (await fetch(`translations/${lang}.json`)).json();
+    } catch {
+      return null;
+    }
+  }
+  const en = await fetchJson("en");
+  const loc = (short !== "en" ? await fetchJson(short) : null) || {};
+  const dict = { ...en, ...loc };
+
+  function interpolate(str, vars) {
+    return str.replace(/{{\s*(\w+)\s*}}/g, (_, k) =>
+      k in (vars || {}) ? String(vars[k]) : ""
+    );
+  }
+  window.t = (key, vars) => interpolate(dict[key] || key, vars);
+
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    const key = el.getAttribute("data-i18n");
+    el.textContent = window.t(key);
+  });
+  document.querySelectorAll("[data-i18n-attr]").forEach((el) => {
+    const attrs = el.getAttribute("data-i18n-attr").split("|");
+    const key = el.getAttribute("data-i18n");
+    attrs.forEach((a) => el.setAttribute(a, window.t(key)));
+  });
+}
+
+window.addEventListener("DOMContentLoaded", () =>
+  loadLocale(navigator.language)
+);
+```
+
+## Using Translations in Scripts
+
+Prefer `window.t(key, vars)` for dynamic messages:
+
+```js
+out.textContent = t("status.model_ready", { path: p });
+out.textContent = t("error.generic", { message: String(e) });
+```
+
+## Adding New Text
+
+1. Pick a new key under the right namespace (e.g., `settings.language.save`).
+2. Add English string to `en.json`.
+3. Copy the same key to other locales with a temporary English value or a TODO.
+4. Update HTML/JS to reference the key.
+
+## Plurals (Minimal)
+
+- Keep simple: avoid grammar‑dependent plurals at first.
+- If needed, suffix keys: `inbox.item_one`, `inbox.item_many` and switch by count in JS.
+
+## Accessibility
+
+- Remember attributes: `aria-label`, `title`, `placeholder` using `data-i18n-attr`.
+- Ensure language changes don’t remove context for screen readers.
+
+## Future: React/i18next
+
+- This structure maps naturally to i18next namespaces.
+- If migrating, reuse `translations/*.json` as resource bundles.
+
+## Testing Checklist
+
+- Missing keys: UI should show the key itself (easy to spot) or log a warning.
+- Fallback: disconnect `fr.json` to verify English fallback.
+- Encoding: files must be UTF‑8 without BOM.

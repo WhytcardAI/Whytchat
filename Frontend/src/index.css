@@ -1,0 +1,395 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+/* tailwindcss-animate plugin not installed; fallback utilities defined below */
+
+/* Configuration Tailwind CSS v4 avec support thème dynamique */
+@theme {
+  /* Radius */
+  --radius-sm: 0.75rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem;
+
+  /* Tailwind v4 color tokens mapped to CSS vars */
+  --color-background: rgb(var(--background));
+  --color-foreground: rgb(var(--foreground));
+  --color-primary: rgb(var(--primary));
+  --color-primary-hover: rgb(var(--primary-hover));
+  --color-primary-foreground: rgb(var(--primary-foreground));
+  --color-secondary: rgb(var(--secondary));
+  --color-secondary-hover: rgb(var(--secondary-hover));
+  --color-secondary-foreground: rgb(var(--secondary-foreground));
+  --color-muted: rgb(var(--muted));
+  --color-muted-foreground: rgb(var(--muted-foreground));
+  --color-border: rgb(var(--border));
+  --color-accent: rgb(var(--accent));
+  --color-accent-foreground: rgb(var(--accent-foreground));
+  --color-success: rgb(var(--success));
+  --color-warning: rgb(var(--warning));
+  --color-error: rgb(var(--error));
+  --color-card: rgb(var(--card));
+  --color-card-foreground: rgb(var(--card-foreground));
+  --color-input: rgb(var(--input-bg));
+  --color-ring: rgb(var(--ring));
+}
+
+@utility text-muted-foreground {
+  color: var(--color-muted-foreground);
+}
+
+/* Theme V3 — Modern Deep Space (Glassmorphism & Linear Style) */
+:root,
+:root[data-theme="dark"] {
+  /* Base Deep Space */
+  --background: 10 10 12; /* #0a0a0c - Almost Black */
+  --background-start: 15 15 18; /* Subtle gradient start */
+  --background-end: 5 5 6; /* Subtle gradient end */
+  --foreground: 237 237 237; /* #ededed - Bright White-ish */
+
+  /* Brand - Electric Orange */
+  --primary: 249 115 22;
+  --primary-hover: 251 146 60; /* Lighter on hover for glow effect */
+  --primary-foreground: 255 255 255;
+  --accent: 249 115 22;
+  --accent-foreground: 255 255 255;
+
+  /* Surfaces - Glass & Translucency */
+  --card: 20 20 23; /* Base card color */
+  --card-foreground: 237 237 237;
+  
+  --secondary: 30 30 35; /* Input/Secondary elements */
+  --secondary-hover: 40 40 45;
+  --secondary-foreground: 237 237 237;
+  
+  --muted: 20 20 23;
+  --muted-foreground: 145 145 150; /* Neutral Grey */
+  
+  --border: 40 40 45; /* Subtle border */
+  --input-bg: 18 18 21;
+
+  /* Status */
+  --success: 34 197 94; /* Vivid Green */
+  --warning: 234 179 8; /* Vivid Yellow */
+  --error: 239 68 68; /* Vivid Red */
+
+  /* Focus ring */
+  --ring: 249 115 22;
+}
+
+/* Theme V3 — Light (Clean & Airy) */
+:root[data-theme="light"] {
+  --background: 252 252 252; /* Pure White base */
+  --background-start: 255 255 255;
+  --background-end: 245 245 247;
+  --foreground: 23 23 23; /* Deep Black */
+
+  /* Brand */
+  --primary: 234 88 12;
+  --primary-hover: 194 65 12;
+  --primary-foreground: 255 255 255;
+  --accent: 249 115 22;
+  --accent-foreground: 255 255 255;
+
+  /* Surfaces */
+  --card: 255 253 251; /* #fffdtfb beige papier */
+  --card-foreground: 28 25 23;
+  --secondary: 245 243 240; /* #f5f3f0 beige input */
+  --secondary-hover: 237 233 228; /* hover légèrement plus foncé */
+  --secondary-foreground: 28 25 23;
+  --muted: 245 243 240;
+  --muted-foreground: 120 113 108; /* #78716c stone-500 */
+  --border: 231 229 228; /* #e7e5e4 stone-200 */
+  --input-bg: 245 243 240;
+
+  /* Status */
+  --success: 34 197 94;
+  --warning: 245 158 11;
+  --error: 239 68 68;
+
+  /* Focus ring */
+  --ring: 234 88 12;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: rgb(var(--background));
+  background-image:
+    radial-gradient(circle at 50% 0%, rgba(var(--primary), 0.03) 0%, transparent 50%),
+    linear-gradient(to bottom, rgb(var(--background-start)), rgb(var(--background-end)));
+  background-attachment: fixed;
+  color: rgb(var(--foreground));
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* Glassmorphism Utilities */
+@utility glass {
+  background-color: rgba(var(--card), 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+@utility glass-strong {
+  background-color: rgba(var(--card), 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@utility glass-hover {
+  transition: background-color 0.2s, border-color 0.2s;
+  &:hover {
+    background-color: rgba(var(--secondary), 0.7);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Utilitaires explicites pour @apply (Tailwind v4) */
+@utility bg-background {
+  background-color: var(--color-background);
+}
+@utility text-foreground {
+  color: var(--color-foreground);
+}
+@utility bg-card {
+  background-color: var(--color-card);
+}
+@utility bg-secondary {
+  background-color: var(--color-secondary);
+}
+@utility border-border {
+  border-color: var(--color-border);
+}
+@utility text-muted {
+  color: var(--color-muted);
+}
+@utility bg-input {
+  background-color: var(--color-input);
+}
+@utility text-primary {
+  color: var(--color-primary);
+}
+@utility bg-primary {
+  background-color: var(--color-primary);
+}
+@utility text-primary-foreground {
+  color: var(--color-primary-foreground);
+}
+/* Les variantes hover pour utilitaires personnalisés sont gérées via :hover dans conversation.css */
+
+/* Safe area & autres helpers manquants (Tailwind v4) */
+@utility safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Gradients personnalisés compatibles avec les classes from-/via-/to- */
+@utility bg-linear-to-r {
+  background-image: linear-gradient(to right, var(--tw-gradient-stops));
+}
+@utility bg-linear-to-b {
+  background-image: linear-gradient(to bottom, var(--tw-gradient-stops));
+}
+@utility bg-linear-to-t {
+  background-image: linear-gradient(to top, var(--tw-gradient-stops));
+}
+@utility bg-linear-to-br {
+  background-image: linear-gradient(to bottom right, var(--tw-gradient-stops));
+}
+
+/* Ombres utilitaires personnalisées */
+@utility shadow-soft {
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.06);
+}
+@utility shadow-medium {
+  box-shadow: 0 8px 20px -4px rgb(0 0 0 / 0.15);
+}
+@utility shadow-strong {
+  box-shadow: 0 20px 45px -10px rgb(0 0 0 / 0.35);
+}
+
+/* Scrollbar personnalisée fine */
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-secondary-hover);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
+}
+
+/* Masquer barre de défilement (approximation multi-navigateurs) */
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Fallback for 'tailwindcss-animate' (lightweight subset) */
+@keyframes enter {
+  from {
+    opacity: var(--tw-enter-opacity, 0);
+    transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0)
+      scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), var(--tw-enter-scale, 1))
+      rotate(var(--tw-enter-rotate, 0));
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1) rotate(0);
+  }
+}
+
+@keyframes exit {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1) rotate(0);
+  }
+  to {
+    opacity: var(--tw-exit-opacity, 0);
+    transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0)
+      scale3d(var(--tw-exit-scale, 0.95), var(--tw-exit-scale, 0.95), var(--tw-exit-scale, 0.95))
+      rotate(var(--tw-exit-rotate, 0));
+  }
+}
+
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+@utility animate-in {
+  animation-name: enter;
+  animation-duration: var(--tw-enter-duration, 150ms);
+  animation-timing-function: var(--tw-enter-easing, cubic-bezier(0.4, 0, 0.2, 1));
+  animation-fill-mode: both;
+  will-change: opacity, transform;
+}
+
+@utility animate-out {
+  animation-name: exit;
+  animation-duration: var(--tw-exit-duration, 150ms);
+  animation-timing-function: var(--tw-exit-easing, cubic-bezier(0.4, 0, 0.2, 1));
+  animation-fill-mode: both;
+  will-change: opacity, transform;
+}
+
+/* Opacity helpers */
+@utility fade-in-0 {
+  --tw-enter-opacity: 0;
+}
+@utility fade-in-50 {
+  --tw-enter-opacity: 0.5;
+}
+@utility fade-in-80 {
+  --tw-enter-opacity: 0.8;
+}
+
+@utility fade-out-0 {
+  --tw-exit-opacity: 0;
+}
+@utility fade-out-50 {
+  --tw-exit-opacity: 0.5;
+}
+@utility fade-out-80 {
+  --tw-exit-opacity: 0.8;
+}
+
+/* Scale helpers */
+@utility zoom-in-95 {
+  --tw-enter-scale: 0.95;
+}
+@utility zoom-in-90 {
+  --tw-enter-scale: 0.9;
+}
+@utility zoom-out-95 {
+  --tw-exit-scale: 0.95;
+}
+@utility zoom-out-90 {
+  --tw-exit-scale: 0.9;
+}
+
+/* Slide helpers (2 = 0.5rem) */
+@utility slide-in-from-top-2 {
+  --tw-enter-translate-y: -0.5rem;
+}
+@utility slide-in-from-bottom-2 {
+  --tw-enter-translate-y: 0.5rem;
+}
+@utility slide-in-from-left-2 {
+  --tw-enter-translate-x: -0.5rem;
+}
+@utility slide-in-from-right-2 {
+  --tw-enter-translate-x: 0.5rem;
+}
+
+@utility slide-out-to-top-2 {
+  --tw-exit-translate-y: -0.5rem;
+}
+@utility slide-out-to-bottom-2 {
+  --tw-exit-translate-y: 0.5rem;
+}
+@utility slide-out-to-left-2 {
+  --tw-exit-translate-x: -0.5rem;
+}
+@utility slide-out-to-right-2 {
+  --tw-exit-translate-x: 0.5rem;
+}
+
+/* Radix Accordion helpers */
+@utility animate-accordion-down {
+  animation: accordion-down 0.2s ease-out;
+}
+@utility animate-accordion-up {
+  animation: accordion-up 0.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .animate-out,
+  .animate-accordion-down,
+  .animate-accordion-up {
+    animation: none !important;
+  }
+}

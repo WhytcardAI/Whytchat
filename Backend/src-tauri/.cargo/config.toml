@@ -1,0 +1,4 @@
+[env]
+# Workaround suggéré par Tauri pour éviter STATUS_ENTRYPOINT_NOT_FOUND
+# Réf: https://github.com/tauri-apps/tauri/blob/dev/.cargo/config.toml
+__TAURI_WORKSPACE__ = "true"

@@ -1,0 +1,153 @@
+{
+  "app": {
+    "title": "WhytChat"
+  },
+  "conversations": {
+    "title": "Conversations",
+    "new": "New",
+    "empty": "No conversations",
+    "rename": "Rename"
+  },
+  "nav": {
+    "chats": "Chats",
+    "contacts": "Contacts",
+    "settings": "Settings"
+  },
+  "chat": {
+    "assistant_name": "AI Assistant",
+    "status_online": "Online",
+    "input_placeholder": "Ask anything...",
+    "generating": "Generating...",
+    "mode_standard": "Standard",
+    "mode_deep_analysis": "Deep Analysis",
+    "actions": {
+      "copy": "Copy",
+      "regenerate": "Regenerate",
+      "like": "Like",
+      "dislike": "Dislike",
+      "translate": "Translate",
+      "code": "Code",
+      "attach": "Attach file",
+      "translate_prompt": "Translate the following:",
+      "code_prompt": "Write code for the following:"
+    },
+    "settings": {
+      "title": "Chat Settings",
+      "config_title": "Conversation Configuration",
+      "system_prompt": "System Instructions",
+      "user_persona": "User Persona",
+      "close": "Close"
+    },
+    "knowledge": {
+      "title": "Knowledge Base",
+      "add_doc": "Add Document",
+      "empty": "No documents indexed.",
+      "drag_drop": "Drag files or click +",
+      "ready": "Ready",
+      "delete": "Delete",
+      "error_add": "Error adding document"
+    },
+    "orchestrator": {
+      "thinking": "Thinking...",
+      "generating_insight": "Generating insight...",
+      "reasoning": "Reasoning...",
+      "insight_generated": "Insight Generated"
+    },
+    "input": {
+      "send_to": "Send a message to",
+      "file_attached": "Attached file:",
+      "moa_active": "Multi-Agents Mode (Active)",
+      "moa_enable": "Enable Multi-Agents Mode",
+      "select_create": "Select or create a conversation",
+      "create_meeting": "Create Meeting"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "config_title": "Configuration",
+    "system_prompt": "System Instructions",
+    "user_persona": "User Persona",
+    "close": "Close",
+    "tabs": {
+      "general": "General",
+      "models": "Models",
+      "server": "Server",
+      "appearance": "Appearance",
+      "privacy": "Privacy"
+    },
+    "general": {
+      "title": "General Settings",
+      "language": "Interface Language",
+      "language_desc": "Choose display language",
+      "autostart": "Auto Start",
+      "autostart_desc": "Launch WhytChat on system startup",
+      "notifications": "Notifications",
+      "notifications_desc": "Enable response notifications"
+    },
+    "models": {
+      "title": "AI Model Configuration",
+      "active": "Active",
+      "desc": "Multilingual model optimized for code and text",
+      "temperature": "Temperature",
+      "temperature_desc": "Controls creativity (0.1 = precise, 1.0 = creative)",
+      "max_tokens": "Max Tokens",
+      "max_tokens_desc": "Maximum response length",
+      "context": "Context",
+      "context_desc": "Context window in tokens",
+      "system_prompt": "System Prompt (Global Context)",
+      "system_prompt_desc": "Base instructions for the AI (e.g., 'You are a Rust expert')",
+      "user_persona": "User Profile (Personal Context)",
+      "user_persona_desc": "Information about you (e.g., 'I am a React beginner')"
+    },
+    "server": {
+      "title": "Server Configuration",
+      "port": "Server Port",
+      "port_desc": "Port for llama-server",
+      "gpu": "GPU Usage",
+      "gpu_desc": "Offload layers to GPU (NVIDIA/AMD)",
+      "gpu_placeholder": "Number of layers",
+      "autostart": "Auto Start",
+      "autostart_desc": "Start server when app launches"
+    },
+    "appearance": {
+      "title": "Appearance",
+      "theme": "Theme",
+      "theme_desc": "Choose application theme",
+      "themes": {
+        "dark": "Dark",
+        "light": "Light",
+        "auto": "Automatic"
+      },
+      "font_size": "Font Size",
+      "font_size_desc": "Adjust text size (real-time preview)",
+      "animations": "Animations",
+      "animations_desc": "Enable interface animations"
+    },
+    "privacy": {
+      "title": "Privacy",
+      "local_history": "Local History",
+      "local_history_desc": "Save conversations on this device",
+      "telemetry": "Telemetry",
+      "telemetry_desc": "Send anonymous usage data",
+      "danger_zone": "Danger Zone",
+      "delete_all": "Delete all conversations",
+      "delete_confirm": "Are you sure you want to delete all history?",
+      "delete_btn": "Clear History"
+    }
+  },
+  "setup": {
+    "error": "Installation Error",
+    "complete": "Installation Complete",
+    "first_run": "First Run",
+    "progress": "Progress",
+    "info": "Automatically installing AI model and Llama server.\nThis may take a few minutes..."
+  },
+  "loading": {
+    "initializing": "Initializing...",
+    "installing": "Installing Server...",
+    "downloading": "Downloading Model...",
+    "starting": "Starting Server...",
+    "error": "Error",
+    "wait": "Please wait"
+  }
+}

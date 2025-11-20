@@ -1,0 +1,153 @@
+{
+  "app": {
+    "title": "WhytChat"
+  },
+  "conversations": {
+    "title": "Conversaciones",
+    "new": "Nueva",
+    "empty": "Sin conversaciones",
+    "rename": "Renombrar"
+  },
+  "nav": {
+    "chats": "Chats",
+    "contacts": "Contactos",
+    "settings": "Ajustes"
+  },
+  "chat": {
+    "assistant_name": "Asistente IA",
+    "status_online": "En línea",
+    "input_placeholder": "Pregunta lo que sea...",
+    "generating": "Generando...",
+    "mode_standard": "Estándar",
+    "mode_deep_analysis": "Análisis Profundo",
+    "actions": {
+      "copy": "Copiar",
+      "regenerate": "Regenerar",
+      "like": "Me gusta",
+      "dislike": "No me gusta",
+      "translate": "Traducir",
+      "code": "Código",
+      "attach": "Adjuntar archivo",
+      "translate_prompt": "Traduce lo siguiente:",
+      "code_prompt": "Escribe código para lo siguiente:"
+    },
+    "settings": {
+      "title": "Ajustes del chat",
+      "config_title": "Configuración de la Conversación",
+      "system_prompt": "Instrucciones del Sistema",
+      "user_persona": "Persona de Usuario",
+      "close": "Cerrar"
+    },
+    "knowledge": {
+      "title": "Base de Conocimiento",
+      "add_doc": "Añadir documento",
+      "empty": "Sin documentos indexados.",
+      "drag_drop": "Arrastra archivos o haz clic en +",
+      "ready": "Listo",
+      "delete": "Eliminar",
+      "error_add": "Error al añadir documento"
+    },
+    "orchestrator": {
+      "thinking": "Pensando...",
+      "generating_insight": "Generando insight...",
+      "reasoning": "Razonando...",
+      "insight_generated": "Insight Generado"
+    },
+    "input": {
+      "send_to": "Enviar mensaje a",
+      "file_attached": "Archivo adjunto:",
+      "moa_active": "Modo Multi-Agentes (Activo)",
+      "moa_enable": "Activar Modo Multi-Agentes",
+      "select_create": "Selecciona o crea una conversación",
+      "create_meeting": "Crear Reunión"
+    }
+  },
+  "settings": {
+    "title": "Ajustes",
+    "config_title": "Configuración",
+    "system_prompt": "Instrucciones del Sistema",
+    "user_persona": "Persona de Usuario",
+    "close": "Cerrar",
+    "tabs": {
+      "general": "General",
+      "models": "Modelos",
+      "server": "Servidor",
+      "appearance": "Apariencia",
+      "privacy": "Privacidad"
+    },
+    "general": {
+      "title": "Ajustes Generales",
+      "language": "Idioma de la interfaz",
+      "language_desc": "Elige el idioma de visualización",
+      "autostart": "Inicio automático",
+      "autostart_desc": "Iniciar WhytChat al arrancar el sistema",
+      "notifications": "Notificaciones",
+      "notifications_desc": "Activar notificaciones de respuesta"
+    },
+    "models": {
+      "title": "Configuración del Modelo IA",
+      "active": "Activo",
+      "desc": "Modelo multilingüe optimizado para código y texto",
+      "temperature": "Temperatura",
+      "temperature_desc": "Controla la creatividad (0.1 = preciso, 1.0 = creativo)",
+      "max_tokens": "Tokens máximos",
+      "max_tokens_desc": "Longitud máxima de respuesta",
+      "context": "Contexto",
+      "context_desc": "Ventana de contexto en tokens",
+      "system_prompt": "Prompt del Sistema (Contexto Global)",
+      "system_prompt_desc": "Instrucciones base para la IA (ej: 'Eres un experto en Rust')",
+      "user_persona": "Perfil de Usuario (Contexto Personal)",
+      "user_persona_desc": "Información sobre ti (ej: 'Soy principiante en React')"
+    },
+    "server": {
+      "title": "Configuración del Servidor",
+      "port": "Puerto del Servidor",
+      "port_desc": "Puerto para llama-server",
+      "gpu": "Uso de GPU",
+      "gpu_desc": "Cargar capas en GPU (NVIDIA/AMD)",
+      "gpu_placeholder": "Número de capas",
+      "autostart": "Inicio automático",
+      "autostart_desc": "Iniciar servidor al abrir la app"
+    },
+    "appearance": {
+      "title": "Apariencia",
+      "theme": "Tema",
+      "theme_desc": "Elige el tema de la aplicación",
+      "themes": {
+        "dark": "Oscuro",
+        "light": "Claro",
+        "auto": "Automático"
+      },
+      "font_size": "Tamaño de fuente",
+      "font_size_desc": "Ajustar tamaño de texto (vista previa en tiempo real)",
+      "animations": "Animaciones",
+      "animations_desc": "Activar animaciones de interfaz"
+    },
+    "privacy": {
+      "title": "Privacidad",
+      "local_history": "Historial Local",
+      "local_history_desc": "Guardar conversaciones en este dispositivo",
+      "telemetry": "Telemetría",
+      "telemetry_desc": "Enviar datos de uso anónimos",
+      "danger_zone": "Zona de Peligro",
+      "delete_all": "Eliminar todas las conversaciones",
+      "delete_confirm": "¿Estás seguro de querer borrar todo el historial?",
+      "delete_btn": "Borrar Historial"
+    }
+  },
+  "setup": {
+    "error": "Error de Instalación",
+    "complete": "Instalación Completa",
+    "first_run": "Primera Ejecución",
+    "progress": "Progreso",
+    "info": "Instalando automáticamente modelo IA y servidor Llama.\nEsto puede tardar unos minutos..."
+  },
+  "loading": {
+    "initializing": "Inicializando...",
+    "installing": "Instalando Servidor...",
+    "downloading": "Descargando Modelo...",
+    "starting": "Iniciando Servidor...",
+    "error": "Error",
+    "wait": "Por favor espere"
+  }
+}

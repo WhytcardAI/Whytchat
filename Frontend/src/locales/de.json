@@ -1,0 +1,153 @@
+{
+  "app": {
+    "title": "WhytChat"
+  },
+  "conversations": {
+    "title": "Konversationen",
+    "new": "Neu",
+    "empty": "Keine Konversationen",
+    "rename": "Umbenennen"
+  },
+  "nav": {
+    "chats": "Chats",
+    "contacts": "Kontakte",
+    "settings": "Einstellungen"
+  },
+  "chat": {
+    "assistant_name": "KI-Assistent",
+    "status_online": "Online",
+    "input_placeholder": "Fragen Sie etwas...",
+    "generating": "Generiere...",
+    "mode_standard": "Standard",
+    "mode_deep_analysis": "Tiefenanalyse",
+    "actions": {
+      "copy": "Kopieren",
+      "regenerate": "Neu generieren",
+      "like": "Gefällt mir",
+      "dislike": "Gefällt mir nicht",
+      "translate": "Übersetzen",
+      "code": "Code",
+      "attach": "Datei anhängen",
+      "translate_prompt": "Übersetze folgendes:",
+      "code_prompt": "Schreibe Code für folgendes:"
+    },
+    "settings": {
+      "title": "Chat-Einstellungen",
+      "config_title": "Konversationskonfiguration",
+      "system_prompt": "Systemanweisungen",
+      "user_persona": "Benutzer-Persona",
+      "close": "Schließen"
+    },
+    "knowledge": {
+      "title": "Wissensdatenbank",
+      "add_doc": "Dokument hinzufügen",
+      "empty": "Keine Dokumente indexiert.",
+      "drag_drop": "Dateien hierher ziehen oder + klicken",
+      "ready": "Bereit",
+      "delete": "Löschen",
+      "error_add": "Fehler beim Hinzufügen des Dokuments"
+    },
+    "orchestrator": {
+      "thinking": "Denke nach...",
+      "generating_insight": "Generiere Erkenntnis...",
+      "reasoning": "Schlussfolgerung...",
+      "insight_generated": "Erkenntnis generiert"
+    },
+    "input": {
+      "send_to": "Nachricht senden an",
+      "file_attached": "Angehängte Datei:",
+      "moa_active": "Multi-Agenten-Modus (Aktiv)",
+      "moa_enable": "Multi-Agenten-Modus aktivieren",
+      "select_create": "Wählen oder erstellen Sie eine Konversation",
+      "create_meeting": "Meeting erstellen"
+    }
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "config_title": "Konfiguration",
+    "system_prompt": "Systemanweisungen",
+    "user_persona": "Benutzer-Persona",
+    "close": "Schließen",
+    "tabs": {
+      "general": "Allgemein",
+      "models": "Modelle",
+      "server": "Server",
+      "appearance": "Erscheinungsbild",
+      "privacy": "Datenschutz"
+    },
+    "general": {
+      "title": "Allgemeine Einstellungen",
+      "language": "Sprache der Benutzeroberfläche",
+      "language_desc": "Anzeigesprache wählen",
+      "autostart": "Autostart",
+      "autostart_desc": "WhytChat beim Systemstart ausführen",
+      "notifications": "Benachrichtigungen",
+      "notifications_desc": "Antwortbenachrichtigungen aktivieren"
+    },
+    "models": {
+      "title": "KI-Modellkonfiguration",
+      "active": "Aktiv",
+      "desc": "Mehrsprachiges Modell optimiert für Code und Text",
+      "temperature": "Temperatur",
+      "temperature_desc": "Steuert Kreativität (0.1 = präzise, 1.0 = kreativ)",
+      "max_tokens": "Max Token",
+      "max_tokens_desc": "Maximale Antwortlänge",
+      "context": "Kontext",
+      "context_desc": "Kontextfenster in Token",
+      "system_prompt": "System-Prompt (Globaler Kontext)",
+      "system_prompt_desc": "Basisanweisungen für die KI (z.B. 'Du bist ein Rust-Experte')",
+      "user_persona": "Benutzerprofil (Persönlicher Kontext)",
+      "user_persona_desc": "Informationen über Sie (z.B. 'Ich bin React-Anfänger')"
+    },
+    "server": {
+      "title": "Serverkonfiguration",
+      "port": "Server-Port",
+      "port_desc": "Port für llama-server",
+      "gpu": "GPU-Nutzung",
+      "gpu_desc": "Layer auf GPU auslagern (NVIDIA/AMD)",
+      "gpu_placeholder": "Anzahl der Layer",
+      "autostart": "Autostart",
+      "autostart_desc": "Server beim App-Start starten"
+    },
+    "appearance": {
+      "title": "Erscheinungsbild",
+      "theme": "Thema",
+      "theme_desc": "App-Thema wählen",
+      "themes": {
+        "dark": "Dunkel",
+        "light": "Hell",
+        "auto": "Automatisch"
+      },
+      "font_size": "Schriftgröße",
+      "font_size_desc": "Textgröße anpassen (Echtzeit-Vorschau)",
+      "animations": "Animationen",
+      "animations_desc": "Schnittstellenanimationen aktivieren"
+    },
+    "privacy": {
+      "title": "Datenschutz",
+      "local_history": "Lokaler Verlauf",
+      "local_history_desc": "Konversationen auf diesem Gerät speichern",
+      "telemetry": "Telemetrie",
+      "telemetry_desc": "Anonyme Nutzungsdaten senden",
+      "danger_zone": "Gefahrenzone",
+      "delete_all": "Alle Konversationen löschen",
+      "delete_confirm": "Sind Sie sicher, dass Sie den gesamten Verlauf löschen möchten?",
+      "delete_btn": "Verlauf löschen"
+    }
+  },
+  "setup": {
+    "error": "Installationsfehler",
+    "complete": "Installation abgeschlossen",
+    "first_run": "Erster Start",
+    "progress": "Fortschritt",
+    "info": "Automatische Installation von KI-Modell und Llama-Server.\nDies kann einige Minuten dauern..."
+  },
+  "loading": {
+    "initializing": "Initialisiere...",
+    "installing": "Installiere Server...",
+    "downloading": "Lade Modell herunter...",
+    "starting": "Starte Server...",
+    "error": "Fehler",
+    "wait": "Bitte warten"
+  }
+}
