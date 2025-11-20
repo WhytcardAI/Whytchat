@@ -1,0 +1,156 @@
+diff --git a/scripts/analysis/scan-imports.mjs b/scripts/analysis/scan-imports.mjs
+--- a/scripts/analysis/scan-imports.mjs
++++ b/scripts/analysis/scan-imports.mjs
+@@ -26,1 +26,1 @@
+-  const importRe1 = /^\s*import\s+.+?from\s+['"]([^'"]+)['"];?/gm;
++  const importRe1 = /^\s*import\s+(?:\S.*?|[\t\x0b\f \xa0\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff])from\s+['"]([^'"]+)['"];?/gm;
+@@ -39,1 +39,1 @@
+-    if (count > 1) issues.duplicateImports.push({ module: mod, count });
++    if (count > 1) issues.duplicateImports.push({ module: mod, count: count });
+diff --git a/Frontend/src/components/layout/ChatArea.jsx b/Frontend/src/components/layout/ChatArea.jsx
+--- a/Frontend/src/components/layout/ChatArea.jsx
++++ b/Frontend/src/components/layout/ChatArea.jsx
+@@ -38,1 +38,1 @@
+-        setInputValue((prev) => prev + `\n\n[${t("chat.input.file_attached")} ${selectedPath}]\n${content}\n[/Fichier]`);
++        setInputValue((prev) => prev + "\n\n["+t("chat.input.file_attached")+" "+selectedPath+"]\n"+content+"\n[/Fichier]");
+diff --git a/Frontend/src/components/layout/ContextPanel.jsx b/Frontend/src/components/layout/ContextPanel.jsx
+--- a/Frontend/src/components/layout/ContextPanel.jsx
++++ b/Frontend/src/components/layout/ContextPanel.jsx
+@@ -15,1 +15,1 @@
+-            onClick={() => setActiveTab("orchestration")}
++            onClick={function() { return setActiveTab("orchestration") }}
+@@ -26,1 +26,1 @@
+-            onClick={() => setActiveTab("knowledge")}
++            onClick={function() { return setActiveTab("knowledge") }}
+diff --git a/Frontend/src/stores/knowledgeStore.js b/Frontend/src/stores/knowledgeStore.js
+--- a/Frontend/src/stores/knowledgeStore.js
++++ b/Frontend/src/stores/knowledgeStore.js
+@@ -19,1 +19,1 @@
+-      setIndexing: (status) => set({ isIndexing: status }),
++      setIndexing: function(status) { return set({ isIndexing: status }) },
+@@ -23,1 +23,1 @@
+-          documents: state.documents.filter((d) => d.id !== id),
++          documents: state.documents.filter(function(d) { return d.id !== id }),
+diff --git a/Frontend/src/stores/settingsStore.js b/Frontend/src/stores/settingsStore.js
+--- a/Frontend/src/stores/settingsStore.js
++++ b/Frontend/src/stores/settingsStore.js
+@@ -35,1 +35,1 @@
+-      setLanguage: (language) => set({ language }),
++      setLanguage: function(language) { return set({ language }) },
+@@ -36,1 +36,1 @@
+-      setAutoStart: (autoStart) => set({ autoStart }),
++      setAutoStart: function(autoStart) { return set({ autoStart }) },
+@@ -37,1 +37,1 @@
+-      setNotifications: (notifications) => set({ notifications }),
++      setNotifications: function(notifications) { return set({ notifications }) },
+@@ -38,1 +38,1 @@
+-      setTemperature: (temperature) => set({ temperature }),
++      setTemperature: function(temperature) { return set({ temperature }) },
+@@ -39,1 +39,1 @@
+-      setMaxTokens: (maxTokens) => set({ maxTokens }),
++      setMaxTokens: (maxTokens) => set({ maxTokens: maxTokens }),
+@@ -40,1 +40,1 @@
+-      setContextWindow: (contextWindow) => set({ contextWindow }),
++      setContextWindow: function(contextWindow) { return set({ contextWindow }) },
+@@ -41,1 +41,1 @@
+-      setServerPort: (serverPort) => set({ serverPort }),
++      setServerPort: (serverPort) => set({ serverPort: serverPort }),
+@@ -42,1 +42,1 @@
+-      setGpuLayers: (gpuLayers) => set({ gpuLayers }),
++      setGpuLayers: (gpuLayers) => set({ gpuLayers: gpuLayers }),
+@@ -43,1 +43,1 @@
+-      setAutoStartServer: (autoStartServer) => set({ autoStartServer }),
++      setAutoStartServer: (autoStartServer) => set({ autoStartServer: autoStartServer }),
+@@ -44,1 +44,1 @@
+-      setTheme: (theme) => set({ theme }),
++      setTheme: function(theme) { return set({ theme }) },
+@@ -45,1 +45,1 @@
+-      setFontSize: (fontSize) => set({ fontSize }),
++      setFontSize: (fontSize) => set({ fontSize: fontSize }),
+@@ -46,1 +46,1 @@
+-      setAnimations: (animations) => set({ animations }),
++      setAnimations: (animations) => set({ animations: animations }),
+diff --git a/Frontend/src/stores/learningStore.js b/Frontend/src/stores/learningStore.js
+--- a/Frontend/src/stores/learningStore.js
++++ b/Frontend/src/stores/learningStore.js
+@@ -15,1 +15,1 @@
+-              agentName,
++              agentName: agentName,
+@@ -16,1 +16,1 @@
+-              content,
++              content: content,
+@@ -17,1 +17,1 @@
+-              isGood,
++              isGood: isGood,
+@@ -28,1 +28,1 @@
+-          .insights.filter((i) => i.isGood)
++          .insights.filter(function(i) { return i.isGood })
+@@ -30,1 +30,1 @@
+-          .map((i) => `[Exemple de bon raisonnement par ${i.agentName}]: ${i.content}`)
++          .map(function(i) { return `[Exemple de bon raisonnement par ${i.agentName}]: ${i.content}` })
+@@ -34,1 +34,1 @@
+-      clearInsights: () => set({ insights: [] }),
++      clearInsights: function() { return set({ insights: [] }) },
+diff --git a/Frontend/src/components/OrchestrationVisualizer/index.jsx b/Frontend/src/components/OrchestrationVisualizer/index.jsx
+--- a/Frontend/src/components/OrchestrationVisualizer/index.jsx
++++ b/Frontend/src/components/OrchestrationVisualizer/index.jsx
+@@ -9,1 +9,1 @@
+-  const addInsight = useLearningStore((state) => state.addInsight);
++  const addInsight = useLearningStore(function(state) { return state.addInsight });
+@@ -28,1 +28,1 @@
+-          (t) => t.agent === event.payload.agent && t.status === "thinking"
++          function(t) { return t.agent === event.payload.agent && t.status === "thinking" }
+@@ -56,1 +56,1 @@
+-      unlistenStart.then((f) => f());
++      unlistenStart.then(function(f) { return f() });
+diff --git a/Frontend/src/components/MessageBubble/index.jsx b/Frontend/src/components/MessageBubble/index.jsx
+--- a/Frontend/src/components/MessageBubble/index.jsx
++++ b/Frontend/src/components/MessageBubble/index.jsx
+@@ -5,1 +5,1 @@
+-    <div className={`max-w-4xl mx-auto flex w-full ${isUser ? "justify-end" : "justify-start"} group`}>
++    <div className={"max-w-4xl mx-auto flex w-full "+isUser ? "justify-end" : "justify-start"+" group"}>
+diff --git a/Frontend/src/stores/uiStore.js b/Frontend/src/stores/uiStore.js
+--- a/Frontend/src/stores/uiStore.js
++++ b/Frontend/src/stores/uiStore.js
+@@ -9,1 +9,1 @@
+-      toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
++      toggleSidebar: function() { return set((state) => ({ isSidebarOpen: !state.isSidebarOpen })) },
+@@ -10,1 +10,1 @@
+-      toggleContextPanel: () => set((state) => ({ isContextPanelOpen: !state.isContextPanelOpen })),
++      toggleContextPanel: function() { return set((state) => ({ isContextPanelOpen: !state.isContextPanelOpen })) },
+@@ -11,1 +11,1 @@
+-      setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
++      setSidebarOpen: function(isOpen) { return set({ isSidebarOpen: isOpen }) },
+@@ -12,1 +12,1 @@
+-      setContextPanelOpen: (isOpen) => set({ isContextPanelOpen: isOpen }),
++      setContextPanelOpen: function(isOpen) { return set({ isContextPanelOpen: isOpen }) },
+diff --git a/Frontend/src/App.jsx b/Frontend/src/App.jsx
+--- a/Frontend/src/App.jsx
++++ b/Frontend/src/App.jsx
+@@ -60,1 +60,1 @@
+-        <div className={`absolute left-3 top-6 z-30 transition-transform duration-500 ${isSidebarOpen ? 'translate-x-[265px]' : 'translate-x-0'}`}>
++        <div className={"absolute left-3 top-6 z-30 transition-transform duration-500 "+isSidebarOpen ? 'translate-x-[265px]' : 'translate-x-0'}>
+@@ -76,1 +76,1 @@
+-        <div className={`hidden lg:block absolute right-3 top-6 z-30 transition-transform duration-500 ${isContextPanelOpen ? '-translate-x-[305px]' : 'translate-x-0'}`}>
++        <div className={"hidden lg:block absolute right-3 top-6 z-30 transition-transform duration-500 "+isContextPanelOpen ? '-translate-x-[305px]' : 'translate-x-0'}>
+diff --git a/Frontend/eslint.config.js b/Frontend/eslint.config.js
+--- a/Frontend/eslint.config.js
++++ b/Frontend/eslint.config.js
+@@ -24,1 +24,1 @@
+-      react,
++      react: react,
+@@ -27,1 +27,1 @@
+-      prettier,
++      prettier: prettier,
+diff --git a/scripts/analysis/validate-structure.mjs b/scripts/analysis/validate-structure.mjs
+--- a/scripts/analysis/validate-structure.mjs
++++ b/scripts/analysis/validate-structure.mjs
+@@ -21,1 +21,1 @@
+-    } else if (/\.(jsx|tsx|js|ts)$/.test(ent.name)) {
++    } else if (/\.(?:jsx|tsx|js|ts)$/.test(ent.name)) {
+@@ -61,1 +61,1 @@
+-              `ERROR: component folder '${ent.name}' missing index.(jsx|tsx|js|ts)`
++              "ERROR: component folder '"+ent.name+"' missing index.(jsx|tsx|js|ts)"
+@@ -66,1 +66,1 @@
+-            `ERROR: Found component file directly under components/: ${ent.name}`
++            "ERROR: Found component file directly under components/: "+ent.name
