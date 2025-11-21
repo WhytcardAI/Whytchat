@@ -53,7 +53,9 @@ export default function Header() {
       data-tauri-drag-region
     >
       <div className="flex items-center gap-3">
-         <h1 className="text-sm font-semibold tracking-tight select-none text-muted-foreground/80">WhytChat</h1>
+        <h1 className="text-sm font-semibold tracking-tight select-none text-muted-foreground/80">
+          WhytChat
+        </h1>
       </div>
 
       <div className="flex items-center gap-1">
@@ -66,7 +68,7 @@ export default function Header() {
           >
             <Languages className="w-4 h-4" />
           </button>
-          
+
           {showLanguages && (
             <div className="absolute top-10 right-0 w-40 bg-card border border-border rounded-lg shadow-strong py-1 z-50">
               {languages.map((lang) => (

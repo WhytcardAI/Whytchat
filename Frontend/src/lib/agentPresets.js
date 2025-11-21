@@ -36,7 +36,8 @@ export const AGENT_PRESETS = {
   web_research: {
     id: "web_research",
     name: "Recherche Web & Synthèse",
-    description: "Recherche activement des informations sur le web pour répondre à des questions d'actualité ou factuelles.",
+    description:
+      "Recherche activement des informations sur le web pour répondre à des questions d'actualité ou factuelles.",
     agents: [
       {
         name: "Chercheur",

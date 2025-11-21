@@ -40,11 +40,11 @@ export default function ContextPanel() {
         <div className="p-3 h-full overflow-y-auto scrollbar-thin scrollbar-thumb-white/5 hover:scrollbar-thumb-white/10">
           {activeTab === "orchestration" ? (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-               <OrchestrationVisualizer isEmbedded={true} />
+              <OrchestrationVisualizer isEmbedded={true} />
             </div>
           ) : (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-               <KnowledgePanel />
+              <KnowledgePanel />
             </div>
           )}
         </div>

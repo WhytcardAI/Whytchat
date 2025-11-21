@@ -20,7 +20,7 @@ export default function KnowledgePanel() {
       if (selectedPath && typeof selectedPath === "string") {
         setIndexing(true);
         setError(null);
-        
+
         // Appel API Backend pour ingestion
         const result = await api.ingestFile(selectedPath);
         console.log("Ingestion result:", result);
@@ -82,11 +82,16 @@ export default function KnowledgePanel() {
                   <FileText className="w-4 h-4 text-blue-400" />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-medium truncate text-foreground/90" title={doc.name}>
+                  <span
+                    className="text-xs font-medium truncate text-foreground/90"
+                    title={doc.name}
+                  >
                     {doc.name}
                   </span>
                   <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    {doc.type.toUpperCase()} • <CheckCircle2 className="w-2.5 h-2.5 text-green-500" /> {t("chat.knowledge.ready")}
+                    {doc.type.toUpperCase()} •{" "}
+                    <CheckCircle2 className="w-2.5 h-2.5 text-green-500" />{" "}
+                    {t("chat.knowledge.ready")}
                   </span>
                 </div>
               </div>

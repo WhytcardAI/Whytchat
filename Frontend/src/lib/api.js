@@ -31,7 +31,7 @@ export const api = {
     invoke("chat_multi", {
       input: { agents, history, synth_system_prompt: synthSystemPrompt },
     }),
-  
+
   chatFusion: (historyA, historyB, commonPrompt) =>
     invoke("chat_fusion", {
       input: { history_a: historyA, history_b: historyB, common_prompt: commonPrompt },
@@ -39,11 +39,11 @@ export const api = {
 
   generateResponseWithContext: (contextHistory, userPrompt, agentName) =>
     invoke("generate_response_with_context", {
-        input: {
-            context_history: contextHistory,
-            user_prompt: userPrompt,
-            agent_name: agentName
-        }
+      input: {
+        context_history: contextHistory,
+        user_prompt: userPrompt,
+        agent_name: agentName,
+      },
     }),
 
   ingestFile: (path) => invoke("ingest_file", { path }),

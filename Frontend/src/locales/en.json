@@ -51,7 +51,8 @@
       "thinking": "Thinking...",
       "generating_insight": "Generating insight...",
       "reasoning": "Reasoning...",
-      "insight_generated": "Insight Generated"
+      "insight_generated": "Insight Generated",
+      "thought_process": "Thought Process"
     },
     "input": {
       "send_to": "Send a message to",
@@ -59,7 +60,27 @@
       "moa_active": "Multi-Agents Mode (Active)",
       "moa_enable": "Enable Multi-Agents Mode",
       "select_create": "Select or create a conversation",
-      "create_meeting": "Create Meeting"
+      "create_meeting": "Create Meeting",
+      "start_debate": "Start Autonomous Debate",
+      "templates_hint": "Type / for templates"
+    },
+    "debate": {
+      "mode_title": "Autonomous Debate Mode",
+      "round_progress": "Round {{current}} / {{total}}",
+      "turn": {
+        "thesis": "Speaking: Thesis",
+        "antithesis": "Speaking: Antithesis"
+      },
+      "role": {
+        "thesis": "Thesis",
+        "antithesis": "Antithesis"
+      }
+    },
+    "templates": {
+      "title": "Templates",
+      "navigation_hint": "Use ↑ ↓ to navigate",
+      "enter_hint": "Enter",
+      "search_placeholder": "Filter..."
     }
   },
   "settings": {

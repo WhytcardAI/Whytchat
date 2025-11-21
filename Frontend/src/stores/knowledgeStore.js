@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware";
 
 export const useKnowledgeStore = create(
   persist(
-    (set, get) => ({
+    (set) => ({
       documents: [], // Liste des documents indexés { id, name, path, indexedAt, status }
       isIndexing: false,
 

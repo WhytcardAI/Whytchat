@@ -1,7 +1,6 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
-use tauri::State;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SearchResult {

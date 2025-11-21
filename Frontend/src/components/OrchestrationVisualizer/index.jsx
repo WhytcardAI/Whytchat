@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { api } from "../../lib/api";
 import { useLearningStore } from "../../stores/learningStore";
-import { Brain, ThumbsUp, ThumbsDown, Sparkles, Terminal, ArrowDown } from "lucide-react";
+import { Brain, ThumbsUp, ThumbsDown, Terminal, ArrowDown } from "lucide-react";
 
 export default function OrchestrationVisualizer({ isEmbedded = false }) {
   const [thoughts, setThoughts] = useState([]);
@@ -69,9 +69,7 @@ export default function OrchestrationVisualizer({ isEmbedded = false }) {
     if (thought) {
       addInsight(thought.agent, thought.content, isGood);
       setThoughts((prev) =>
-        prev.map((t) =>
-          t.id === thoughtId ? { ...t, feedback: isGood ? "up" : "down" } : t
-        )
+        prev.map((t) => (t.id === thoughtId ? { ...t, feedback: isGood ? "up" : "down" } : t))
       );
     }
   };
@@ -89,23 +87,22 @@ export default function OrchestrationVisualizer({ isEmbedded = false }) {
   return (
     <div className={containerClass}>
       {isEmbedded && thoughts.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-20">
-              <Brain className="w-12 h-12 mb-2" />
-              <p className="text-xs text-center">En attente de raisonnement...</p>
-          </div>
+        <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-20">
+          <Brain className="w-12 h-12 mb-2" />
+          <p className="text-xs text-center">En attente de raisonnement...</p>
+        </div>
       )}
-      <div
-        ref={scrollRef}
-        className={scrollClass}
-      >
+      <div ref={scrollRef} className={scrollClass}>
         {/* Ligne de flux verticale */}
         <div className="absolute left-8 top-4 bottom-0 w-0.5 bg-gradient-to-b from-transparent via-white/10 to-transparent -z-10" />
 
         {thoughts.map((thought, index) => (
           <div key={thought.id} className="relative mb-6 group last:mb-0">
             {/* Connecteur point */}
-            <div className={`absolute -left-4 top-5 w-3 h-3 rounded-full border-2 border-background ${getAgentColorBg(thought.agent)} shadow-[0_0_10px_rgba(0,0,0,0.5)] z-10`} />
-            
+            <div
+              className={`absolute -left-4 top-5 w-3 h-3 rounded-full border-2 border-background ${getAgentColorBg(thought.agent)} shadow-[0_0_10px_rgba(0,0,0,0.5)] z-10`}
+            />
+
             {/* Connecteur ligne vers la carte */}
             {/* <div className="absolute -left-3 top-6 w-4 h-[1px] bg-white/20" /> */}
 
@@ -121,21 +118,23 @@ export default function OrchestrationVisualizer({ isEmbedded = false }) {
             >
               {/* Header Compact */}
               <div className="flex items-center justify-between p-2 border-b border-white/5 bg-white/5">
-                <span className={`text-[10px] font-bold tracking-widest uppercase ${getAgentColorText(thought.agent)}`}>
+                <span
+                  className={`text-[10px] font-bold tracking-widest uppercase ${getAgentColorText(thought.agent)}`}
+                >
                   {thought.agent}
                 </span>
-                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   {thought.status === "completed" && (
                     <>
                       <button
                         onClick={() => handleFeedback(thought.id, true)}
-                        className={`p-1 rounded hover:bg-white/10 ${thought.feedback === 'up' ? 'text-green-400' : 'text-muted-foreground'}`}
+                        className={`p-1 rounded hover:bg-white/10 ${thought.feedback === "up" ? "text-green-400" : "text-muted-foreground"}`}
                       >
                         <ThumbsUp className="w-3 h-3" />
                       </button>
                       <button
                         onClick={() => handleFeedback(thought.id, false)}
-                         className={`p-1 rounded hover:bg-white/10 ${thought.feedback === 'down' ? 'text-red-400' : 'text-muted-foreground'}`}
+                        className={`p-1 rounded hover:bg-white/10 ${thought.feedback === "down" ? "text-red-400" : "text-muted-foreground"}`}
                       >
                         <ThumbsDown className="w-3 h-3" />
                       </button>
@@ -156,12 +155,12 @@ export default function OrchestrationVisualizer({ isEmbedded = false }) {
                 )}
               </div>
             </div>
-            
+
             {/* Flèche de flux vers le suivant (sauf dernier) */}
             {index < thoughts.length - 1 && (
-                 <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-white/10">
-                    <ArrowDown className="w-3 h-3" />
-                 </div>
+              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-white/10">
+                <ArrowDown className="w-3 h-3" />
+              </div>
             )}
           </div>
         ))}
@@ -172,24 +171,38 @@ export default function OrchestrationVisualizer({ isEmbedded = false }) {
 
 function getAgentColorBg(name) {
   switch (name?.toLowerCase()) {
-    case "logicien": return "bg-blue-500";
-    case "créatif": return "bg-purple-500";
-    case "critique": return "bg-orange-500";
-    case "chercheur": return "bg-emerald-500";
-    case "fusion context a": return "bg-cyan-500";
-    case "fusion context b": return "bg-pink-500";
-    default: return "bg-gray-500";
+    case "logicien":
+      return "bg-blue-500";
+    case "créatif":
+      return "bg-purple-500";
+    case "critique":
+      return "bg-orange-500";
+    case "chercheur":
+      return "bg-emerald-500";
+    case "fusion context a":
+      return "bg-cyan-500";
+    case "fusion context b":
+      return "bg-pink-500";
+    default:
+      return "bg-gray-500";
   }
 }
 
 function getAgentColorText(name) {
   switch (name?.toLowerCase()) {
-    case "logicien": return "text-blue-400";
-    case "créatif": return "text-purple-400";
-    case "critique": return "text-orange-400";
-    case "chercheur": return "text-emerald-400";
-    case "fusion context a": return "text-cyan-400";
-    case "fusion context b": return "text-pink-400";
-    default: return "text-gray-400";
+    case "logicien":
+      return "text-blue-400";
+    case "créatif":
+      return "text-purple-400";
+    case "critique":
+      return "text-orange-400";
+    case "chercheur":
+      return "text-emerald-400";
+    case "fusion context a":
+      return "text-cyan-400";
+    case "fusion context b":
+      return "text-pink-400";
+    default:
+      return "text-gray-400";
   }
 }

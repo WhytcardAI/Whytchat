@@ -48,10 +48,11 @@
       "error_add": "Erreur lors de l'ajout du document"
     },
     "orchestrator": {
-      "thinking": "Réflexion...",
+      "thinking": "Réflexion en cours...",
       "generating_insight": "Génération d'insight...",
       "reasoning": "Raisonnement...",
-      "insight_generated": "Insight Généré"
+      "insight_generated": "Insight Généré",
+      "thought_process": "Processus de réflexion"
     },
     "input": {
       "send_to": "Envoyer un message à",
@@ -59,7 +60,27 @@
       "moa_active": "Mode Multi-Agents (Activé)",
       "moa_enable": "Activer le mode Multi-Agents",
       "select_create": "Sélectionnez ou créez une conversation",
-      "create_meeting": "Créer Réunion"
+      "create_meeting": "Créer Réunion",
+      "start_debate": "Lancer un Débat Autonome",
+      "templates_hint": "Tapez / pour les modèles"
+    },
+    "debate": {
+      "mode_title": "Mode Débat Autonome",
+      "round_progress": "Round {{current}} / {{total}}",
+      "turn": {
+        "thesis": "Tour de parole : Thèse",
+        "antithesis": "Tour de parole : Antithèse"
+      },
+      "role": {
+        "thesis": "Thèse",
+        "antithesis": "Antithèse"
+      }
+    },
+    "templates": {
+      "title": "Modèles",
+      "navigation_hint": "Utilisez ↑ ↓ pour naviguer",
+      "enter_hint": "Entrée",
+      "search_placeholder": "Filtrer..."
     }
   },
   "settings": {

@@ -109,7 +109,7 @@ pub async fn start_llama_server(
         .arg("--port")
         .arg(port.to_string())
         .arg("-c")
-        .arg("2048") // Default context, adjustable
+        .arg("8192") // Increased context size to prevent KV cache errors
         .arg("-ngl")
         .arg("33") // GPU layers
         .stdout(Stdio::piped())

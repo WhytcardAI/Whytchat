@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export const useUIStore = create(
   persist(
@@ -12,7 +12,7 @@ export const useUIStore = create(
       setContextPanelOpen: (isOpen) => set({ isContextPanelOpen: isOpen }),
     }),
     {
-      name: 'whytchat-ui-storage',
+      name: "whytchat-ui-storage",
     }
   )
 );
