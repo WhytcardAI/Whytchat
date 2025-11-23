@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+// Global app state store
 export const useAppStore = create((set) => ({
   // UI State
   isSidebarOpen: true,
