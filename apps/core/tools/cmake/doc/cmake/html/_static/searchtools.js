@@ -85,10 +85,11 @@ const _displayItem = (item, searchTerms) => {
   let linkEl = listItem.appendChild(document.createElement("a"));
   linkEl.href = linkUrl + anchor;
   linkEl.dataset.score = score;
-  linkEl.innerHTML = title;
-  if (descr)
-    listItem.appendChild(document.createElement("span")).innerHTML =
-      " (" + descr + ")";
+  linkEl.textContent = title;
+  if (descr) {
+    let span = listItem.appendChild(document.createElement("span"));
+    span.textContent = " (" + descr + ")";
+  }
   else if (showSearchSummary)
     fetch(requestUrl)
       .then((responseData) => responseData.text())
