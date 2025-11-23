@@ -201,11 +201,13 @@ impl LlmActorRunner {
 
         let exe_path = models_dir.join(exe_name);
 
-        // Check if model_path exists, if not, try to download the default model
-        if !self.model_path.exists() {
+        // Determine which model path to use
+        let model_to_use = if self.model_path.exists() {
+            self.model_path.clone()
+        } else {
             info!("Model not found at {:?}, attempting to download default model...", self.model_path);
-            self.model_path = self.ensure_model_exists().await?;
-        }
+            self.ensure_model_exists().await?
+        };
 
         if !exe_path.exists() {
             // In a real production scenario, we should download the appropriate binary
@@ -217,11 +219,11 @@ For instructions on obtaining the correct binary, please refer to the project do
             ));
         }
 
-        info!("Starting llama-server with model: {:?}", self.model_path);
+        info!("Starting llama-server with model: {:?}", model_to_use);
 
         let child = Command::new(exe_path)
             .arg("-m")
-            .arg(&self.model_path)
+            .arg(&model_to_use)
             .arg("-c")
             .arg("4096") // Context size
             .arg("--port")

@@ -141,7 +141,7 @@ impl SupervisorRunner {
                     .await;
 
                 // 2. Agent 1: Analyzer (LLM Call) - using session config
-                let analysis_prompt = format!("Analyze this request and summarize the intent in French (max 10 words). Request: {}", content);
+                let analysis_prompt = format!("Analyze this request and summarize the intent (max 10 words). Request: {}", content);
                 let analysis = match self.llm_actor.generate_with_params(
                     analysis_prompt,
                     system_prompt.clone(),

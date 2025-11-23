@@ -45,11 +45,11 @@ async fn create_session(
 ) -> Result<String, String> {
     let pool = state.pool.as_ref().ok_or("Database not initialized")?;
     
-    let session_title = title.unwrap_or_else(|| "Nouvelle session".to_string());
+    let session_title = title.unwrap_or_else(|| DEFAULT_SESSION_TITLE.to_string());
     let model_config = models::ModelConfig {
         model_id: DEFAULT_MODEL_FILENAME.to_string(),
         temperature: 0.7,
-        system_prompt: "You are a helpful AI assistant.".to_string(),
+        system_prompt: DEFAULT_SYSTEM_PROMPT.to_string(),
     };
     
     let session = database::create_session(pool, session_title, model_config)
@@ -113,6 +113,8 @@ async fn update_session(
 // Default model URL - Qwen 2.5 7B Instruct
 const DEFAULT_MODEL_URL: &str = "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m.gguf";
 const DEFAULT_MODEL_FILENAME: &str = "qwen2.5-7b-instruct-q4_k_m.gguf";
+const DEFAULT_SESSION_TITLE: &str = "New session";
+const DEFAULT_SYSTEM_PROMPT: &str = "You are a helpful AI assistant.";
 
 #[tauri::command]
 async fn download_model(window: tauri::Window, url: Option<String>) -> Result<String, String> {
