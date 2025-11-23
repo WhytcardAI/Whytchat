@@ -68,7 +68,7 @@ export function OnboardingWizard() {
               {step === 3 && t('onboarding.model.title')}
             </h2>
             <p className="text-muted text-sm leading-relaxed">
-              {step === 1 && t('onboarding.language.title')}
+              {step === 1 && t('onboarding.language.subtitle')}
               {step === 2 && t('onboarding.welcome.subtitle')}
               {step === 3 && t('onboarding.model.subtitle')}
             </p>

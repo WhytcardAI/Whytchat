@@ -36,7 +36,8 @@ export function ChatInterface() {
       }
     };
     initSession();
-  }, [loadSessions, createSession, currentSessionId, setCurrentSessionId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   // Load messages for current session
   useEffect(() => {

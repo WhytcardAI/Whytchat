@@ -86,6 +86,19 @@ struct LlmActorRunner {
     client: Client,
 }
 
+impl Drop for LlmActorRunner {
+    fn drop(&mut self) {
+        if let Some(mut child) = self.child.take() {
+            // Try to kill the child process - cross-platform approach
+            // We use start_kill() which is non-blocking and doesn't require async
+            match child.start_kill() {
+                Ok(_) => info!("llama-server process termination initiated"),
+                Err(e) => error!("Failed to kill llama-server process: {}", e),
+            }
+        }
+    }
+}
+
 impl LlmActorRunner {
     fn new(receiver: mpsc::Receiver<LlmMessage>, model_path: std::path::PathBuf) -> Self {
         Self {
@@ -116,6 +129,13 @@ impl LlmActorRunner {
     async fn start_server(&mut self) -> Result<(), ActorError> {
         info!("Starting llama-server with model: {:?}", self.model_path);
 
+        // Check if llama-server binary exists in PATH
+        if which::which("llama-server").is_err() {
+            return Err(ActorError::Internal(
+                "llama-server binary not found in PATH. Please ensure llama.cpp is installed and llama-server is in your PATH.".to_string()
+            ));
+        }
+
         let child = Command::new("llama-server")
             .arg("-m")
             .arg(&self.model_path)
@@ -130,10 +150,32 @@ impl LlmActorRunner {
 
         self.child = Some(child);
 
-        // Wait a bit for server to start
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        // Health check with retries
+        let max_retries = 30;
+        let retry_interval = Duration::from_secs(1);
+        let health_endpoint = format!("{}/health", self.server_url);
 
-        Ok(())
+        for attempt in 1..=max_retries {
+            tokio::time::sleep(retry_interval).await;
+            
+            match self.client.get(&health_endpoint).send().await {
+                Ok(response) if response.status().is_success() => {
+                    info!("llama-server is ready after {} attempts", attempt);
+                    return Ok(());
+                }
+                Ok(response) => {
+                    info!("Server responded with status {} on attempt {}", response.status(), attempt);
+                }
+                Err(e) => {
+                    info!("Health check attempt {} failed: {}", attempt, e);
+                }
+            }
+        }
+
+        Err(ActorError::Internal(format!(
+            "llama-server failed to become ready after {} seconds",
+            max_retries
+        )))
     }
 
     async fn handle_message(&mut self, msg: LlmMessage) {

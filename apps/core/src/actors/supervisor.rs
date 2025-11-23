@@ -134,21 +134,21 @@ impl SupervisorRunner {
                 let temperature = session_config.as_ref().map(|c| c.temperature);
 
                 // 1. Emit: Analysis
-                self.emit_thinking(&window, "Analyse de la demande...")
+                self.emit_thinking(&window, "thinking.analyzing")
                     .await;
 
                 // 2. Agent 1: Analyzer (LLM Call)
-                let analysis_prompt = format!("Analyze this request and summarize the intent in French (max 10 words). Request: {}", content);
+                let analysis_prompt = format!("Analyze this request and summarize the intent (max 10 words). Request: {}", content);
                 let analysis = match self.llm_actor.generate_with_params(analysis_prompt, system_prompt.clone(), temperature).await {
                     Ok(res) => res.trim().to_string(),
-                    Err(_) => "Analyse complexe...".to_string(),
+                    Err(_) => "thinking.complex_analysis".to_string(),
                 };
 
-                self.emit_thinking(&window, &format!("Intention : {}", analysis))
+                self.emit_thinking(&window, &format!("thinking.intent|{}", analysis))
                     .await;
 
                 // 3. Emit: Context Search
-                self.emit_thinking(&window, "Vérification des connaissances locales (RAG)...")
+                self.emit_thinking(&window, "thinking.searching_context")
                     .await;
 
                 let mut context_str = String::new();
@@ -161,24 +161,24 @@ impl SupervisorRunner {
                         if !results.is_empty() {
                             self.emit_thinking(
                                 &window,
-                                &format!("{} documents pertinents trouvés.", results.len()),
+                                &format!("thinking.documents_found|{}", results.len()),
                             )
                             .await;
                             context_str = results.join("\n\n");
                         } else {
-                            self.emit_thinking(&window, "Aucun document pertinent trouvé.")
+                            self.emit_thinking(&window, "thinking.no_documents")
                                 .await;
                         }
                     }
                     Err(e) => {
                         error!("RAG Search failed: {}", e);
-                        self.emit_thinking(&window, "Erreur lors de la recherche documentaire.")
+                        self.emit_thinking(&window, "thinking.search_error")
                             .await;
                     }
                 }
 
                 // 4. Emit: Generation
-                self.emit_thinking(&window, "Formulation de la réponse...")
+                self.emit_thinking(&window, "thinking.generating_response")
                     .await;
 
                 // Load session history
