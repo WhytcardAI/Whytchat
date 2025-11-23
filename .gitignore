@@ -1,0 +1,34 @@
+# Node / NPM
+node_modules/
+dist/
+npm-debug.log
+yarn-error.log
+pnpm-lock.yaml
+
+# Rust / Cargo
+target/
+**/*.rs.bk
+Cargo.lock
+apps/core/gen/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Data (models, database)
+data/
+
+# AI Model Cache (downloaded at runtime)
+.fastembed_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+#Ignore insiders AI rules
+.github\instructions\codacy.instructions.md

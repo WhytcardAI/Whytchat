@@ -1,0 +1,27 @@
+{
+  "name": "whytchat-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "lint": "npm run lint:js && npm run lint:rs",
+    "lint:js": "npm run lint --workspace=apps/desktop-ui",
+    "lint:rs": "cargo clippy --workspace --all-targets -- -D warnings",
+    "format": "npm run format:js && npm run format:rs",
+    "format:js": "prettier --write \"apps/**/*.{js,jsx,ts,tsx,json,md}\"",
+    "format:rs": "cargo fmt",
+    "prepare": "husky install",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "husky": "^9.0.0",
+    "prettier": "^3.3.0",
+    "eslint": "^9.9.0"
+  }
+}

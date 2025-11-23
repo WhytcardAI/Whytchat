@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running Pre-commit Checks..."
+
+# 1. Lint JS/React
+echo "🎨 Linting Frontend..."
+npm run lint:js || { echo "❌ Frontend Lint Failed"; exit 1; }
+
+# 2. Lint Rust
+echo "🦀 Linting Backend (Clippy)..."
+npm run lint:rs || { echo "❌ Backend Clippy Failed"; exit 1; }
+
+echo "✅ All Checks Passed!"
