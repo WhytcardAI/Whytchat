@@ -39,7 +39,7 @@ export const useAppStore = create((set, get) => ({
     }
   },
 
-  updateSession: async (sessionId, title, modelConfig) => {
+  updateSession: async function(sessionId, title, modelConfig) {
     try {
       await invoke('update_session', {
         sessionId,
