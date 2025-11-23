@@ -12,7 +12,7 @@ export function ThinkingBubble({ steps = [] }) {
   const translateStep = (step) => {
     // Handle translation keys with parameters (e.g., "thinking.intent|Some intent")
     if (step.includes('|')) {
-      const [key, ...valueParts] = step.split('|');
+      const [key, value] = step.split('|', 2);
       const value = valueParts.join('|'); // Rejoin in case value contains pipes
       if (key === 'thinking.intent') {
         return t('thinking.intent', { intent: value });
