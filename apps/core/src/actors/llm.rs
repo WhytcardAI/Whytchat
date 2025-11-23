@@ -16,16 +16,33 @@ pub struct LlmActorHandle {
 
 impl LlmActorHandle {
     pub fn new() -> Self {
+        let models_dir = PortablePathManager::models_dir();
+        let default_model_path = models_dir.join("qwen2.5-7b-instruct-q4_k_m.gguf");
+        Self::new_with_model_path(default_model_path)
+    }
+
+    pub fn new_with_model_path(model_path: PathBuf) -> Self {
         let (sender, receiver) = mpsc::channel(32);
-        let actor = LlmActorRunner::new(receiver);
+        let actor = LlmActorRunner::new(receiver, model_path);
         tokio::spawn(async move { actor.run().await });
         Self { sender }
     }
 
     pub async fn generate(&self, prompt: String) -> Result<String, ActorError> {
+        self.generate_with_params(prompt, None, None).await
+    }
+
+    pub async fn generate_with_params(
+        &self,
+        prompt: String,
+        system_prompt: Option<String>,
+        temperature: Option<f32>,
+    ) -> Result<String, ActorError> {
         let (send, recv) = oneshot::channel();
-        let msg = LlmMessage::Generate {
+        let msg = LlmMessage::GenerateWithParams {
             prompt,
+            system_prompt,
+            temperature,
             responder: send,
         };
 
@@ -42,9 +59,21 @@ impl LlmActorHandle {
         prompt: String,
         chunk_sender: mpsc::Sender<Result<String, ActorError>>,
     ) -> Result<(), ActorError> {
+        self.stream_generate_with_params(prompt, None, None, chunk_sender).await
+    }
+
+    pub async fn stream_generate_with_params(
+        &self,
+        prompt: String,
+        system_prompt: Option<String>,
+        temperature: Option<f32>,
+        chunk_sender: mpsc::Sender<Result<String, ActorError>>,
+    ) -> Result<(), ActorError> {
         let (send, recv) = oneshot::channel();
-        let msg = LlmMessage::StreamGenerate {
+        let msg = LlmMessage::StreamGenerateWithParams {
             prompt,
+            system_prompt,
+            temperature,
             chunk_sender,
             responder: send,
         };
@@ -63,14 +92,16 @@ struct LlmActorRunner {
     receiver: mpsc::Receiver<LlmMessage>,
     client: reqwest::Client,
     server_process: Option<Child>,
+    model_path: PathBuf,
 }
 
 impl LlmActorRunner {
-    fn new(receiver: mpsc::Receiver<LlmMessage>) -> Self {
+    fn new(receiver: mpsc::Receiver<LlmMessage>, model_path: PathBuf) -> Self {
         Self {
             receiver,
             client: reqwest::Client::new(),
             server_process: None,
+            model_path,
         }
     }
 
@@ -170,8 +201,13 @@ impl LlmActorRunner {
 
         let exe_path = models_dir.join(exe_name);
 
-        // Ensure model exists (download if needed)
-        let model_path = self.ensure_model_exists().await?;
+        // Determine which model path to use
+        let model_to_use = if self.model_path.exists() {
+            self.model_path.clone()
+        } else {
+            info!("Model not found at {:?}, attempting to download default model...", self.model_path);
+            self.ensure_model_exists().await?
+        };
 
         if !exe_path.exists() {
             // In a real production scenario, we should download the appropriate binary
@@ -183,11 +219,11 @@ For instructions on obtaining the correct binary, please refer to the project do
             ));
         }
 
-        info!("Starting llama-server with model: {:?}", model_path);
+        info!("Starting llama-server with model: {:?}", model_to_use);
 
         let child = Command::new(exe_path)
             .arg("-m")
-            .arg(model_path)
+            .arg(&model_to_use)
             .arg("-c")
             .arg("4096") // Context size
             .arg("--port")
@@ -225,7 +261,16 @@ For instructions on obtaining the correct binary, please refer to the project do
     async fn handle_message(&mut self, msg: LlmMessage) {
         match msg {
             LlmMessage::Generate { prompt, responder } => {
-                let result = self.generate_completion(prompt).await;
+                let result = self.generate_completion(prompt, None, None).await;
+                let _ = responder.send(result);
+            }
+            LlmMessage::GenerateWithParams {
+                prompt,
+                system_prompt,
+                temperature,
+                responder,
+            } => {
+                let result = self.generate_completion(prompt, system_prompt, temperature).await;
                 let _ = responder.send(result);
             }
             LlmMessage::StreamGenerate {
@@ -233,31 +278,57 @@ For instructions on obtaining the correct binary, please refer to the project do
                 chunk_sender,
                 responder,
             } => {
-                let result = self.stream_completion(prompt, chunk_sender).await;
+                let result = self.stream_completion(prompt, None, None, chunk_sender).await;
+                let _ = responder.send(result);
+            }
+            LlmMessage::StreamGenerateWithParams {
+                prompt,
+                system_prompt,
+                temperature,
+                chunk_sender,
+                responder,
+            } => {
+                let result = self.stream_completion(prompt, system_prompt, temperature, chunk_sender).await;
                 let _ = responder.send(result);
             }
         }
     }
 
-    async fn generate_completion(&self, prompt: String) -> Result<String, ActorError> {
+    async fn generate_completion(
+        &self,
+        prompt: String,
+        system_prompt: Option<String>,
+        temperature: Option<f32>,
+    ) -> Result<String, ActorError> {
         info!("LLM Generating for prompt: {}", prompt);
 
+        // Use provided system_prompt or default
+        let system_msg = system_prompt.unwrap_or_else(|| "You are WhytChat, a helpful local assistant.".to_string());
+        
         // Construct the prompt format for Qwen/ChatML
         // <|im_start|>system\n...<|im_end|>\n<|im_start|>user\n...<|im_end|>\n<|im_start|>assistant\n
         let formatted_prompt = format!(
-            "<|im_start|>system\nYou are WhytChat, a helpful local assistant.\n<|im_end|>\n<|im_start|>user\n{}\n<|im_end|>\n<|im_start|>assistant\n",
-            prompt
+            "<|im_start|>system\n{}\n<|im_end|>\n<|im_start|>user\n{}\n<|im_end|>\n<|im_start|>assistant\n",
+            system_msg, prompt
         );
+
+        // Build JSON payload with optional parameters
+        let mut payload = serde_json::json!({
+            "prompt": formatted_prompt,
+            "n_predict": 512,
+            "stop": ["<|im_end|>"]
+        });
+        
+        if let Some(temp) = temperature {
+            payload["temperature"] = serde_json::json!(temp);
+        } else {
+            payload["temperature"] = serde_json::json!(0.7);
+        }
 
         let res = self
             .client
             .post("http://localhost:8080/completion")
-            .json(&serde_json::json!({
-                "prompt": formatted_prompt,
-                "n_predict": 512,
-                "temperature": 0.7,
-                "stop": ["<|im_end|>"]
-            }))
+            .json(&payload)
             .send()
             .await
             .map_err(|e| ActorError::LlmError(format!("Request failed: {}", e)))?;
@@ -284,27 +355,38 @@ For instructions on obtaining the correct binary, please refer to the project do
     async fn stream_completion(
         &self,
         prompt: String,
+        system_prompt: Option<String>,
+        temperature: Option<f32>,
         chunk_sender: mpsc::Sender<Result<String, ActorError>>,
     ) -> Result<(), ActorError> {
-        use futures::StreamExt;
-
         info!("LLM Streaming for prompt: {}", prompt);
 
+        // Use provided system_prompt or default
+        let system_msg = system_prompt.unwrap_or_else(|| "You are WhytChat, a helpful local assistant.".to_string());
+
         let formatted_prompt = format!(
-            "<|im_start|>system\nYou are WhytChat, a helpful local assistant.\n<|im_end|>\n<|im_start|>user\n{}\n<|im_end|>\n<|im_start|>assistant\n",
-            prompt
+            "<|im_start|>system\n{}\n<|im_end|>\n<|im_start|>user\n{}\n<|im_end|>\n<|im_start|>assistant\n",
+            system_msg, prompt
         );
+
+        // Build JSON payload with optional parameters
+        let mut payload = serde_json::json!({
+            "prompt": formatted_prompt,
+            "n_predict": 512,
+            "stop": ["<|im_end|>"],
+            "stream": true
+        });
+        
+        if let Some(temp) = temperature {
+            payload["temperature"] = serde_json::json!(temp);
+        } else {
+            payload["temperature"] = serde_json::json!(0.7);
+        }
 
         let res = self
             .client
             .post("http://localhost:8080/completion")
-            .json(&serde_json::json!({
-                "prompt": formatted_prompt,
-                "n_predict": 512,
-                "temperature": 0.7,
-                "stop": ["<|im_end|>"],
-                "stream": true
-            }))
+            .json(&payload)
             .send()
             .await
             .map_err(|e| ActorError::LlmError(format!("Request failed: {}", e)))?;

@@ -109,6 +109,34 @@ pub async fn get_all_sessions(pool: &SqlitePool) -> Result<Vec<Session>, sqlx::E
     .await
 }
 
+pub async fn update_session(
+    pool: &SqlitePool,
+    id: &str,
+    title: Option<String>,
+    model_config: Option<ModelConfig>,
+) -> Result<Session, sqlx::Error> {
+    // Get the current session to preserve unchanged fields
+    let current_session = get_session(pool, id).await?;
+    
+    let new_title = title.unwrap_or(current_session.title);
+    let new_config = model_config.unwrap_or(current_session.model_config.0);
+    let config_json = Json(new_config);
+
+    sqlx::query_as::<_, Session>(
+        r#"
+        UPDATE sessions
+        SET title = ?, model_config = ?
+        WHERE id = ?
+        RETURNING id, title, created_at, model_config as "model_config: Json<ModelConfig>"
+        "#,
+    )
+    .bind(&new_title)
+    .bind(config_json)
+    .bind(id)
+    .fetch_one(pool)
+    .await
+}
+
 // --- Messages CRUD ---
 
 pub async fn add_message(
