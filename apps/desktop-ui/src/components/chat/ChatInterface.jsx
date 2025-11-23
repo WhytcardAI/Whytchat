@@ -5,8 +5,10 @@ import { ChatInput } from './ChatInput';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useAppStore } from '../../store/appStore';
+import { useTranslation } from 'react-i18next';
 
 export function ChatInterface() {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState([]);
   const [uploadStatus, setUploadStatus] = useState(null); // null, 'uploading', 'success', 'error'
   const { setThinking, addThinkingStep, clearThinkingSteps, isThinking, thinkingSteps, currentSessionId } = useAppStore();
@@ -116,7 +118,7 @@ export function ChatInterface() {
       <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent pb-32">
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-muted opacity-50">
-            <p>Commencez une nouvelle conversation.</p>
+            <p>{t('chat.empty.message')}</p>
           </div>
         )}
 
@@ -136,7 +138,7 @@ export function ChatInterface() {
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background to-transparent pt-10 z-10">
         {uploadStatus && (
           <div className={`mb-2 text-center text-sm ${uploadStatus === 'success' ? 'text-green-500' : uploadStatus === 'error' ? 'text-red-500' : 'text-blue-500'}`}>
-            {uploadStatus === 'uploading' ? 'Uploading...' : uploadStatus === 'success' ? 'File uploaded successfully' : 'Upload error'}
+            {uploadStatus === 'uploading' ? t('chat.upload.uploading') : uploadStatus === 'success' ? t('chat.upload.success') : t('chat.upload.error')}
           </div>
         )}
         <ChatInput onSend={handleSend} onFileUpload={handleFileUpload} disabled={isThinking} />
