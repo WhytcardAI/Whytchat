@@ -4,5 +4,15 @@
     "status": {
       "waiting": "En attente de connexion au Cerveau Backend..."
     }
+  },
+  "chat": {
+    "empty": {
+      "message": "Commencez une nouvelle conversation."
+    },
+    "upload": {
+      "uploading": "Téléchargement en cours...",
+      "success": "Fichier téléchargé avec succès",
+      "error": "Erreur de téléchargement"
+    }
   }
 }

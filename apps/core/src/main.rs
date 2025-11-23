@@ -11,6 +11,7 @@ use fs_manager::PortablePathManager;
 use log::{error, info};
 use std::fs;
 use tauri::State;
+use url::Url;
 use uuid::Uuid;
 
 // --- State Management ---
@@ -52,8 +53,18 @@ async fn download_model(window: tauri::Window, url: Option<String>) -> Result<St
     let model_filename = if model_url == DEFAULT_MODEL_URL {
         DEFAULT_MODEL_FILENAME.to_string()
     } else {
-        // Basic extraction of filename from URL, fallback to default if fails
-        model_url.split('/').last().unwrap_or(DEFAULT_MODEL_FILENAME).to_string()
+        // Proper URL parsing to extract filename
+        match Url::parse(&model_url) {
+            Ok(parsed_url) => {
+                parsed_url
+                    .path_segments()
+                    .and_then(|segments| segments.last())
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or(DEFAULT_MODEL_FILENAME)
+                    .to_string()
+            }
+            Err(_) => DEFAULT_MODEL_FILENAME.to_string(),
+        }
     };
     let model_path = models_dir.join(&model_filename);
     if model_path.exists() {
@@ -117,6 +128,25 @@ async fn upload_file_for_session(
     let unique_filename = format!("{}_{}.{}", Uuid::new_v4(), file_name, file_extension);
     let file_path = session_dir.join(&unique_filename);
 
+    // Security: Check file size limit (10MB)
+    const MAX_FILE_SIZE: usize = 10 * 1024 * 1024;
+    if file_data.len() > MAX_FILE_SIZE {
+        return Err("File size exceeds maximum limit of 10MB".to_string());
+    }
+
+    // Security: Validate file type using MIME detection
+    let allowed_text_types = ["text/", "application/json", "application/xml", "application/javascript"];
+    let is_text_file = if let Some(kind) = infer::get(&file_data) {
+        let mime_type = kind.mime_type();
+        allowed_text_types.iter().any(|&t| mime_type.starts_with(t))
+    } else {
+        // If MIME type cannot be detected, check extension against allowlist
+        matches!(
+            file_extension.to_lowercase().as_str(),
+            "txt" | "md" | "json" | "xml" | "csv" | "log" | "yml" | "yaml" | "toml" | "ini" | "conf" | "cfg"
+        )
+    };
+
     // Write file
     fs::write(&file_path, file_data).map_err(|e| format!("Failed to write file: {}", e))?;
 
@@ -135,11 +165,10 @@ async fn upload_file_for_session(
 
     // Trigger RAG Ingestion
     let file_content_bytes = fs::read(&file_path).map_err(|e| format!("Failed to read file: {}", e))?;
-    let file_content_str = String::from_utf8_lossy(&file_content_bytes).to_string();
     
-    // Only ingest if it's text-based (simple heuristic)
-    // In a real app, use mime type or extension check more robustly
-    if !file_content_str.contains('\0') {
+    // Only ingest if it's a validated text-based file
+    if is_text_file {
+        let file_content_str = String::from_utf8_lossy(&file_content_bytes).to_string();
         info!("Ingesting file content into RAG...");
         let metadata = serde_json::json!({
             "source": unique_filename,
@@ -149,19 +178,18 @@ async fn upload_file_for_session(
 
         match state.supervisor.ingest_content(file_content_str, Some(metadata)).await {
             Ok(_) => {
-                info!("File content ingested successfully.");
+                info!("File uploaded and ingested successfully: {}", relative_path);
+                Ok(format!("File '{}' uploaded and ingested successfully", file_name))
             }
             Err(e) => {
                 error!("Failed to ingest file content: {}", e);
-                return Ok(format!("File uploaded but RAG ingestion failed: {}", e));
+                Err(format!("File uploaded but RAG ingestion failed: {}", e))
             }
         }
     } else {
-        info!("Skipping RAG ingestion for binary file.");
+        info!("File uploaded successfully (binary file, RAG skipped): {}", relative_path);
+        Ok(format!("File '{}' uploaded successfully", file_name))
     }
-
-    info!("File uploaded successfully: {}", relative_path);
-    Ok(format!("File uploaded successfully: {}", file_name))
 }
 
 fn main() {
