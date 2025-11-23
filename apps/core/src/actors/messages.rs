@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use tauri::Window;
 use tokio::sync::oneshot;
 
@@ -6,6 +6,7 @@ use tokio::sync::oneshot;
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum ActorError {
     #[error("LLM request failed: {0}")]
+    #[allow(dead_code)]
     LlmError(String),
     #[error("RAG request failed: {0}")]
     RagError(String),
@@ -48,6 +49,7 @@ pub enum RagMessage {
 
 // --- Supervisor Messages (Routing) ---
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum SupervisorMessage {
     ProcessUserMessage {
         session_id: String,
@@ -60,5 +62,6 @@ pub enum SupervisorMessage {
         metadata: Option<String>,
         responder: oneshot::Sender<Result<String, ActorError>>,
     },
+    #[allow(dead_code)]
     Shutdown,
 }

@@ -14,13 +14,19 @@ pub struct SupervisorHandle {
 }
 
 impl SupervisorHandle {
+    #[allow(dead_code)]
     pub fn new() -> Self {
-        Self::new_with_pool(None)
+        Self::new_with_pool_and_model(None, std::path::PathBuf::from("data/models/model.gguf"))
     }
 
+    #[allow(dead_code)]
     pub fn new_with_pool(db_pool: Option<SqlitePool>) -> Self {
+        Self::new_with_pool_and_model(db_pool, std::path::PathBuf::from("data/models/model.gguf"))
+    }
+
+    pub fn new_with_pool_and_model(db_pool: Option<SqlitePool>, model_path: std::path::PathBuf) -> Self {
         let (sender, receiver) = mpsc::channel(32);
-        let actor = SupervisorRunner::new(receiver, db_pool);
+        let actor = SupervisorRunner::new(receiver, db_pool, model_path);
         tokio::spawn(async move { actor.run().await });
         Self { sender }
     }
@@ -75,10 +81,10 @@ struct SupervisorRunner {
 }
 
 impl SupervisorRunner {
-    fn new(receiver: mpsc::Receiver<SupervisorMessage>, db_pool: Option<SqlitePool>) -> Self {
+    fn new(receiver: mpsc::Receiver<SupervisorMessage>, db_pool: Option<SqlitePool>, model_path: std::path::PathBuf) -> Self {
         Self {
             receiver,
-            llm_actor: LlmActorHandle::new(),
+            llm_actor: LlmActorHandle::new(model_path),
             rag_actor: RagActorHandle::new_with_options(None, db_pool.clone()),
             db_pool,
         }

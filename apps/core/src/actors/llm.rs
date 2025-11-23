@@ -2,6 +2,10 @@ use crate::actors::messages::{ActorError, LlmMessage};
 use log::{error, info};
 use std::time::Duration;
 use tokio::sync::{mpsc, oneshot};
+use tokio::process::Command;
+use std::process::Stdio;
+use reqwest::Client;
+use futures::StreamExt;
 
 // --- Actor Handle (Public API) ---
 #[derive(Clone)]
@@ -10,9 +14,9 @@ pub struct LlmActorHandle {
 }
 
 impl LlmActorHandle {
-    pub fn new() -> Self {
+    pub fn new(model_path: std::path::PathBuf) -> Self {
         let (sender, receiver) = mpsc::channel(32);
-        let actor = LlmActorRunner::new(receiver);
+        let actor = LlmActorRunner::new(receiver, model_path);
         tokio::spawn(async move { actor.run().await });
         Self { sender }
     }
@@ -56,23 +60,60 @@ impl LlmActorHandle {
 // --- Actor Runner (Internal Logic) ---
 struct LlmActorRunner {
     receiver: mpsc::Receiver<LlmMessage>,
+    child: Option<tokio::process::Child>,
+    server_url: String,
+    model_path: std::path::PathBuf,
+    client: Client,
 }
 
 impl LlmActorRunner {
-    fn new(receiver: mpsc::Receiver<LlmMessage>) -> Self {
+    fn new(receiver: mpsc::Receiver<LlmMessage>, model_path: std::path::PathBuf) -> Self {
         Self {
             receiver,
+            child: None,
+            server_url: "http://localhost:8080".to_string(),
+            model_path,
+            client: Client::new(),
         }
     }
 
     async fn run(mut self) {
         info!("LlmActor started");
 
+        // Start the llama-server
+        if let Err(e) = self.start_server().await {
+            error!("Failed to start llama-server: {}", e);
+            return;
+        }
+
         while let Some(msg) = self.receiver.recv().await {
             self.handle_message(msg).await;
         }
 
         info!("LlmActor stopped");
+    }
+
+    async fn start_server(&mut self) -> Result<(), ActorError> {
+        info!("Starting llama-server with model: {:?}", self.model_path);
+
+        let child = Command::new("llama-server")
+            .arg("-m")
+            .arg(&self.model_path)
+            .arg("--host")
+            .arg("127.0.0.1")
+            .arg("--port")
+            .arg("8080")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| ActorError::Internal(format!("Failed to spawn llama-server: {}", e)))?;
+
+        self.child = Some(child);
+
+        // Wait a bit for server to start
+        tokio::time::sleep(Duration::from_secs(2)).await;
+
+        Ok(())
     }
 
     async fn handle_message(&mut self, msg: LlmMessage) {
@@ -95,8 +136,22 @@ impl LlmActorRunner {
     async fn generate_completion(&self, prompt: String) -> Result<String, ActorError> {
         info!("LLM Generating for prompt: {}", prompt);
 
-        // Mock response for now
-        Ok(format!("Mock response to: {}", prompt))
+        let payload = serde_json::json!({
+            "prompt": prompt,
+            "stream": false,
+            "n_predict": 100
+        });
+
+        let res = self.client
+            .post(format!("{}/completion", self.server_url))
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| ActorError::Internal(e.to_string()))?;
+
+        let json: serde_json::Value = res.json().await.map_err(|e| ActorError::Internal(e.to_string()))?;
+
+        Ok(json["content"].as_str().unwrap_or("").to_string())
     }
 
     async fn stream_completion(
@@ -106,13 +161,37 @@ impl LlmActorRunner {
     ) -> Result<(), ActorError> {
         info!("LLM Streaming for prompt: {}", prompt);
 
-        // Mock streaming response
-        let response = format!("Réponse simulée à : {}", prompt);
-        let words: Vec<&str> = response.split_whitespace().collect();
-        
-        for word in words {
-            tokio::time::sleep(Duration::from_millis(100)).await;
-            let _ = chunk_sender.send(Ok(format!("{} ", word))).await;
+        let payload = serde_json::json!({
+            "prompt": prompt,
+            "stream": true,
+            "n_predict": 100
+        });
+
+        let res = self.client
+            .post(format!("{}/completion", self.server_url))
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| ActorError::Internal(e.to_string()))?;
+
+        let mut stream = res.bytes_stream();
+
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.map_err(|e| ActorError::Internal(e.to_string()))?;
+            let text = String::from_utf8_lossy(&chunk);
+            // Parse SSE
+            for line in text.lines() {
+                if let Some(data) = line.strip_prefix("data: ") {
+                    if data == "[DONE]" {
+                        break;
+                    }
+                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(data) {
+                        if let Some(content) = json["content"].as_str() {
+                            let _ = chunk_sender.send(Ok(content.to_string())).await;
+                        }
+                    }
+                }
+            }
         }
 
         Ok(())

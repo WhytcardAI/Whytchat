@@ -12,7 +12,6 @@ use log::{error, info};
 use std::fs;
 use tauri::State;
 use url::Url;
-use uuid::Uuid;
 
 // --- State Management ---
 struct AppState {
@@ -58,7 +57,7 @@ async fn download_model(window: tauri::Window, url: Option<String>) -> Result<St
             Ok(parsed_url) => {
                 parsed_url
                     .path_segments()
-                    .and_then(|segments| segments.last())
+                    .and_then(|mut segments| segments.next_back())
                     .filter(|s| !s.is_empty())
                     .unwrap_or(DEFAULT_MODEL_FILENAME)
                     .to_string()
@@ -104,22 +103,51 @@ async fn download_model(window: tauri::Window, url: Option<String>) -> Result<St
 #[tauri::command]
 async fn create_session(state: State<'_, AppState>) -> Result<String, String> {
     let pool = state.pool.as_ref().ok_or("Database not initialized")?;
-    let session_id = database::create_session(pool).await.map_err(|e| e.to_string())?;
-    Ok(session_id)
+    let model_config = models::ModelConfig {
+        model_id: DEFAULT_MODEL_FILENAME.to_string(),
+        temperature: 0.7,
+        system_prompt: "You are a helpful AI assistant.".to_string(),
+    };
+    let session = database::create_session(pool, "Nouvelle session".to_string(), model_config).await.map_err(|e| e.to_string())?;
+    Ok(session.id)
 }
 
 #[tauri::command]
-async fn list_sessions(state: State<'_, AppState>) -> Result<Vec<models::Session>, String> {
+async fn list_sessions(state: State<'_, AppState>) -> Result<Vec<crate::models::Session>, String> {
     let pool = state.pool.as_ref().ok_or("Database not initialized")?;
-    let sessions = database::get_sessions(pool).await.map_err(|e| e.to_string())?;
+    let sessions = database::get_all_sessions(pool).await.map_err(|e| e.to_string())?;
     Ok(sessions)
 }
 
 #[tauri::command]
-async fn get_session_messages(session_id: String, state: State<'_, AppState>) -> Result<Vec<models::Message>, String> {
+async fn get_session_messages(session_id: String, state: State<'_, AppState>) -> Result<Vec<crate::models::Message>, String> {
     let pool = state.pool.as_ref().ok_or("Database not initialized")?;
     let messages = database::get_session_messages(pool, &session_id).await.map_err(|e| e.to_string())?;
     Ok(messages)
+}
+
+#[tauri::command]
+async fn upload_file_for_session(
+    session_id: String,
+    file_path: String,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    info!("Command received: upload_file_for_session({}, {})", session_id, file_path);
+
+    // Read the file content
+    let content = fs::read_to_string(&file_path).map_err(|e| format!("Failed to read file: {}", e))?;
+
+    // Basic check for binary files (contains null bytes)
+    if content.contains('\0') {
+        return Err("Binary files are not supported".to_string());
+    }
+
+    // Ingest the content via supervisor
+    state
+        .supervisor
+        .ingest_content(content, Some(format!("session:{}", session_id)))
+        .await
+        .map_err(|e| e.to_string())
 }
 
 fn main() {
@@ -144,10 +172,11 @@ fn main() {
         .plugin(tauri_plugin_dialog::init());
 
     // Initialize the Actor System (Supervisor) after DB
+    let model_path = PortablePathManager::models_dir().join(DEFAULT_MODEL_FILENAME);
     let supervisor = if let Ok(ref pool) = db_pool {
-        SupervisorHandle::new_with_pool(Some(pool.clone()))
+        SupervisorHandle::new_with_pool_and_model(Some(pool.clone()), model_path)
     } else {
-        SupervisorHandle::new()
+        SupervisorHandle::new_with_pool_and_model(None, model_path)
     };
 
     let pool_clone = if let Ok(ref pool) = db_pool {
