@@ -38,7 +38,7 @@ const Documentation = {
    * i18n support
    */
   TRANSLATIONS: {},
-  PLURAL_EXPR: (n) => (n === 1 ? 0 : 1),
+  PLURAL_EXPR: function(n) { return (n === 1 ? 0 : 1) },
   LOCALE: "unknown",
 
   // gettext and ngettext don't access this so that the functions
@@ -66,7 +66,7 @@ const Documentation = {
     Object.assign(Documentation.TRANSLATIONS, catalog.messages);
     Documentation.PLURAL_EXPR = new Function(
       "n",
-      `return (${catalog.plural_expr})`
+      "return ("+catalog.plural_expr+")"
     );
     Documentation.LOCALE = catalog.locale;
   },
@@ -84,13 +84,13 @@ const Documentation = {
   initDomainIndexTable: () => {
     const toggler = (el) => {
       const idNumber = el.id.substr(7);
-      const toggledRows = document.querySelectorAll(`tr.cg-${idNumber}`);
+      const toggledRows = document.querySelectorAll("tr.cg-"+idNumber);
       if (el.src.substr(-9) === "minus.png") {
-        el.src = `${el.src.substr(0, el.src.length - 9)}plus.png`;
-        toggledRows.forEach((el) => (el.style.display = "none"));
+        el.src = ""+el.src.substr(0, el.src.length - 9)+"plus.png";
+        toggledRows.forEach(function(el) { return (el.style.display = "none") });
       } else {
-        el.src = `${el.src.substr(0, el.src.length - 8)}minus.png`;
-        toggledRows.forEach((el) => (el.style.display = ""));
+        el.src = ""+el.src.substr(0, el.src.length - 8)+"minus.png";
+        toggledRows.forEach(function(el) { return (el.style.display = "") });
       }
     };
 

@@ -3,20 +3,20 @@ import { create } from 'zustand';
 export const useAppStore = create((set) => ({
   // UI State
   isSidebarOpen: true,
-  toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+  toggleSidebar: function() { return set((state) => ({ isSidebarOpen: !state.isSidebarOpen })) },
 
   // Session State (Placeholder)
   currentSessionId: null,
-  setCurrentSessionId: (id) => set({ currentSessionId: id }),
+  setCurrentSessionId: function(id) { return set({ currentSessionId: id }) },
 
   // Thinking State (Orchestration)
   isThinking: false,
   thinkingSteps: [],
-  setThinking: (isThinking) => set({ isThinking }),
-  addThinkingStep: (step) => set((state) => ({ thinkingSteps: [...state.thinkingSteps, step] })),
-  clearThinkingSteps: () => set({ thinkingSteps: [] }),
+  setThinking: function(isThinking) { return set({ isThinking }) },
+  addThinkingStep: function(step) { return set((state) => ({ thinkingSteps: [...state.thinkingSteps, step] })) },
+  clearThinkingSteps: function() { return set({ thinkingSteps: [] }) },
 
   // Onboarding & Configuration
   isConfigured: false, // Set to true once model is downloaded
-  completeOnboarding: () => set({ isConfigured: true }),
+  completeOnboarding: function() { return set({ isConfigured: true }) },
 }));

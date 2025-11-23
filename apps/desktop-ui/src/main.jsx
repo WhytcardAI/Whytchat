@@ -9,5 +9,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <React.Suspense fallback={<div className="p-4 text-white">Loading...</div>}>
       <App />
     </React.Suspense>
-  </React.StrictMode>,
+  </React.StrictMode>
 )
