@@ -9,7 +9,7 @@ export function ThinkingBubble({ steps = [] }) {
   if (!steps || steps.length === 0) return null;
 
   // Helper to translate step text from backend
-  const translateStep = (step) => {
+  const translateStep = (step: string) => {
     // Handle translation keys with parameters (e.g., "thinking.intent|Some intent")
     if (step.includes('|')) {
       const [key, value] = step.split('|', 2);
