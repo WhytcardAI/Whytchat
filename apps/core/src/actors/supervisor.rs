@@ -45,6 +45,25 @@ impl SupervisorHandle {
         recv.await
             .map_err(|_| ActorError::Internal("Supervisor failed to respond".to_string()))?
     }
+
+    pub async fn ingest_content(
+        &self,
+        content: String,
+        metadata: Option<String>,
+    ) -> Result<String, ActorError> {
+        let (send, recv) = oneshot::channel();
+        let msg = SupervisorMessage::IngestContent {
+            content,
+            metadata,
+            responder: send,
+        };
+        self.sender
+            .send(msg)
+            .await
+            .map_err(|_| ActorError::Internal("Supervisor closed".to_string()))?;
+        recv.await
+            .map_err(|_| ActorError::Internal("Supervisor failed to respond".to_string()))?
+    }
 }
 
 // --- Actor Runner ---
@@ -216,6 +235,16 @@ impl SupervisorRunner {
                 }
 
                 let _ = responder.send(Ok(full_response));
+            }
+            SupervisorMessage::IngestContent {
+                content,
+                metadata,
+                responder,
+            } => {
+                info!("Supervisor orchestrating ingestion...");
+                // Forward to RAG actor
+                let result = self.rag_actor.ingest(content, metadata).await;
+                let _ = responder.send(result);
             }
             SupervisorMessage::Shutdown => {
                 info!("Supervisor shutting down...");

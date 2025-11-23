@@ -55,5 +55,10 @@ pub enum SupervisorMessage {
         window: Option<Window>, // For emitting thinking events
         responder: oneshot::Sender<Result<String, ActorError>>,
     },
+    IngestContent {
+        content: String,
+        metadata: Option<String>,
+        responder: oneshot::Sender<Result<String, ActorError>>,
+    },
     Shutdown,
 }
