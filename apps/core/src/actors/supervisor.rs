@@ -116,13 +116,30 @@ impl SupervisorRunner {
                     }
                 }
 
+                // Get session configuration
+                let session_config = if let Some(ref pool) = self.db_pool {
+                    match database::get_session(pool, &session_id).await {
+                        Ok(session) => Some(session.model_config),
+                        Err(e) => {
+                            error!("Failed to load session config: {}", e);
+                            None
+                        }
+                    }
+                } else {
+                    None
+                };
+
+                // Extract config values with defaults
+                let system_prompt = session_config.as_ref().map(|c| c.system_prompt.clone());
+                let temperature = session_config.as_ref().map(|c| c.temperature);
+
                 // 1. Emit: Analysis
                 self.emit_thinking(&window, "Analyse de la demande...")
                     .await;
 
                 // 2. Agent 1: Analyzer (LLM Call)
                 let analysis_prompt = format!("Analyze this request and summarize the intent in French (max 10 words). Request: {}", content);
-                let analysis = match self.llm_actor.generate(analysis_prompt).await {
+                let analysis = match self.llm_actor.generate_with_params(analysis_prompt, system_prompt.clone(), temperature).await {
                     Ok(res) => res.trim().to_string(),
                     Err(_) => "Analyse complexe...".to_string(),
                 };
@@ -209,10 +226,17 @@ impl SupervisorRunner {
                     content.clone()
                 };
 
-                // Spawn the streaming task
+                // Spawn the streaming task with session config
                 let llm_handle = self.llm_actor.clone();
+                let system_prompt_clone = system_prompt.clone();
+                let temperature_clone = temperature;
                 tokio::spawn(async move {
-                    let _ = llm_handle.stream_generate(final_prompt, chunk_tx).await;
+                    let _ = llm_handle.stream_generate_with_params(
+                        final_prompt,
+                        system_prompt_clone,
+                        temperature_clone,
+                        chunk_tx
+                    ).await;
                 });
 
                 // Consume chunks and emit to frontend

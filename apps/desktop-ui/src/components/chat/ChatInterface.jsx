@@ -115,7 +115,7 @@ export function ChatInterface() {
 
     } catch (error) {
       console.error("Backend Error:", error);
-      setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${error}` }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: `${t('chat.error')}: ${error}` }]);
       setThinking(false);
     }
   };

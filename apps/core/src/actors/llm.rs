@@ -21,10 +21,17 @@ impl LlmActorHandle {
         Self { sender }
     }
 
+    #[allow(dead_code)]
     pub async fn generate(&self, prompt: String) -> Result<String, ActorError> {
+        self.generate_with_params(prompt, None, None).await
+    }
+
+    pub async fn generate_with_params(&self, prompt: String, system_prompt: Option<String>, temperature: Option<f32>) -> Result<String, ActorError> {
         let (send, recv) = oneshot::channel();
         let msg = LlmMessage::Generate {
             prompt,
+            system_prompt,
+            temperature,
             responder: send,
         };
 
@@ -36,14 +43,27 @@ impl LlmActorHandle {
             .map_err(|_| ActorError::Internal("LLM Actor failed to respond".to_string()))?
     }
 
+    #[allow(dead_code)]
     pub async fn stream_generate(
         &self,
         prompt: String,
         chunk_sender: mpsc::Sender<Result<String, ActorError>>,
     ) -> Result<(), ActorError> {
+        self.stream_generate_with_params(prompt, None, None, chunk_sender).await
+    }
+
+    pub async fn stream_generate_with_params(
+        &self,
+        prompt: String,
+        system_prompt: Option<String>,
+        temperature: Option<f32>,
+        chunk_sender: mpsc::Sender<Result<String, ActorError>>,
+    ) -> Result<(), ActorError> {
         let (send, recv) = oneshot::channel();
         let msg = LlmMessage::StreamGenerate {
             prompt,
+            system_prompt,
+            temperature,
             chunk_sender,
             responder: send,
         };
@@ -118,29 +138,41 @@ impl LlmActorRunner {
 
     async fn handle_message(&mut self, msg: LlmMessage) {
         match msg {
-            LlmMessage::Generate { prompt, responder } => {
-                let result = self.generate_completion(prompt).await;
+            LlmMessage::Generate { prompt, system_prompt, temperature, responder } => {
+                let result = self.generate_completion(prompt, system_prompt, temperature).await;
                 let _ = responder.send(result);
             }
             LlmMessage::StreamGenerate {
                 prompt,
+                system_prompt,
+                temperature,
                 chunk_sender,
                 responder,
             } => {
-                let result = self.stream_completion(prompt, chunk_sender).await;
+                let result = self.stream_completion(prompt, system_prompt, temperature, chunk_sender).await;
                 let _ = responder.send(result);
             }
         }
     }
 
-    async fn generate_completion(&self, prompt: String) -> Result<String, ActorError> {
+    async fn generate_completion(&self, prompt: String, system_prompt: Option<String>, temperature: Option<f32>) -> Result<String, ActorError> {
         info!("LLM Generating for prompt: {}", prompt);
 
-        let payload = serde_json::json!({
+        let mut payload = serde_json::json!({
             "prompt": prompt,
             "stream": false,
             "n_predict": 100
         });
+
+        // Add system prompt if provided
+        if let Some(system) = system_prompt {
+            payload["system_prompt"] = serde_json::Value::String(system);
+        }
+
+        // Add temperature if provided
+        if let Some(temp) = temperature {
+            payload["temperature"] = serde_json::Value::Number(serde_json::Number::from_f64(temp as f64).unwrap());
+        }
 
         let res = self.client
             .post(format!("{}/completion", self.server_url))
@@ -157,15 +189,27 @@ impl LlmActorRunner {
     async fn stream_completion(
         &self,
         prompt: String,
+        system_prompt: Option<String>,
+        temperature: Option<f32>,
         chunk_sender: mpsc::Sender<Result<String, ActorError>>,
     ) -> Result<(), ActorError> {
         info!("LLM Streaming for prompt: {}", prompt);
 
-        let payload = serde_json::json!({
+        let mut payload = serde_json::json!({
             "prompt": prompt,
             "stream": true,
             "n_predict": 100
         });
+
+        // Add system prompt if provided
+        if let Some(system) = system_prompt {
+            payload["system_prompt"] = serde_json::Value::String(system);
+        }
+
+        // Add temperature if provided
+        if let Some(temp) = temperature {
+            payload["temperature"] = serde_json::Value::Number(serde_json::Number::from_f64(temp as f64).unwrap());
+        }
 
         let res = self.client
             .post(format!("{}/completion", self.server_url))

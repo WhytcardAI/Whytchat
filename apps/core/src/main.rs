@@ -9,7 +9,6 @@ mod models;
 use actors::supervisor::SupervisorHandle;
 use fs_manager::PortablePathManager;
 use log::{error, info};
-use std::fs;
 use tauri::State;
 use url::Url;
 
@@ -129,13 +128,14 @@ async fn get_session_messages(session_id: String, state: State<'_, AppState>) ->
 #[tauri::command]
 async fn upload_file_for_session(
     session_id: String,
-    file_path: String,
+    file_name: String,
+    file_data: Vec<u8>,
     state: State<'_, AppState>,
 ) -> Result<String, String> {
-    info!("Command received: upload_file_for_session({}, {})", session_id, file_path);
+    info!("Command received: upload_file_for_session({}, {}, {} bytes)", session_id, file_name, file_data.len());
 
-    // Read the file content
-    let content = fs::read_to_string(&file_path).map_err(|e| format!("Failed to read file: {}", e))?;
+    // Convert bytes to string content
+    let content = String::from_utf8(file_data).map_err(|e| format!("Invalid UTF-8 content: {}", e))?;
 
     // Basic check for binary files (contains null bytes)
     if content.contains('\0') {

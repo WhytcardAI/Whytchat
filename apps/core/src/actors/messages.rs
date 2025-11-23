@@ -19,10 +19,14 @@ pub enum ActorError {
 pub enum LlmMessage {
     Generate {
         prompt: String,
+        system_prompt: Option<String>,
+        temperature: Option<f32>,
         responder: oneshot::Sender<Result<String, ActorError>>,
     },
     StreamGenerate {
         prompt: String,
+        system_prompt: Option<String>,
+        temperature: Option<f32>,
         // Sender for chunks (Ok(token)) or Error
         // We use mpsc for streaming multiple chunks
         chunk_sender: tokio::sync::mpsc::Sender<Result<String, ActorError>>,

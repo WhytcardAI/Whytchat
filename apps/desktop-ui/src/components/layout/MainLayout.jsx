@@ -27,21 +27,21 @@ export function MainLayout({ children }) {
       <aside className="w-72 bg-surface border-r border-border flex flex-col shrink-0">
         {/* Header / New Chat */}
         <div className="p-4">
-          <button 
+          <button
             onClick={handleNewChat}
             className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl p-3 flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all font-medium"
           >
             <Plus size={20} />
-            <span>{t('nav.new_chat', 'Nouvelle')}</span>
+            <span>{t('nav.new_chat')}</span>
           </button>
         </div>
 
         {/* History List */}
         <div className="flex-1 overflow-y-auto px-3 py-2 space-y-6">
           {sessions.length > 0 ? (
-            <HistoryGroup label="SESSIONS">
+            <HistoryGroup label={t('sessions.group')}>
               {sessions.map((session) => (
-                <HistoryItem 
+                <HistoryItem
                   key={session.id}
                   active={session.id === currentSessionId}
                   label={session.title || `Session ${session.id.slice(-8)}`}
@@ -52,7 +52,7 @@ export function MainLayout({ children }) {
           ) : (
             <div className="text-center text-muted text-sm mt-10">
               <MessageSquare size={32} className="mx-auto mb-2 opacity-20" />
-              <p>Aucune session</p>
+              <p>{t('sessions.empty')}</p>
             </div>
           )}
         </div>
@@ -65,7 +65,7 @@ export function MainLayout({ children }) {
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-green-500"></div>
             <span className="font-medium text-sm text-text">
-              {currentSessionId ? `Session ${currentSessionId.slice(-8)}` : 'Nouvelle session'}
+              {currentSessionId ? `Session ${currentSessionId.slice(-8)}` : t('chat.header.new_session')}
             </span>
           </div>
         </header>
@@ -92,7 +92,7 @@ function HistoryGroup({ label, children }) {
 
 function HistoryItem({ label, active, icon, onClick }) {
   return (
-    <button 
+    <button
       onClick={onClick}
       className={cn(
         "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all text-left group",

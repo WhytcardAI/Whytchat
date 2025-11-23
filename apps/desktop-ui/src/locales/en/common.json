@@ -13,6 +13,52 @@
       "uploading": "Uploading...",
       "success": "File uploaded successfully",
       "error": "Upload error"
+    },
+    "header": {
+      "new_chat": "New Chat",
+      "new_session": "New session"
+    },
+    "error": "Error"
+  },
+  "nav": {
+    "new_chat": "New Chat"
+  },
+  "panel": {
+    "orchestration": "Orchestration",
+    "knowledge": "Knowledge",
+    "waiting": "Waiting for reasoning..."
+  },
+  "sessions": {
+    "group": "SESSIONS",
+    "empty": "No sessions"
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Welcome",
+      "subtitle": "WhytChat is a local and private AI. Your data never leaves your computer.",
+      "privacy": {
+        "title": "Total Privacy",
+        "description": "Unlike online AIs, WhytChat runs 100% on your machine. No logs, no tracking, no data leaks."
+      },
+      "start": "Start configuration"
+    },
+    "language": {
+      "title": "Choose Language",
+      "english": "English",
+      "french": "Français"
+    },
+    "model": {
+      "title": "The Brain",
+      "subtitle": "We are downloading and configuring your local model. This may take a few minutes.",
+      "downloading": "Downloading Qwen...",
+      "complete": "Installation completed!",
+      "error": "Error during download. Check your connection.",
+      "steps": {
+        "init": "Engine initialization",
+        "download": "Downloading weights (GGUF)",
+        "verify": "Integrity check",
+        "load": "Loading into memory"
+      }
     }
   }
 }
