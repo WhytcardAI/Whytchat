@@ -43,7 +43,7 @@ export const useAppStore = create((set, get) => ({
     try {
       await invoke('update_session', {
         sessionId,
-        title,
+        title: title,
         modelConfig,
       });
       // Reload sessions to get updated data
