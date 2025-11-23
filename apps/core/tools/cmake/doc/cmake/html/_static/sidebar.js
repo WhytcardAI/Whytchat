@@ -36,7 +36,7 @@ const initialiseSidebar = () => {
   // for some reason, the document has no sidebar; do not run into errors
   if (typeof sidebar === "undefined") return;
 
-  const flipArrow = element => element.innerText = (element.innerText === "»") ? "«" : "»"
+  const flipArrow = function(element) { return element.innerText = (element.innerText === "»") ? "«" : "»" }
 
   const collapse_sidebar = () => {
     bodyWrapper.style.marginLeft = ".8em";

@@ -72,7 +72,7 @@ const _displayItem = (item, searchTerms) => {
   if (docBuilder === "dirhtml") {
     // dirhtml builder
     let dirname = docName + "/";
-    if (dirname.match(/\/index\/$/))
+    if (/\/index\/$/.test(dirname))
       dirname = dirname.substring(0, dirname.length - 6);
     else if (dirname === "index/") dirname = "";
     requestUrl = docUrlRoot + dirname;

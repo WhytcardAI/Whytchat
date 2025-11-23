@@ -13,7 +13,7 @@ export function ThinkingBubble({ steps = [] }) {
     <div className="mb-4 max-w-3xl mx-auto w-full">
       <div className="bg-surface/50 border border-slate-700 rounded-lg overflow-hidden">
         <button
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={function() { return setIsOpen(!isOpen) }}
           className="w-full flex items-center justify-between p-3 text-xs font-medium text-muted hover:bg-slate-700/50 transition-colors"
         >
           <div className="flex items-center gap-2">
