@@ -29,7 +29,7 @@ export const useAppStore = create((set, get) => ({
   loadSessions: async () => {
     try {
       const sessions = await invoke('get_all_sessions');
-      set({ sessions });
+      set({ sessions: sessions });
       // If no current session, set to the first one
       if (!get().currentSessionId && sessions.length > 0) {
         set({ currentSessionId: sessions[0].id });
