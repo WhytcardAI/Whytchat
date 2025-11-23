@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ChevronDown, ChevronRight, BrainCircuit } from 'lucide-react';
-import { cn } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
 
 export function ThinkingBubble({ steps = [] }) {

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Shield, Cpu, Download, CheckCircle, ArrowRight, Zap, Brain } from 'lucide-react';
+import { useState } from 'react';
+import { Shield, Download, CheckCircle, ArrowRight, Zap, Brain } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { cn } from '../../lib/utils';
 import { invoke } from '@tauri-apps/api/core';
