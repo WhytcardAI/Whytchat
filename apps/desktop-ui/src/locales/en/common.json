@@ -28,6 +28,16 @@
     "knowledge": "Knowledge",
     "waiting": "Waiting for reasoning..."
   },
+  "thinking": {
+    "analyzing": "Analyzing request...",
+    "complex_analysis": "Complex analysis...",
+    "intent": "Intent: {{intent}}",
+    "searching_context": "Checking local knowledge (RAG)...",
+    "documents_found": "{{count}} relevant documents found.",
+    "no_documents": "No relevant documents found.",
+    "search_error": "Error during document search.",
+    "generating_response": "Formulating response..."
+  },
   "sessions": {
     "group": "SESSIONS",
     "empty": "No sessions"
@@ -44,6 +54,7 @@
     },
     "language": {
       "title": "Choose Language",
+      "subtitle": "Select your preferred language for the interface",
       "english": "English",
       "french": "Français"
     },

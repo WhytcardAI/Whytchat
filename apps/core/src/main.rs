@@ -56,7 +56,7 @@ async fn download_model(window: tauri::Window, url: Option<String>) -> Result<St
             Ok(parsed_url) => {
                 parsed_url
                     .path_segments()
-                    .and_then(|mut segments| segments.next_back())
+                    .and_then(|segments| segments.last())
                     .filter(|s| !s.is_empty())
                     .unwrap_or(DEFAULT_MODEL_FILENAME)
                     .to_string()
@@ -105,9 +105,9 @@ async fn create_session(state: State<'_, AppState>) -> Result<String, String> {
     let model_config = models::ModelConfig {
         model_id: DEFAULT_MODEL_FILENAME.to_string(),
         temperature: 0.7,
-        system_prompt: "You are a helpful AI assistant.".to_string(),
+        system_prompt: String::new(), // Empty, will be set by frontend
     };
-    let session = database::create_session(pool, "Nouvelle session".to_string(), model_config).await.map_err(|e| e.to_string())?;
+    let session = database::create_session(pool, String::new(), model_config).await.map_err(|e| e.to_string())?; // Empty title, will be set by frontend
     Ok(session.id)
 }
 
@@ -134,13 +134,38 @@ async fn upload_file_for_session(
 ) -> Result<String, String> {
     info!("Command received: upload_file_for_session({}, {}, {} bytes)", session_id, file_name, file_data.len());
 
-    // Convert bytes to string content
-    let content = String::from_utf8(file_data).map_err(|e| format!("Invalid UTF-8 content: {}", e))?;
+    // Security check: file size limit (10MB)
+    const MAX_FILE_SIZE: usize = 10 * 1024 * 1024;
+    if file_data.len() > MAX_FILE_SIZE {
+        return Err("File size exceeds 10MB limit".to_string());
+    }
 
-    // Basic check for binary files (contains null bytes)
-    if content.contains('\0') {
+    // Security check: detect binary files before UTF-8 conversion
+    if file_data.contains(&0u8) {
         return Err("Binary files are not supported".to_string());
     }
+
+    // Security check: MIME type validation
+    let allowed_types = ["text/plain", "text/markdown", "text/csv", "application/json"];
+    if let Some(kind) = infer::get(&file_data) {
+        if !allowed_types.contains(&kind.mime_type()) {
+            return Err(format!("File type '{}' is not supported. Only text-based files are allowed.", kind.mime_type()));
+        }
+    }
+
+    // Security check: file extension allowlist
+    let allowed_extensions = ["txt", "md", "csv", "json"];
+    let extension = std::path::Path::new(&file_name)
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or("");
+    
+    if !allowed_extensions.contains(&extension) {
+        return Err(format!("File extension '.{}' is not supported. Allowed extensions: {}", extension, allowed_extensions.join(", ")));
+    }
+
+    // Convert bytes to string content
+    let content = String::from_utf8(file_data).map_err(|e| format!("Invalid UTF-8 content: {}", e))?;
 
     // Ingest the content via supervisor
     state

@@ -8,6 +8,27 @@ export function ThinkingBubble({ steps = [] }) {
 
   if (!steps || steps.length === 0) return null;
 
+  // Helper to translate step text from backend
+  const translateStep = (step) => {
+    // Handle translation keys with parameters (e.g., "thinking.intent|Some intent")
+    if (step.includes('|')) {
+      const [key, value] = step.split('|');
+      if (key === 'thinking.intent') {
+        return t('thinking.intent', { intent: value });
+      } else if (key === 'thinking.documents_found') {
+        return t('thinking.documents_found', { count: value });
+      }
+    }
+    
+    // Check if step is a translation key
+    if (step.startsWith('thinking.')) {
+      return t(step);
+    }
+    
+    // Return as-is if not a translation key
+    return step;
+  };
+
   return (
     <div className="mb-4 max-w-3xl mx-auto w-full">
       <div className="bg-surface/50 border border-slate-700 rounded-lg overflow-hidden">
@@ -28,7 +49,7 @@ export function ThinkingBubble({ steps = [] }) {
               {steps.map((step, index) => (
                 <li key={index} className="flex gap-3 text-xs text-slate-300 animate-in fade-in slide-in-from-left-2 duration-300">
                   <span className="text-slate-600 font-mono">{index + 1}.</span>
-                  <span>{step}</span>
+                  <span>{translateStep(step)}</span>
                 </li>
               ))}
               <li className="flex gap-3 text-xs text-accent animate-pulse">

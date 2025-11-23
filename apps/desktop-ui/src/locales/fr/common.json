@@ -28,6 +28,16 @@
     "knowledge": "Connaissances",
     "waiting": "En attente de raisonnement..."
   },
+  "thinking": {
+    "analyzing": "Analyse de la demande...",
+    "complex_analysis": "Analyse complexe...",
+    "intent": "Intention : {{intent}}",
+    "searching_context": "Vérification des connaissances locales (RAG)...",
+    "documents_found": "{{count}} documents pertinents trouvés.",
+    "no_documents": "Aucun document pertinent trouvé.",
+    "search_error": "Erreur lors de la recherche documentaire.",
+    "generating_response": "Formulation de la réponse..."
+  },
   "sessions": {
     "group": "SESSIONS",
     "empty": "Aucune session"
@@ -44,6 +54,7 @@
     },
     "language": {
       "title": "Choisir la Langue",
+      "subtitle": "Sélectionnez votre langue préférée pour l'interface",
       "english": "English",
       "french": "Français"
     },
