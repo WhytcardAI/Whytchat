@@ -21,7 +21,7 @@ thiserror = "1.0"
 env_logger = "0.11"
 anyhow = "1.0"
 uuid = { version = "1.8", features = ["v4"] }
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = "=0.4.38", features = ["serde"] }
 arrow = "52.2.0"
 lancedb = { version = "0.10", default-features = false }
 reqwest = { version = "0.12", features = ["json", "stream"] }
@@ -29,6 +29,8 @@ fastembed = "4"
 async-trait = "0.1"
 futures = "0.3"
 sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }
+infer = "0.16"
+url = "2.5"
 
 [dev-dependencies]
 tempfile = "3.10"

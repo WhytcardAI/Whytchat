@@ -4,5 +4,15 @@
     "status": {
       "waiting": "Waiting for Backend Brain connection..."
     }
+  },
+  "chat": {
+    "empty": {
+      "message": "Start a new conversation."
+    },
+    "upload": {
+      "uploading": "Uploading...",
+      "success": "File uploaded successfully",
+      "error": "Upload error"
+    }
   }
 }

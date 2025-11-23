@@ -1,15 +1,17 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { MessageBubble } from './MessageBubble';
 import { ThinkingBubble } from './ThinkingBubble';
 import { ChatInput } from './ChatInput';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useAppStore } from '../../store/appStore';
+import { useTranslation } from 'react-i18next';
 
 export function ChatInterface() {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState([]);
   const [uploadStatus, setUploadStatus] = useState(null); // null, 'uploading', 'success', 'error'
-  const { setThinking, addThinkingStep, clearThinkingSteps, isThinking, thinkingSteps } = useAppStore();
+  const { setThinking, addThinkingStep, clearThinkingSteps, isThinking, thinkingSteps, currentSessionId } = useAppStore();
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -54,9 +56,9 @@ export function ChatInterface() {
       if (unlistenThinking) unlistenThinking();
       if (unlistenToken) unlistenToken();
     };
-  }, []);
+  }, [addThinkingStep, setThinking, clearThinkingSteps]);
 
-  const handleSend = async (text, isWebEnabled) => {
+  const handleSend = async (text, _isWebEnabled) => {
     // 1. Add User Message
     const userMsg = { role: 'user', content: text };
     setMessages(prev => [...prev, userMsg]);
@@ -69,7 +71,10 @@ export function ChatInterface() {
       // 3. Call Backend (Real Thinking Mode)
       // The backend will emit 'chat-token' events for the response
       // We await the final result just to ensure completion, but the UI updates via events
-      await invoke('debug_chat', { message: text });
+      await invoke('debug_chat', {
+        session_id: currentSessionId || "default-session",
+        message: text
+      });
 
       setThinking(false);
 
@@ -88,7 +93,7 @@ export function ChatInterface() {
         const arrayBuffer = e.target.result;
         const fileData = Array.from(new Uint8Array(arrayBuffer));
         await invoke('upload_file_for_session', {
-          session_id: 'default-session',
+          session_id: currentSessionId || "default-session",
           file_name: file.name,
           file_data: fileData
         });
@@ -113,7 +118,7 @@ export function ChatInterface() {
       <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent pb-32">
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-muted opacity-50">
-            <p>Commencez une nouvelle conversation.</p>
+            <p>{t('chat.empty.message')}</p>
           </div>
         )}
 
@@ -133,11 +138,10 @@ export function ChatInterface() {
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background to-transparent pt-10 z-10">
         {uploadStatus && (
           <div className={`mb-2 text-center text-sm ${uploadStatus === 'success' ? 'text-green-500' : uploadStatus === 'error' ? 'text-red-500' : 'text-blue-500'}`}>
-            {uploadStatus === 'uploading' ? 'Uploading...' : uploadStatus === 'success' ? 'File uploaded successfully' : 'Upload error'}
+            {uploadStatus === 'uploading' ? t('chat.upload.uploading') : uploadStatus === 'success' ? t('chat.upload.success') : t('chat.upload.error')}
           </div>
         )}
         <ChatInput onSend={handleSend} onFileUpload={handleFileUpload} disabled={isThinking} />
-        <ChatInput onSend={handleSend} disabled={isThinking} />
       </div>
     </div>
   );
