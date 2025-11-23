@@ -11,7 +11,7 @@ export function ChatInterface() {
   const { t } = useTranslation();
   const [messages, setMessages] = useState([]);
   const [uploadStatus, setUploadStatus] = useState(null); // null, 'uploading', 'success', 'error'
-  const { setThinking, addThinkingStep, clearThinkingSteps, isThinking, thinkingSteps, currentSessionId } = useAppStore();
+  const { setThinking, addThinkingStep, clearThinkingSteps, isThinking, thinkingSteps, currentSessionId, setCurrentSessionId, loadSessions, createSession } = useAppStore();
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -21,6 +21,41 @@ export function ChatInterface() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Load sessions and create default session if needed
+  useEffect(() => {
+    const initSession = async () => {
+      await loadSessions();
+      if (!currentSessionId) {
+        try {
+          const sessionId = await createSession();
+          setCurrentSessionId(sessionId);
+        } catch (error) {
+          console.error('Failed to create initial session:', error);
+        }
+      }
+    };
+    initSession();
+  }, [loadSessions, createSession, currentSessionId, setCurrentSessionId]);
+
+  // Load messages for current session
+  useEffect(() => {
+    const loadMessages = async () => {
+      if (currentSessionId) {
+        try {
+          const sessionMessages = await invoke('get_session_messages', { sessionId: currentSessionId });
+          const formattedMessages = sessionMessages.map(msg => ({
+            role: msg.role,
+            content: msg.content
+          }));
+          setMessages(formattedMessages);
+        } catch (error) {
+          console.error('Failed to load messages:', error);
+        }
+      }
+    };
+    loadMessages();
+  }, [currentSessionId]);
 
   // Listen for backend thinking events and streaming tokens
   useEffect(() => {
