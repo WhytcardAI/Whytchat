@@ -178,7 +178,6 @@ async fn upload_file_for_session(
 
         match state.supervisor.ingest_content(file_content_str, Some(metadata)).await {
             Ok(_) => {
-                info!("File content ingested successfully.");
                 info!("File uploaded and ingested successfully: {}", relative_path);
                 Ok(format!("File '{}' uploaded and ingested successfully", file_name))
             }
