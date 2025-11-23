@@ -13,7 +13,7 @@ export const useAppStore = create((set) => ({
   // Thinking State (Orchestration)
   isThinking: false,
   thinkingSteps: [],
-  setThinking: function(isThinking) { return set({ isThinking }) },
+  setThinking: function(isThinking) { return set({ isThinking: isThinking }) },
   addThinkingStep: function(step: string) { return set((state) => ({ thinkingSteps: [...state.thinkingSteps, step] })) },
   clearThinkingSteps: function() { return set({ thinkingSteps: [] }) },
 
