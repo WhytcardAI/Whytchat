@@ -56,7 +56,7 @@ export function ChatInterface() {
       if (unlistenThinking) unlistenThinking();
       if (unlistenToken) unlistenToken();
     };
-  }, [addThinkingStep]);
+  }, [addThinkingStep, setThinking, clearThinkingSteps]);
 
   const handleSend = async (text, _isWebEnabled) => {
     // 1. Add User Message
