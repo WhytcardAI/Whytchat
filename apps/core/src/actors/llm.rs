@@ -359,8 +359,6 @@ For instructions on obtaining the correct binary, please refer to the project do
         temperature: Option<f32>,
         chunk_sender: mpsc::Sender<Result<String, ActorError>>,
     ) -> Result<(), ActorError> {
-        use futures::StreamExt;
-
         info!("LLM Streaming for prompt: {}", prompt);
 
         // Use provided system_prompt or default
