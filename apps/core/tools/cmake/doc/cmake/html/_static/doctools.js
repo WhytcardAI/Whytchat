@@ -90,7 +90,7 @@ const Documentation = {
         toggledRows.forEach(function(el) { return (el.style.display = "none") });
       } else {
         el.src = ""+el.src.substr(0, el.src.length - 8)+"minus.png";
-        toggledRows.forEach(function(el) { return (el.style.display = "") });
+        for (const el of toggledRows) {  (el.style.display = ""); continue; }
       }
     };
 
