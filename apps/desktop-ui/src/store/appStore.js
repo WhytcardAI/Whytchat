@@ -4,7 +4,7 @@ import { create } from 'zustand';
 export const useAppStore = create((set) => ({
   // UI State
   isSidebarOpen: true,
-  toggleSidebar: function() { return set(function(state: { isSidebarOpen: boolean }) { return ({ isSidebarOpen: !state.isSidebarOpen }) }) },
+  toggleSidebar: function() { return set(function(state) { return ({ isSidebarOpen: !state.isSidebarOpen }) }) },
 
   // Session State (Placeholder)
   currentSessionId: null,
@@ -14,7 +14,7 @@ export const useAppStore = create((set) => ({
   isThinking: false,
   thinkingSteps: [],
   setThinking: function(isThinking) { return set({ isThinking: isThinking }) },
-  addThinkingStep: function(step: string) { return set((state) => ({ thinkingSteps: [...state.thinkingSteps, step] })) },
+  addThinkingStep: function(step) { return set((state) => ({ thinkingSteps: [...state.thinkingSteps, step] })) },
   clearThinkingSteps: function() { return set({ thinkingSteps: [] }) },
 
   // Onboarding & Configuration
