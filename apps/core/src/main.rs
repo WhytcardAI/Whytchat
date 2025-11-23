@@ -10,7 +10,9 @@ use actors::supervisor::SupervisorHandle;
 use fs_manager::PortablePathManager;
 use log::{error, info};
 use tauri::State;
-use url::Url;
+
+// --- Constants ---
+const DEFAULT_MODEL_FILENAME: &str = "default-model.bin";
 
 // --- State Management ---
 struct AppState {
@@ -37,143 +39,6 @@ async fn debug_chat(
 }
 
 #[tauri::command]
-async fn create_session(
-    title: Option<String>,
-    state: State<'_, AppState>,
-) -> Result<String, String> {
-    let pool = state.pool.as_ref().ok_or("Database not initialized")?;
-    
-    let session_title = title.unwrap_or_else(|| DEFAULT_SESSION_TITLE.to_string());
-    let model_config = models::ModelConfig {
-        model_id: DEFAULT_MODEL_FILENAME.to_string(),
-        temperature: 0.7,
-        system_prompt: DEFAULT_SYSTEM_PROMPT.to_string(),
-    };
-    
-    let session = database::create_session(pool, session_title, model_config)
-        .await
-        .map_err(|e| e.to_string())?;
-    
-    Ok(session.id)
-}
-
-#[tauri::command]
-async fn get_all_sessions(state: State<'_, AppState>) -> Result<Vec<models::Session>, String> {
-    let pool = state.pool.as_ref().ok_or("Database not initialized")?;
-    
-    database::get_all_sessions(pool)
-        .await
-        .map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-async fn get_session_messages(
-    session_id: String,
-    state: State<'_, AppState>,
-) -> Result<Vec<models::Message>, String> {
-    let pool = state.pool.as_ref().ok_or("Database not initialized")?;
-    
-    database::get_session_messages(pool, &session_id)
-        .await
-        .map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-async fn process_user_message(
-    session_id: String,
-    content: String,
-    window: tauri::Window,
-    state: State<'_, AppState>,
-) -> Result<String, String> {
-    info!("Command received: process_user_message({}, {})", session_id, content);
-
-    state
-        .supervisor
-        .process_message(session_id, content, &window)
-        .await
-        .map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-async fn update_session(
-    session_id: String,
-    title: Option<String>,
-    model_config: Option<models::ModelConfig>,
-    state: State<'_, AppState>,
-) -> Result<models::Session, String> {
-    let pool = state.pool.as_ref().ok_or("Database not initialized")?;
-    
-    database::update_session(pool, &session_id, title, model_config)
-        .await
-        .map_err(|e| e.to_string())
-}
-
-// Default model URL - Qwen 2.5 7B Instruct
-const DEFAULT_MODEL_URL: &str = "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m.gguf";
-const DEFAULT_MODEL_FILENAME: &str = "qwen2.5-7b-instruct-q4_k_m.gguf";
-const DEFAULT_SESSION_TITLE: &str = "New session";
-const DEFAULT_SYSTEM_PROMPT: &str = "You are a helpful AI assistant.";
-
-#[tauri::command]
-async fn download_model(window: tauri::Window, url: Option<String>) -> Result<String, String> {
-    use futures::StreamExt;
-    use std::io::Write;
-    use tauri::Emitter;
-
-    let model_url = url.unwrap_or_else(|| DEFAULT_MODEL_URL.to_string());
-    let models_dir = PortablePathManager::models_dir();
-    let model_filename = if model_url == DEFAULT_MODEL_URL {
-        DEFAULT_MODEL_FILENAME.to_string()
-    } else {
-        // Proper URL parsing to extract filename
-        match Url::parse(&model_url) {
-            Ok(parsed_url) => {
-                parsed_url
-                    .path_segments()
-                    .and_then(|segments| segments.last())
-                    .filter(|s| !s.is_empty())
-                    .unwrap_or(DEFAULT_MODEL_FILENAME)
-                    .to_string()
-            }
-            Err(_) => DEFAULT_MODEL_FILENAME.to_string(),
-        }
-    };
-    let model_path = models_dir.join(&model_filename);
-    if model_path.exists() {
-        return Ok("Model already exists".to_string());
-    }
-
-    info!("Starting download from {}", model_url);
-    let _ = window.emit("download-progress", 0);
-
-    let client = reqwest::Client::new();
-    let res = client
-        .get(model_url)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    let total_size = res.content_length().unwrap_or(0);
-
-    let mut file = std::fs::File::create(&model_path).map_err(|e| e.to_string())?;
-    let mut downloaded: u64 = 0;
-    let mut stream = res.bytes_stream();
-
-    while let Some(item) = stream.next().await {
-        let chunk = item.map_err(|e| e.to_string())?;
-        file.write_all(&chunk).map_err(|e| e.to_string())?;
-        downloaded += chunk.len() as u64;
-
-        if total_size > 0 {
-            let percent = (downloaded as f64 / total_size as f64) * 100.0;
-            let _ = window.emit("download-progress", percent as u8);
-        }
-    }
-
-    let _ = window.emit("download-progress", 100);
-    Ok("Download complete".to_string())
-}
-
-#[tauri::command]
 async fn create_session(state: State<'_, AppState>) -> Result<String, String> {
     let pool = state.pool.as_ref().ok_or("Database not initialized")?;
     let model_config = models::ModelConfig {
@@ -197,6 +62,18 @@ async fn get_session_messages(session_id: String, state: State<'_, AppState>) ->
     let pool = state.pool.as_ref().ok_or("Database not initialized")?;
     let messages = database::get_session_messages(pool, &session_id).await.map_err(|e| e.to_string())?;
     Ok(messages)
+}
+
+#[tauri::command]
+async fn update_session(
+    session_id: String,
+    title: Option<String>,
+    model_config: Option<models::ModelConfig>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let pool = state.pool.as_ref().ok_or("Database not initialized")?;
+    database::update_session(pool, &session_id, title, model_config).await.map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -296,11 +173,11 @@ fn main() {
     builder
         .invoke_handler(tauri::generate_handler![
             debug_chat,
-            download_model,
             upload_file_for_session,
             create_session,
             list_sessions,
-            get_session_messages
+            get_session_messages,
+            update_session
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

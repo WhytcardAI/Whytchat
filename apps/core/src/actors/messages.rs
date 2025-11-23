@@ -17,6 +17,7 @@ pub enum ActorError {
 // --- LLM Messages ---
 #[derive(Debug)]
 pub enum LlmMessage {
+    #[allow(dead_code)]
     Generate {
         prompt: String,
         system_prompt: Option<String>,
@@ -29,6 +30,7 @@ pub enum LlmMessage {
         temperature: Option<f32>,
         responder: oneshot::Sender<Result<String, ActorError>>,
     },
+    #[allow(dead_code)]
     StreamGenerate {
         prompt: String,
         system_prompt: Option<String>,

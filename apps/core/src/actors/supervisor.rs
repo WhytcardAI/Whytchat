@@ -109,7 +109,7 @@ impl SupervisorRunner {
                 info!("Supervisor received: {}", content);
 
                 // Retrieve session configuration from database
-                let (system_prompt, temperature) = if let Some(ref pool) = self.db_pool {
+                let (_system_prompt, _temperature) = if let Some(ref pool) = self.db_pool {
                     match database::get_session(pool, &session_id).await {
                         Ok(session) => {
                             let config = session.model_config.0;

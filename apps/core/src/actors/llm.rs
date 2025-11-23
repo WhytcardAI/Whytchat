@@ -184,7 +184,21 @@ impl LlmActorRunner {
                 let result = self.generate_completion(prompt, system_prompt, temperature).await;
                 let _ = responder.send(result);
             }
+            LlmMessage::GenerateWithParams { prompt, system_prompt, temperature, responder } => {
+                let result = self.generate_completion(prompt, system_prompt, temperature).await;
+                let _ = responder.send(result);
+            }
             LlmMessage::StreamGenerate {
+                prompt,
+                system_prompt,
+                temperature,
+                chunk_sender,
+                responder,
+            } => {
+                let result = self.stream_completion(prompt, system_prompt, temperature, chunk_sender).await;
+                let _ = responder.send(result);
+            }
+            LlmMessage::StreamGenerateWithParams {
                 prompt,
                 system_prompt,
                 temperature,
