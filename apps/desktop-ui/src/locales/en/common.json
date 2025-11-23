@@ -14,5 +14,44 @@
       "success": "File uploaded successfully",
       "error": "Upload error"
     }
+  },
+  "session": {
+    "new": "New Chat",
+    "title": {
+      "default": "New session"
+    }
+  },
+  "thinking": {
+    "analyzing": "Analyzing request...",
+    "intent": "Intent: {{analysis}}",
+    "searching": "Checking local knowledge (RAG)...",
+    "documentsFound": "{{count}} relevant documents found.",
+    "noDocuments": "No relevant documents found.",
+    "searchError": "Error during document search.",
+    "generating": "Formulating response..."
+  },
+  "onboarding": {
+    "welcome": "Welcome to WhytChat",
+    "downloadModel": "Download AI Model",
+    "modelRequired": "A language model is required to use WhytChat",
+    "downloading": "Downloading model...",
+    "complete": "Setup complete!"
+  },
+  "settings": {
+    "title": "Session Settings",
+    "model": {
+      "label": "Model",
+      "id": "Model ID"
+    },
+    "temperature": {
+      "label": "Temperature",
+      "description": "Controls randomness in responses (0.0-2.0)"
+    },
+    "systemPrompt": {
+      "label": "System Prompt",
+      "description": "Instructions for the AI assistant"
+    },
+    "save": "Save",
+    "cancel": "Cancel"
   }
 }

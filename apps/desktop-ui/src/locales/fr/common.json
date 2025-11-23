@@ -14,5 +14,44 @@
       "success": "Fichier téléchargé avec succès",
       "error": "Erreur de téléchargement"
     }
+  },
+  "session": {
+    "new": "Nouvelle discussion",
+    "title": {
+      "default": "Nouvelle session"
+    }
+  },
+  "thinking": {
+    "analyzing": "Analyse de la demande...",
+    "intent": "Intention : {{analysis}}",
+    "searching": "Vérification des connaissances locales (RAG)...",
+    "documentsFound": "{{count}} documents pertinents trouvés.",
+    "noDocuments": "Aucun document pertinent trouvé.",
+    "searchError": "Erreur lors de la recherche documentaire.",
+    "generating": "Formulation de la réponse..."
+  },
+  "onboarding": {
+    "welcome": "Bienvenue sur WhytChat",
+    "downloadModel": "Télécharger le modèle IA",
+    "modelRequired": "Un modèle de langage est requis pour utiliser WhytChat",
+    "downloading": "Téléchargement du modèle...",
+    "complete": "Configuration terminée !"
+  },
+  "settings": {
+    "title": "Paramètres de session",
+    "model": {
+      "label": "Modèle",
+      "id": "ID du modèle"
+    },
+    "temperature": {
+      "label": "Température",
+      "description": "Contrôle l'aléatoire dans les réponses (0.0-2.0)"
+    },
+    "systemPrompt": {
+      "label": "Prompt système",
+      "description": "Instructions pour l'assistant IA"
+    },
+    "save": "Enregistrer",
+    "cancel": "Annuler"
   }
 }

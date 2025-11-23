@@ -1,0 +1,93 @@
+name: Linux Build and Release
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+      actions: read
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libglib2.0-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev \
+            libwebkit2gtk-4.1-dev \
+            protobuf-compiler \
+            libssl-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+      
+      - name: Install Dependencies
+        run: |
+          npm install
+          cargo fetch
+      
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/core
+      
+      - name: Lint Code
+        run: npm run lint || echo "Linting failed, continuing..."
+      
+      - name: Build Application
+        run: npm run build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      
+      - name: Upload Linux AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: WhytChat-Linux-AppImage
+          path: apps/core/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: warn
+      
+      - name: Upload Linux DEB
+        uses: actions/upload-artifact@v4
+        with:
+          name: WhytChat-Linux-DEB
+          path: apps/core/target/release/bundle/deb/*.deb
+          if-no-files-found: warn
+      
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            apps/core/target/release/bundle/appimage/*.AppImage
+            apps/core/target/release/bundle/deb/*.deb
+          draft: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
