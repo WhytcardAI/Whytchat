@@ -177,7 +177,9 @@ impl LlmActorRunner {
             // In a real production scenario, we should download the appropriate binary
             // or instruct the user. For now, we'll just error out with a more helpful message.
             return Err(format!(
-                "{} not found at {:?}. Please ensure the backend server binary is present.",
+                "{} not found at {:?}. Please ensure the backend server binary is present for your platform.\n\
+For instructions on obtaining the correct binary, please refer to the documentation at:\n\
+C:\\Users\\whyytya\\Desktop\\workspace\\WhytChat\\docs",
                 exe_name, exe_path
             ));
         }
