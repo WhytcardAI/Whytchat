@@ -1,12 +1,11 @@
-import React from 'react';
 import { useAppStore } from '../../store/appStore';
-import { Plus, MessageSquare, Calendar, Users } from 'lucide-react';
+import { Plus, MessageSquare, Users } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
 import { RightPanel } from './RightPanel';
 
 export function MainLayout({ children }) {
-  const { isSidebarOpen, toggleSidebar, isThinking, thinkingSteps } = useAppStore();
+  const { isThinking, thinkingSteps } = useAppStore();
   const { t } = useTranslation('common');
 
   return (
