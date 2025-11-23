@@ -3,6 +3,3 @@ ignore:
   - "apps/desktop-ui/dist/**"
   - "**/node_modules/**"
   - "**/target/**"
-
-rules:
-  - python_version: "3.9" # Not strictly relevant for Rust/JS but good practice
