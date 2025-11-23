@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ChevronDown, ChevronRight, BrainCircuit } from 'lucide-react';
-import { cn } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
 
 export function ThinkingBubble({ steps = [] }) {
@@ -13,7 +12,7 @@ export function ThinkingBubble({ steps = [] }) {
     <div className="mb-4 max-w-3xl mx-auto w-full">
       <div className="bg-surface/50 border border-slate-700 rounded-lg overflow-hidden">
         <button
-          onClick={function() { return setIsOpen(!isOpen) }}
+          onClick={() => setIsOpen(!isOpen)}
           className="w-full flex items-center justify-between p-3 text-xs font-medium text-muted hover:bg-slate-700/50 transition-colors"
         >
           <div className="flex items-center gap-2">

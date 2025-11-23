@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { BrainCircuit, Database, Activity } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
@@ -13,13 +13,13 @@ export function RightPanel({ isThinking, thinkingSteps }) {
       <div className="flex p-2 gap-2 border-b border-border bg-background/50">
         <TabButton
           active={activeTab === 'orchestration'}
-          onClick={function() { return setActiveTab('orchestration') }}
+          onClick={() => setActiveTab('orchestration')}
           icon={<Activity size={16} />}
           label={t('panel.orchestration', 'Orchestration')}
         />
         <TabButton
           active={activeTab === 'knowledge'}
-          onClick={function() { return setActiveTab('knowledge') }}
+          onClick={() => setActiveTab('knowledge')}
           icon={<Database size={16} />}
           label={t('panel.knowledge', 'Connaissances')}
         />

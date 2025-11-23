@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Send, Paperclip, Bot, Swords } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
@@ -54,7 +54,7 @@ export function ChatInput({ onSend, onFileUpload, disabled }) {
         {/* Input */}
         <textarea
           value={input}
-          onChange={function(e) { return setInput(e.target.value) }}
+          onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={t('chat.placeholder', 'Envoyer un message à WhytChat...')}
           className="flex-1 bg-transparent text-text p-3 min-h-[50px] max-h-[150px] resize-none focus:outline-none text-sm scrollbar-hide mb-1"
