@@ -126,6 +126,30 @@ async fn upload_file_for_session(
         .await
         .map_err(|e| format!("Failed to save to database: {}", e))?;
 
+    // Trigger RAG Ingestion
+    let file_content_bytes = fs::read(&file_path).map_err(|e| format!("Failed to read file: {}", e))?;
+    let file_content_str = String::from_utf8_lossy(&file_content_bytes).to_string();
+    
+    // Only ingest if it's text-based (simple heuristic)
+    // In a real app, use mime type or extension check more robustly
+    if !file_content_str.contains('\0') {
+        info!("Ingesting file content into RAG...");
+        let metadata = serde_json::json!({
+            "source": unique_filename,
+            "session_id": session_id,
+            "file_path": relative_path
+        }).to_string();
+
+        if let Err(e) = state.supervisor.ingest_content(file_content_str, Some(metadata)).await {
+            error!("Failed to ingest file content: {}", e);
+            // We don't fail the upload if ingestion fails, but we log it.
+        } else {
+             info!("File content ingested successfully.");
+        }
+    } else {
+        info!("Skipping RAG ingestion for binary file.");
+    }
+
     info!("File uploaded successfully: {}", relative_path);
     Ok(format!("File uploaded: {}", file_name))
 }

@@ -161,13 +161,25 @@ impl LlmActorRunner {
 
     async fn start_server(&mut self) -> Result<(), String> {
         let models_dir = PortablePathManager::models_dir();
-        let exe_path = models_dir.join("llama-server.exe");
+        
+        // Determine executable name based on OS
+        #[cfg(target_os = "windows")]
+        let exe_name = "llama-server.exe";
+        #[cfg(not(target_os = "windows"))]
+        let exe_name = "llama-server";
+
+        let exe_path = models_dir.join(exe_name);
 
         // Ensure model exists (download if needed)
         let model_path = self.ensure_model_exists().await?;
 
         if !exe_path.exists() {
-            return Err(format!("llama-server.exe not found at {:?}", exe_path));
+            // In a real production scenario, we should download the appropriate binary
+            // or instruct the user. For now, we'll just error out with a more helpful message.
+            return Err(format!(
+                "{} not found at {:?}. Please ensure the backend server binary is present.",
+                exe_name, exe_path
+            ));
         }
 
         info!("Starting llama-server with model: {:?}", model_path);
