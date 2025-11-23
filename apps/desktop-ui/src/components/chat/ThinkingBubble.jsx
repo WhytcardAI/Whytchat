@@ -50,7 +50,7 @@ export function ThinkingBubble({ steps = [] }) {
               {steps.map((step, index) => (
                 <li key={index} className="flex gap-3 text-xs text-slate-300 animate-in fade-in slide-in-from-left-2 duration-300">
                   <span className="text-slate-600 font-mono">{index + 1}.</span>
-                  <span>{translateStep(step)}</span>
+                  import React from 'react';
                 </li>
               ))}
               <li className="flex gap-3 text-xs text-accent animate-pulse">
