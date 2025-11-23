@@ -19,8 +19,12 @@ impl SupervisorHandle {
     }
 
     pub fn new_with_pool(db_pool: Option<SqlitePool>) -> Self {
+        Self::new_with_pool_and_model(db_pool, None)
+    }
+
+    pub fn new_with_pool_and_model(db_pool: Option<SqlitePool>, model_path: Option<std::path::PathBuf>) -> Self {
         let (sender, receiver) = mpsc::channel(32);
-        let actor = SupervisorRunner::new(receiver, db_pool);
+        let actor = SupervisorRunner::new(receiver, db_pool, model_path);
         tokio::spawn(async move { actor.run().await });
         Self { sender }
     }
@@ -75,10 +79,16 @@ struct SupervisorRunner {
 }
 
 impl SupervisorRunner {
-    fn new(receiver: mpsc::Receiver<SupervisorMessage>, db_pool: Option<SqlitePool>) -> Self {
+    fn new(receiver: mpsc::Receiver<SupervisorMessage>, db_pool: Option<SqlitePool>, model_path: Option<std::path::PathBuf>) -> Self {
+        let llm_actor = if let Some(path) = model_path {
+            LlmActorHandle::new_with_model_path(path)
+        } else {
+            LlmActorHandle::new()
+        };
+        
         Self {
             receiver,
-            llm_actor: LlmActorHandle::new(),
+            llm_actor,
             rag_actor: RagActorHandle::new_with_options(None, db_pool.clone()),
             db_pool,
         }
@@ -102,6 +112,22 @@ impl SupervisorRunner {
             } => {
                 info!("Supervisor received: {}", content);
 
+                // Retrieve session configuration from database
+                let (system_prompt, temperature) = if let Some(ref pool) = self.db_pool {
+                    match database::get_session(pool, &session_id).await {
+                        Ok(session) => {
+                            let config = session.model_config.0;
+                            (Some(config.system_prompt), Some(config.temperature))
+                        }
+                        Err(e) => {
+                            error!("Failed to load session config: {}", e);
+                            (None, None)
+                        }
+                    }
+                } else {
+                    (None, None)
+                };
+
                 // Save user message to database
                 if let Some(ref pool) = self.db_pool {
                     if let Err(e) = database::add_message(pool, &session_id, "user", &content).await
@@ -114,9 +140,13 @@ impl SupervisorRunner {
                 self.emit_thinking(&window, "Analyse de la demande...")
                     .await;
 
-                // 2. Agent 1: Analyzer (LLM Call)
+                // 2. Agent 1: Analyzer (LLM Call) - using session config
                 let analysis_prompt = format!("Analyze this request and summarize the intent in French (max 10 words). Request: {}", content);
-                let analysis = match self.llm_actor.generate(analysis_prompt).await {
+                let analysis = match self.llm_actor.generate_with_params(
+                    analysis_prompt,
+                    system_prompt.clone(),
+                    temperature
+                ).await {
                     Ok(res) => res.trim().to_string(),
                     Err(_) => "Analyse complexe...".to_string(),
                 };
@@ -203,10 +233,12 @@ impl SupervisorRunner {
                     content.clone()
                 };
 
-                // Spawn the streaming task
+                // Spawn the streaming task with session config
                 let llm_handle = self.llm_actor.clone();
+                let sys_prompt = system_prompt.clone();
+                let temp = temperature;
                 tokio::spawn(async move {
-                    let _ = llm_handle.stream_generate(final_prompt, chunk_tx).await;
+                    let _ = llm_handle.stream_generate_with_params(final_prompt, sys_prompt, temp, chunk_tx).await;
                 });
 
                 // Consume chunks and emit to frontend

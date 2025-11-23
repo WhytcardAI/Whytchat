@@ -38,6 +38,78 @@ async fn debug_chat(
         .map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+async fn create_session(
+    title: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let pool = state.pool.as_ref().ok_or("Database not initialized")?;
+    
+    let session_title = title.unwrap_or_else(|| "Nouvelle session".to_string());
+    let model_config = models::ModelConfig {
+        model_id: DEFAULT_MODEL_FILENAME.to_string(),
+        temperature: 0.7,
+        system_prompt: "You are a helpful AI assistant.".to_string(),
+    };
+    
+    let session = database::create_session(pool, session_title, model_config)
+        .await
+        .map_err(|e| e.to_string())?;
+    
+    Ok(session.id)
+}
+
+#[tauri::command]
+async fn get_all_sessions(state: State<'_, AppState>) -> Result<Vec<models::Session>, String> {
+    let pool = state.pool.as_ref().ok_or("Database not initialized")?;
+    
+    database::get_all_sessions(pool)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_session_messages(
+    session_id: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<models::Message>, String> {
+    let pool = state.pool.as_ref().ok_or("Database not initialized")?;
+    
+    database::get_session_messages(pool, &session_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn process_user_message(
+    session_id: String,
+    content: String,
+    window: tauri::Window,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    info!("Command received: process_user_message({}, {})", session_id, content);
+
+    state
+        .supervisor
+        .process_message(session_id, content, &window)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn update_session(
+    session_id: String,
+    title: Option<String>,
+    model_config: Option<models::ModelConfig>,
+    state: State<'_, AppState>,
+) -> Result<models::Session, String> {
+    let pool = state.pool.as_ref().ok_or("Database not initialized")?;
+    
+    database::update_session(pool, &session_id, title, model_config)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 // Default model URL - Qwen 2.5 7B Instruct
 const DEFAULT_MODEL_URL: &str = "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m.gguf";
 const DEFAULT_MODEL_FILENAME: &str = "qwen2.5-7b-instruct-q4_k_m.gguf";
@@ -239,7 +311,12 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             debug_chat,
             download_model,
-            upload_file_for_session
+            upload_file_for_session,
+            create_session,
+            get_all_sessions,
+            get_session_messages,
+            process_user_message,
+            update_session
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
