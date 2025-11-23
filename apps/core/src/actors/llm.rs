@@ -222,8 +222,21 @@ impl LlmActorRunner {
             .send()
             .await
             .map_err(|e| ActorError::Internal(e.to_string()))?;
+        let status = res.status();
 
-        let json: serde_json::Value = res.json().await.map_err(|e| ActorError::Internal(e.to_string()))?;
+        if !status.is_success() {
+            let body = res.text().await.unwrap_or_default();
+            return Err(ActorError::LlmError(format!(
+                "Completion request failed with status {}: {}",
+                status,
+                body
+            )));
+        }
+
+        let json: serde_json::Value = res
+            .json()
+            .await
+            .map_err(|e| ActorError::Internal(e.to_string()))?;
 
         Ok(json["content"].as_str().unwrap_or("").to_string())
     }
