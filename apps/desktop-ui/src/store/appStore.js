@@ -4,7 +4,7 @@ import { create } from 'zustand';
 export const useAppStore = create((set) => ({
   // UI State
   isSidebarOpen: true,
-  toggleSidebar: function() { return set(function(state) { return ({ isSidebarOpen: !state.isSidebarOpen }) }) },
+  toggleSidebar: function() { return set(function(state: { isSidebarOpen: boolean }) { return ({ isSidebarOpen: !state.isSidebarOpen }) }) },
 
   // Session State (Placeholder)
   currentSessionId: null,
