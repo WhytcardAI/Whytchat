@@ -13,7 +13,7 @@ export const useAppStore = create((set, get) => ({
   setCurrentSessionId: (id) => set({ currentSessionId: id }),
 
   // Session Management Actions
-  createSession: async (title) => {
+  createSession: (title) => new Promise(async (resolve, reject) => {
     try {
       const sessionId = await invoke('create_session', { title });
       // Reload sessions to get the new one
