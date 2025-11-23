@@ -89,15 +89,11 @@ struct LlmActorRunner {
 impl Drop for LlmActorRunner {
     fn drop(&mut self) {
         if let Some(mut child) = self.child.take() {
-            // Try to kill the child process synchronously
-            if let Err(e) = std::process::Command::new("kill")
-                .arg("-9")
-                .arg(child.id().unwrap_or(0).to_string())
-                .output()
-            {
-                error!("Failed to kill llama-server process: {}", e);
-            } else {
-                info!("llama-server process killed successfully");
+            // Try to kill the child process - cross-platform approach
+            // We use start_kill() which is non-blocking and doesn't require async
+            match child.start_kill() {
+                Ok(_) => info!("llama-server process termination initiated"),
+                Err(e) => error!("Failed to kill llama-server process: {}", e),
             }
         }
     }
