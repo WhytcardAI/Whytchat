@@ -1,12 +1,11 @@
 use crate::actors::messages::{ActorError, LlmMessage};
-use crate::fs_manager::PortablePathManager;
-use futures::StreamExt;
 use log::{error, info};
-use std::io::Write;
-use std::path::PathBuf;
-use std::process::{Child, Command};
 use std::time::Duration;
 use tokio::sync::{mpsc, oneshot};
+use tokio::process::Command;
+use std::process::Stdio;
+use reqwest::Client;
+use futures::StreamExt;
 
 // --- Actor Handle (Public API) ---
 #[derive(Clone)]
@@ -15,29 +14,19 @@ pub struct LlmActorHandle {
 }
 
 impl LlmActorHandle {
-    pub fn new() -> Self {
-        let models_dir = PortablePathManager::models_dir();
-        let default_model_path = models_dir.join("qwen2.5-7b-instruct-q4_k_m.gguf");
-        Self::new_with_model_path(default_model_path)
-    }
-
-    pub fn new_with_model_path(model_path: PathBuf) -> Self {
+    pub fn new(model_path: std::path::PathBuf) -> Self {
         let (sender, receiver) = mpsc::channel(32);
         let actor = LlmActorRunner::new(receiver, model_path);
         tokio::spawn(async move { actor.run().await });
         Self { sender }
     }
 
+    #[allow(dead_code)]
     pub async fn generate(&self, prompt: String) -> Result<String, ActorError> {
         self.generate_with_params(prompt, None, None).await
     }
 
-    pub async fn generate_with_params(
-        &self,
-        prompt: String,
-        system_prompt: Option<String>,
-        temperature: Option<f32>,
-    ) -> Result<String, ActorError> {
+    pub async fn generate_with_params(&self, prompt: String, system_prompt: Option<String>, temperature: Option<f32>) -> Result<String, ActorError> {
         let (send, recv) = oneshot::channel();
         let msg = LlmMessage::GenerateWithParams {
             prompt,
@@ -54,6 +43,7 @@ impl LlmActorHandle {
             .map_err(|_| ActorError::Internal("LLM Actor failed to respond".to_string()))?
     }
 
+    #[allow(dead_code)]
     pub async fn stream_generate(
         &self,
         prompt: String,
@@ -90,18 +80,33 @@ impl LlmActorHandle {
 // --- Actor Runner (Internal Logic) ---
 struct LlmActorRunner {
     receiver: mpsc::Receiver<LlmMessage>,
-    client: reqwest::Client,
-    server_process: Option<Child>,
-    model_path: PathBuf,
+    child: Option<tokio::process::Child>,
+    server_url: String,
+    model_path: std::path::PathBuf,
+    client: Client,
+}
+
+impl Drop for LlmActorRunner {
+    fn drop(&mut self) {
+        if let Some(mut child) = self.child.take() {
+            // Try to kill the child process - cross-platform approach
+            // We use start_kill() which is non-blocking and doesn't require async
+            match child.start_kill() {
+                Ok(_) => info!("llama-server process termination initiated"),
+                Err(e) => error!("Failed to kill llama-server process: {}", e),
+            }
+        }
+    }
 }
 
 impl LlmActorRunner {
-    fn new(receiver: mpsc::Receiver<LlmMessage>, model_path: PathBuf) -> Self {
+    fn new(receiver: mpsc::Receiver<LlmMessage>, model_path: std::path::PathBuf) -> Self {
         Self {
             receiver,
-            client: reqwest::Client::new(),
-            server_process: None,
+            child: None,
+            server_url: "http://localhost:8080".to_string(),
             model_path,
+            client: Client::new(),
         }
     }
 
@@ -109,179 +114,77 @@ impl LlmActorRunner {
         info!("LlmActor started");
 
         // Start the llama-server
-        match self.start_server().await {
-            Ok(_) => {
-                // Wait for server to be ready with health check
-                info!("Waiting for llama-server to initialize...");
-                if let Err(e) = self.wait_for_server_ready().await {
-                    error!("llama-server failed to become ready: {}", e);
-                    // We continue anyway, maybe it's a temporary glitch or already running
-                } else {
-                    info!("llama-server is ready!");
-                }
-            }
-            Err(e) => {
-                error!("Failed to start llama-server: {}", e);
-            }
+        if let Err(e) = self.start_server().await {
+            error!("Failed to start llama-server: {}", e);
+            return;
         }
 
         while let Some(msg) = self.receiver.recv().await {
             self.handle_message(msg).await;
         }
 
-        // Cleanup
-        if let Some(mut child) = self.server_process {
-            info!("Stopping llama-server...");
-            let _ = child.kill();
-        }
         info!("LlmActor stopped");
     }
 
-    async fn ensure_model_exists(&self) -> Result<PathBuf, String> {
-        let models_dir = PortablePathManager::models_dir();
-        let model_filename = "qwen2.5-7b-instruct-q4_k_m.gguf";
-        let model_path = models_dir.join(model_filename);
-        let model_url = "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m.gguf";
+    async fn start_server(&mut self) -> Result<(), ActorError> {
+        info!("Starting llama-server with model: {:?}", self.model_path);
 
-        if model_path.exists() {
-            return Ok(model_path);
-        }
-
-        info!(
-            "Model not found at {:?}. Starting download from {}...",
-            model_path, model_url
-        );
-
-        let res = self
-            .client
-            .get(model_url)
-            .send()
-            .await
-            .map_err(|e| format!("Failed to start download: {}", e))?;
-
-        if !res.status().is_success() {
-            return Err(format!("Download failed with status: {}", res.status()));
-        }
-
-        let total_size = res.content_length().unwrap_or(0);
-        let mut file = std::fs::File::create(&model_path)
-            .map_err(|e| format!("Failed to create model file: {}", e))?;
-
-        let mut downloaded: u64 = 0;
-        let mut stream = res.bytes_stream();
-        let mut last_log_percent = 0;
-
-        while let Some(item) = stream.next().await {
-            let chunk = item.map_err(|e| format!("Download stream error: {}", e))?;
-            file.write_all(&chunk)
-                .map_err(|e| format!("Write error: {}", e))?;
-            downloaded += chunk.len() as u64;
-
-            if total_size > 0 {
-                let percent = (downloaded as f64 / total_size as f64) * 100.0;
-                if (percent as u64) >= last_log_percent + 10 {
-                    info!("Downloading model: {:.0}%", percent);
-                    last_log_percent = percent as u64;
-                }
-            }
-        }
-
-        info!("Model download complete.");
-        Ok(model_path)
-    }
-
-    async fn start_server(&mut self) -> Result<(), String> {
-        let models_dir = PortablePathManager::models_dir();
-        
-        // Determine executable name based on OS
-        #[cfg(target_os = "windows")]
-        let exe_name = "llama-server.exe";
-        #[cfg(not(target_os = "windows"))]
-        let exe_name = "llama-server";
-
-        let exe_path = models_dir.join(exe_name);
-
-        // Determine which model path to use
-        let model_to_use = if self.model_path.exists() {
-            self.model_path.clone()
-        } else {
-            info!("Model not found at {:?}, attempting to download default model...", self.model_path);
-            self.ensure_model_exists().await?
-        };
-
-        if !exe_path.exists() {
-            // In a real production scenario, we should download the appropriate binary
-            // or instruct the user. For now, we'll just error out with a more helpful message.
-            return Err(format!(
-                "{} not found at {:?}. Please ensure the backend server binary is present for your platform.\n\
-For instructions on obtaining the correct binary, please refer to the project documentation.",
-                exe_name, exe_path
+        // Check if llama-server binary exists in PATH
+        if which::which("llama-server").is_err() {
+            return Err(ActorError::Internal(
+                "llama-server binary not found in PATH. Please ensure llama.cpp is installed and llama-server is in your PATH.".to_string()
             ));
         }
 
-        info!("Starting llama-server with model: {:?}", model_to_use);
-
-        let child = Command::new(exe_path)
+        let child = Command::new("llama-server")
             .arg("-m")
-            .arg(&model_to_use)
-            .arg("-c")
-            .arg("4096") // Context size
+            .arg(&self.model_path)
+            .arg("--host")
+            .arg("127.0.0.1")
             .arg("--port")
             .arg("8080")
-            .arg("--n-gpu-layers")
-            .arg("99") // Try to use GPU if available
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .spawn()
-            .map_err(|e| format!("Failed to spawn server: {}", e))?;
+            .map_err(|e| ActorError::Internal(format!("Failed to spawn llama-server: {}", e)))?;
 
-        self.server_process = Some(child);
-        Ok(())
-    }
+        self.child = Some(child);
 
-    async fn wait_for_server_ready(&self) -> Result<(), String> {
-        let start = std::time::Instant::now();
-        let timeout = Duration::from_secs(60);
+        // Health check with retries
+        let max_retries = 30;
+        let retry_interval = Duration::from_secs(1);
+        let health_endpoint = format!("{}/health", self.server_url);
 
-        while start.elapsed() < timeout {
-            match self.client.get("http://localhost:8080/health").send().await {
-                Ok(res) => {
-                    if res.status().is_success() {
-                        return Ok(());
-                    }
+        for attempt in 1..=max_retries {
+            tokio::time::sleep(retry_interval).await;
+            
+            match self.client.get(&health_endpoint).send().await {
+                Ok(response) if response.status().is_success() => {
+                    info!("llama-server is ready after {} attempts", attempt);
+                    return Ok(());
                 }
-                Err(_) => {
-                    // Server not ready yet, ignore error and retry
+                Ok(response) => {
+                    info!("Server responded with status {} on attempt {}", response.status(), attempt);
+                }
+                Err(e) => {
+                    info!("Health check attempt {} failed: {}", attempt, e);
                 }
             }
-            tokio::time::sleep(Duration::from_millis(500)).await;
         }
 
-        Err("Timeout waiting for llama-server to be ready".to_string())
+        Err(ActorError::Internal(format!(
+            "llama-server failed to become ready after {} seconds",
+            max_retries
+        )))
     }
 
     async fn handle_message(&mut self, msg: LlmMessage) {
         match msg {
-            LlmMessage::Generate { prompt, responder } => {
-                let result = self.generate_completion(prompt, None, None).await;
-                let _ = responder.send(result);
-            }
-            LlmMessage::GenerateWithParams {
-                prompt,
-                system_prompt,
-                temperature,
-                responder,
-            } => {
+            LlmMessage::Generate { prompt, system_prompt, temperature, responder } => {
                 let result = self.generate_completion(prompt, system_prompt, temperature).await;
                 let _ = responder.send(result);
             }
             LlmMessage::StreamGenerate {
-                prompt,
-                chunk_sender,
-                responder,
-            } => {
-                let result = self.stream_completion(prompt, None, None, chunk_sender).await;
-                let _ = responder.send(result);
-            }
-            LlmMessage::StreamGenerateWithParams {
                 prompt,
                 system_prompt,
                 temperature,
@@ -294,62 +197,48 @@ For instructions on obtaining the correct binary, please refer to the project do
         }
     }
 
-    async fn generate_completion(
-        &self,
-        prompt: String,
-        system_prompt: Option<String>,
-        temperature: Option<f32>,
-    ) -> Result<String, ActorError> {
+    async fn generate_completion(&self, prompt: String, system_prompt: Option<String>, temperature: Option<f32>) -> Result<String, ActorError> {
         info!("LLM Generating for prompt: {}", prompt);
 
-        // Use provided system_prompt or default
-        let system_msg = system_prompt.unwrap_or_else(|| "You are WhytChat, a helpful local assistant.".to_string());
-        
-        // Construct the prompt format for Qwen/ChatML
-        // <|im_start|>system\n...<|im_end|>\n<|im_start|>user\n...<|im_end|>\n<|im_start|>assistant\n
-        let formatted_prompt = format!(
-            "<|im_start|>system\n{}\n<|im_end|>\n<|im_start|>user\n{}\n<|im_end|>\n<|im_start|>assistant\n",
-            system_msg, prompt
-        );
-
-        // Build JSON payload with optional parameters
         let mut payload = serde_json::json!({
-            "prompt": formatted_prompt,
-            "n_predict": 512,
-            "stop": ["<|im_end|>"]
+            "prompt": prompt,
+            "stream": false,
+            "n_predict": 100
         });
-        
-        if let Some(temp) = temperature {
-            payload["temperature"] = serde_json::json!(temp);
-        } else {
-            payload["temperature"] = serde_json::json!(0.7);
+
+        // Add system prompt if provided
+        if let Some(system) = system_prompt {
+            payload["system_prompt"] = serde_json::Value::String(system);
         }
 
-        let res = self
-            .client
-            .post("http://localhost:8080/completion")
+        // Add temperature if provided
+        if let Some(temp) = temperature {
+            payload["temperature"] = serde_json::Value::Number(serde_json::Number::from_f64(temp as f64).unwrap());
+        }
+
+        let res = self.client
+            .post(format!("{}/completion", self.server_url))
             .json(&payload)
             .send()
             .await
-            .map_err(|e| ActorError::LlmError(format!("Request failed: {}", e)))?;
+            .map_err(|e| ActorError::Internal(e.to_string()))?;
+        let status = res.status();
 
-        if !res.status().is_success() {
+        if !status.is_success() {
+            let body = res.text().await.unwrap_or_default();
             return Err(ActorError::LlmError(format!(
-                "Server returned status: {}",
-                res.status()
+                "Completion request failed with status {}: {}",
+                status,
+                body
             )));
         }
 
-        let body: serde_json::Value = res
+        let json: serde_json::Value = res
             .json()
             .await
-            .map_err(|e| ActorError::LlmError(format!("Parse error: {}", e)))?;
+            .map_err(|e| ActorError::Internal(e.to_string()))?;
 
-        let content = body["content"]
-            .as_str()
-            .ok_or(ActorError::LlmError("No content in response".to_string()))?;
-
-        Ok(content.to_string())
+        Ok(json["content"].as_str().unwrap_or("").to_string())
     }
 
     async fn stream_completion(
@@ -361,76 +250,45 @@ For instructions on obtaining the correct binary, please refer to the project do
     ) -> Result<(), ActorError> {
         info!("LLM Streaming for prompt: {}", prompt);
 
-        // Use provided system_prompt or default
-        let system_msg = system_prompt.unwrap_or_else(|| "You are WhytChat, a helpful local assistant.".to_string());
-
-        let formatted_prompt = format!(
-            "<|im_start|>system\n{}\n<|im_end|>\n<|im_start|>user\n{}\n<|im_end|>\n<|im_start|>assistant\n",
-            system_msg, prompt
-        );
-
-        // Build JSON payload with optional parameters
         let mut payload = serde_json::json!({
-            "prompt": formatted_prompt,
-            "n_predict": 512,
-            "stop": ["<|im_end|>"],
-            "stream": true
+            "prompt": prompt,
+            "stream": true,
+            "n_predict": 100
         });
-        
-        if let Some(temp) = temperature {
-            payload["temperature"] = serde_json::json!(temp);
-        } else {
-            payload["temperature"] = serde_json::json!(0.7);
+
+        // Add system prompt if provided
+        if let Some(system) = system_prompt {
+            payload["system_prompt"] = serde_json::Value::String(system);
         }
 
-        let res = self
-            .client
-            .post("http://localhost:8080/completion")
+        // Add temperature if provided
+        if let Some(temp) = temperature {
+            payload["temperature"] = serde_json::Value::Number(serde_json::Number::from_f64(temp as f64).unwrap());
+        }
+
+        let res = self.client
+            .post(format!("{}/completion", self.server_url))
             .json(&payload)
             .send()
             .await
-            .map_err(|e| ActorError::LlmError(format!("Request failed: {}", e)))?;
-
-        if !res.status().is_success() {
-            return Err(ActorError::LlmError(format!(
-                "Server returned status: {}",
-                res.status()
-            )));
-        }
+            .map_err(|e| ActorError::Internal(e.to_string()))?;
 
         let mut stream = res.bytes_stream();
 
-        while let Some(item) = stream.next().await {
-            match item {
-                Ok(bytes) => {
-                    let chunk_str = String::from_utf8_lossy(&bytes);
-                    // llama-server sends "data: {json}\n\n"
-                    for line in chunk_str.lines() {
-                        if line.starts_with("data: ") {
-                            let json_str = &line[6..];
-                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(json_str) {
-                                if let Some(content) = json["content"].as_str() {
-                                    if !content.is_empty() {
-                                        if let Err(_) =
-                                            chunk_sender.send(Ok(content.to_string())).await
-                                        {
-                                            return Ok(()); // Receiver dropped
-                                        }
-                                    }
-                                }
-                                if let Some(stop) = json["stop"].as_bool() {
-                                    if stop {
-                                        return Ok(());
-                                    }
-                                }
-                            }
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.map_err(|e| ActorError::Internal(e.to_string()))?;
+            let text = String::from_utf8_lossy(&chunk);
+            // Parse SSE
+            for line in text.lines() {
+                if let Some(data) = line.strip_prefix("data: ") {
+                    if data == "[DONE]" {
+                        break;
+                    }
+                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(data) {
+                        if let Some(content) = json["content"].as_str() {
+                            let _ = chunk_sender.send(Ok(content.to_string())).await;
                         }
                     }
-                }
-                Err(e) => {
-                    let _ = chunk_sender
-                        .send(Err(ActorError::LlmError(format!("Stream error: {}", e))))
-                        .await;
                 }
             }
         }

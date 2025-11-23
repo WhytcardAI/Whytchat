@@ -84,6 +84,7 @@ pub async fn create_session(
     .await
 }
 
+#[allow(dead_code)]
 pub async fn get_session(pool: &SqlitePool, id: &str) -> Result<Session, sqlx::Error> {
     sqlx::query_as::<_, Session>(
         r#"
@@ -181,6 +182,7 @@ pub async fn get_session_messages(
 
 // --- Session Files CRUD ---
 
+#[allow(dead_code)]
 pub async fn add_session_file(
     pool: &SqlitePool,
     session_id: &str,

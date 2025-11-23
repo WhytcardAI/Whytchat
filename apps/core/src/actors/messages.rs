@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use tauri::Window;
 use tokio::sync::oneshot;
 
@@ -6,6 +6,7 @@ use tokio::sync::oneshot;
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum ActorError {
     #[error("LLM request failed: {0}")]
+    #[allow(dead_code)]
     LlmError(String),
     #[error("RAG request failed: {0}")]
     RagError(String),
@@ -18,6 +19,8 @@ pub enum ActorError {
 pub enum LlmMessage {
     Generate {
         prompt: String,
+        system_prompt: Option<String>,
+        temperature: Option<f32>,
         responder: oneshot::Sender<Result<String, ActorError>>,
     },
     GenerateWithParams {
@@ -28,6 +31,8 @@ pub enum LlmMessage {
     },
     StreamGenerate {
         prompt: String,
+        system_prompt: Option<String>,
+        temperature: Option<f32>,
         // Sender for chunks (Ok(token)) or Error
         // We use mpsc for streaming multiple chunks
         chunk_sender: tokio::sync::mpsc::Sender<Result<String, ActorError>>,
@@ -61,6 +66,7 @@ pub enum RagMessage {
 
 // --- Supervisor Messages (Routing) ---
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum SupervisorMessage {
     ProcessUserMessage {
         session_id: String,
@@ -73,5 +79,6 @@ pub enum SupervisorMessage {
         metadata: Option<String>,
         responder: oneshot::Sender<Result<String, ActorError>>,
     },
+    #[allow(dead_code)]
     Shutdown,
 }

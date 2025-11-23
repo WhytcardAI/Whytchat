@@ -23,7 +23,7 @@ impl PortablePathManager {
             }
 
             // Fallback: maybe we are already in apps/core (if target was local)
-            return path;
+            path
         }
 
         #[cfg(not(debug_assertions))]
@@ -63,6 +63,7 @@ impl PortablePathManager {
     }
 
     /// Récupère le répertoire des fichiers de session (./data/files/session_{session_id}).
+    #[allow(dead_code)]
     pub fn session_files_dir(session_id: &str) -> PathBuf {
         Self::data_dir()
             .join("files")

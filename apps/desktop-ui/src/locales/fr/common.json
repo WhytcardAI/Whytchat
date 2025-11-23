@@ -13,6 +13,63 @@
       "uploading": "Téléchargement en cours...",
       "success": "Fichier téléchargé avec succès",
       "error": "Erreur de téléchargement"
+    },
+    "header": {
+      "new_chat": "Nouvelle session",
+      "new_session": "Nouvelle session"
+    },
+    "error": "Erreur"
+  },
+  "nav": {
+    "new_chat": "Nouvelle"
+  },
+  "panel": {
+    "orchestration": "Orchestration",
+    "knowledge": "Connaissances",
+    "waiting": "En attente de raisonnement..."
+  },
+  "thinking": {
+    "analyzing": "Analyse de la demande...",
+    "complex_analysis": "Analyse complexe...",
+    "intent": "Intention : {{intent}}",
+    "searching_context": "Vérification des connaissances locales (RAG)...",
+    "documents_found": "{{count}} documents pertinents trouvés.",
+    "no_documents": "Aucun document pertinent trouvé.",
+    "search_error": "Erreur lors de la recherche documentaire.",
+    "generating_response": "Formulation de la réponse..."
+  },
+  "sessions": {
+    "group": "SESSIONS",
+    "empty": "Aucune session"
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Bienvenue",
+      "subtitle": "WhytChat est une IA locale et privée. Vos données ne quittent jamais votre ordinateur.",
+      "privacy": {
+        "title": "Confidentialité Totale",
+        "description": "Contrairement aux IA en ligne, WhytChat tourne 100% sur votre machine. Aucun log, aucun tracking, aucune fuite de données."
+      },
+      "start": "Commencer la configuration"
+    },
+    "language": {
+      "title": "Choisir la Langue",
+      "subtitle": "Sélectionnez votre langue préférée pour l'interface",
+      "english": "English",
+      "french": "Français"
+    },
+    "model": {
+      "title": "Le Cerveau",
+      "subtitle": "Nous téléchargeons et configurons votre modèle localement. Cela peut prendre quelques minutes.",
+      "downloading": "Téléchargement de Qwen...",
+      "complete": "Installation terminée !",
+      "error": "Erreur lors du téléchargement. Vérifiez votre connexion.",
+      "steps": {
+        "init": "Initialisation du moteur",
+        "download": "Téléchargement des poids (GGUF)",
+        "verify": "Vérification de l'intégrité",
+        "load": "Chargement en mémoire"
+      }
     }
   },
   "session": {

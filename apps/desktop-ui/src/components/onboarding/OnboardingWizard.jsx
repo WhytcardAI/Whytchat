@@ -1,16 +1,23 @@
 import { useState } from 'react';
-import { Shield, Download, CheckCircle, ArrowRight, Zap, Brain } from 'lucide-react';
+import { Shield, CheckCircle, ArrowRight } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { cn } from '../../lib/utils';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { useTranslation } from 'react-i18next';
 
 export function OnboardingWizard() {
+  const { t, i18n } = useTranslation('common');
   const [step, setStep] = useState(1);
-  const [selectedModel, setSelectedModel] = useState('qwen2.5-7b');
+  const [selectedLanguage, setSelectedLanguage] = useState(i18n.language || 'en');
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [downloadStatus, setDownloadStatus] = useState('waiting'); // waiting, downloading, complete, error
   const { completeOnboarding } = useAppStore();
+
+  const handleLanguageSelect = (lang) => {
+    setSelectedLanguage(lang);
+    i18n.changeLanguage(lang);
+  };
 
   const handleNext = () => {
     if (step === 2) {
@@ -56,14 +63,14 @@ export function OnboardingWizard() {
               W
             </div>
             <h2 className="text-2xl font-bold text-text mb-2">
-              {step === 1 && "Bienvenue"}
-              {step === 2 && "Le Cerveau"}
-              {step === 3 && "Installation"}
+              {step === 1 && t('onboarding.language.title')}
+              {step === 2 && t('onboarding.welcome.title')}
+              {step === 3 && t('onboarding.model.title')}
             </h2>
             <p className="text-muted text-sm leading-relaxed">
-              {step === 1 && "WhytChat est une IA locale et privée. Vos données ne quittent jamais votre ordinateur."}
-              {step === 2 && "Choisissez le modèle d'IA qui propulsera votre assistant. Ce choix détermine l'intelligence et la rapidité."}
-              {step === 3 && "Nous téléchargeons et configurons votre modèle localement. Cela peut prendre quelques minutes."}
+              {step === 1 && t('onboarding.language.subtitle')}
+              {step === 2 && t('onboarding.welcome.subtitle')}
+              {step === 3 && t('onboarding.model.subtitle')}
             </p>
           </div>
 
@@ -80,55 +87,45 @@ export function OnboardingWizard() {
 
           {step === 1 && (
             <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-              <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
-                <Shield size={48} />
+              <h3 className="text-xl font-semibold text-text">{t('onboarding.language.title')}</h3>
+              <div className="space-y-4">
+                <button
+                  onClick={() => handleLanguageSelect('en')}
+                  className={cn(
+                    "w-full p-4 rounded-xl border-2 transition-all",
+                    selectedLanguage === 'en' ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
+                  )}
+                >
+                  <div className="font-bold text-text">{t('onboarding.language.english')}</div>
+                </button>
+                <button
+                  onClick={() => handleLanguageSelect('fr')}
+                  className={cn(
+                    "w-full p-4 rounded-xl border-2 transition-all",
+                    selectedLanguage === 'fr' ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
+                  )}
+                >
+                  <div className="font-bold text-text">{t('onboarding.language.french')}</div>
+                </button>
               </div>
-              <h3 className="text-xl font-semibold text-text">Confidentialité Totale</h3>
-              <p className="text-muted max-w-md">
-                Contrairement aux IA en ligne, WhytChat tourne 100% sur votre machine.
-                Aucun log, aucun tracking, aucune fuite de données.
-              </p>
               <button onClick={handleNext} className="btn-primary mt-8">
-                Commencer la configuration <ArrowRight size={18} className="ml-2" />
+                {t('onboarding.welcome.start')} <ArrowRight size={18} className="ml-2" />
               </button>
             </div>
           )}
 
           {step === 2 && (
-            <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-500">
-              <h3 className="text-lg font-semibold mb-6">Sélectionnez votre modèle</h3>
-
-              <div className="grid grid-cols-1 gap-4 mb-8">
-                {/* Option 1: Qwen */}
-                <ModelCard
-                  id="qwen2.5-7b"
-                  selected={selectedModel === 'qwen2.5-7b'}
-                  onSelect={setSelectedModel}
-                  title="Qwen 2.5 (7B)"
-                  badge="Recommandé"
-                  desc="Le meilleur équilibre entre vitesse et intelligence. Idéal pour la plupart des PC."
-                  specs={["Rapide", "4GB RAM", "Polyvalent"]}
-                  icon={<Zap size={24} />}
-                />
-
-                {/* Option 2: Mistral */}
-                <ModelCard
-                  id="mistral-nemo-12b"
-                  selected={selectedModel === 'mistral-nemo-12b'}
-                  onSelect={setSelectedModel}
-                  title="Mistral Nemo (12B)"
-                  badge="Expert"
-                  desc="Modèle français plus puissant. Meilleur raisonnement, mais demande plus de ressources."
-                  specs={["Très Intelligent", "8GB RAM", "Expert FR"]}
-                  icon={<Brain size={24} />}
-                />
+            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+              <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
+                <Shield size={48} />
               </div>
-
-              <div className="mt-auto flex justify-end">
-                <button onClick={handleNext} className="btn-primary">
-                  Installer {selectedModel === 'qwen2.5-7b' ? 'Qwen' : 'Mistral'} <Download size={18} className="ml-2" />
-                </button>
-              </div>
+              <h3 className="text-xl font-semibold text-text">{t('onboarding.welcome.privacy.title')}</h3>
+              <p className="text-muted max-w-md">
+                {t('onboarding.welcome.privacy.description')}
+              </p>
+              <button onClick={handleNext} className="btn-primary mt-8">
+                {t('onboarding.welcome.start')} <ArrowRight size={18} className="ml-2" />
+              </button>
             </div>
           )}
 
@@ -136,7 +133,7 @@ export function OnboardingWizard() {
             <div className="flex-1 flex flex-col items-center justify-center animate-in fade-in slide-in-from-right-4 duration-500">
               <div className="w-full max-w-md space-y-6">
                 <div className="flex justify-between text-sm font-medium text-text mb-2">
-                  <span>Téléchargement de {selectedModel}...</span>
+                  <span>{t('onboarding.model.downloading')}</span>
                   <span>{Math.round(downloadProgress)}%</span>
                 </div>
 
@@ -149,16 +146,16 @@ export function OnboardingWizard() {
                 </div>
 
                 <p className="text-center text-xs text-muted">
-                  {downloadStatus === 'downloading' && "Téléchargement en cours... Ne fermez pas l'application."}
-                  {downloadStatus === 'complete' && "Installation terminée !"}
-                  {downloadStatus === 'error' && "Erreur lors du téléchargement. Vérifiez votre connexion."}
+                  {downloadStatus === 'downloading' && t('onboarding.model.downloading')}
+                  {downloadStatus === 'complete' && t('onboarding.model.complete')}
+                  {downloadStatus === 'error' && t('onboarding.model.error')}
                 </p>
 
                 <div className="bg-surface border border-border p-4 rounded-lg mt-8 space-y-3">
-                  <StepItem label="Initialisation du moteur" done={downloadProgress > 0} />
-                  <StepItem label="Téléchargement des poids (GGUF)" done={downloadProgress > 10} />
-                  <StepItem label="Vérification de l'intégrité" done={downloadProgress > 90} />
-                  <StepItem label="Chargement en mémoire" done={downloadProgress === 100} />
+                  <StepItem label={t('onboarding.model.steps.init')} done={downloadProgress > 0} />
+                  <StepItem label={t('onboarding.model.steps.download')} done={downloadProgress > 10} />
+                  <StepItem label={t('onboarding.model.steps.verify')} done={downloadProgress > 90} />
+                  <StepItem label={t('onboarding.model.steps.load')} done={downloadProgress === 100} />
                 </div>
               </div>
             </div>
@@ -166,39 +163,6 @@ export function OnboardingWizard() {
 
         </div>
       </div>
-    </div>
-  );
-}
-
-function ModelCard({ id, selected, onSelect, title, badge, desc, specs, icon }) {
-  return (
-    <div
-      onClick={() => onSelect(id)}
-      className={cn(
-        "relative p-4 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md flex gap-4",
-        selected ? "border-primary bg-primary/5" : "border-border bg-surface hover:border-primary/30"
-      )}
-    >
-      <div className={cn("w-12 h-12 rounded-lg flex items-center justify-center shrink-0", selected ? "bg-primary text-white" : "bg-border text-muted")}>
-        {icon}
-      </div>
-      <div className="flex-1">
-        <div className="flex justify-between items-start mb-1">
-          <h4 className="font-bold text-text">{title}</h4>
-          {badge && <span className="text-[10px] font-bold uppercase tracking-wider bg-background px-2 py-1 rounded text-primary border border-primary/20">{badge}</span>}
-        </div>
-        <p className="text-sm text-muted mb-3">{desc}</p>
-        <div className="flex gap-2">
-          {specs.map((spec, i) => (
-            <span key={i} className="text-xs bg-background px-2 py-1 rounded text-text border border-border">{spec}</span>
-          ))}
-        </div>
-      </div>
-      {selected && (
-        <div className="absolute top-4 right-4 text-primary">
-          <CheckCircle size={20} fill="currentColor" className="text-white" />
-        </div>
-      )}
     </div>
   );
 }

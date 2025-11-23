@@ -26,6 +26,7 @@ pub struct RagActorHandle {
 }
 
 impl RagActorHandle {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self::new_with_options(None, None)
     }
@@ -58,6 +59,7 @@ impl RagActorHandle {
             .map_err(|_| ActorError::Internal("RAG Actor failed to respond".to_string()))?
     }
 
+    #[allow(dead_code)]
     pub async fn search(&self, query: String) -> Result<Vec<String>, ActorError> {
         self.search_with_session(query, None).await
     }

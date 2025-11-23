@@ -15,13 +15,13 @@ export function RightPanel({ isThinking, thinkingSteps }) {
           active={activeTab === 'orchestration'}
           onClick={() => setActiveTab('orchestration')}
           icon={<Activity size={16} />}
-          label={t('panel.orchestration', 'Orchestration')}
+          label={t('panel.orchestration')}
         />
         <TabButton
           active={activeTab === 'knowledge'}
           onClick={() => setActiveTab('knowledge')}
           icon={<Database size={16} />}
-          label={t('panel.knowledge', 'Connaissances')}
+          label={t('panel.knowledge')}
         />
       </div>
 
@@ -35,7 +35,7 @@ export function RightPanel({ isThinking, thinkingSteps }) {
                   <BrainCircuit size={48} />
                 </div>
                 <p className="text-sm text-muted">
-                  {t('panel.waiting', 'En attente de raisonnement...')}
+                  {t('panel.waiting')}
                 </p>
               </>
             ) : (

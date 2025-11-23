@@ -9,10 +9,8 @@ mod models;
 use actors::supervisor::SupervisorHandle;
 use fs_manager::PortablePathManager;
 use log::{error, info};
-use std::fs;
 use tauri::State;
 use url::Url;
-use uuid::Uuid;
 
 // --- State Management ---
 struct AppState {
@@ -176,94 +174,79 @@ async fn download_model(window: tauri::Window, url: Option<String>) -> Result<St
 }
 
 #[tauri::command]
+async fn create_session(state: State<'_, AppState>) -> Result<String, String> {
+    let pool = state.pool.as_ref().ok_or("Database not initialized")?;
+    let model_config = models::ModelConfig {
+        model_id: DEFAULT_MODEL_FILENAME.to_string(),
+        temperature: 0.7,
+        system_prompt: String::new(), // Empty, will be set by frontend
+    };
+    let session = database::create_session(pool, String::new(), model_config).await.map_err(|e| e.to_string())?; // Empty title, will be set by frontend
+    Ok(session.id)
+}
+
+#[tauri::command]
+async fn list_sessions(state: State<'_, AppState>) -> Result<Vec<crate::models::Session>, String> {
+    let pool = state.pool.as_ref().ok_or("Database not initialized")?;
+    let sessions = database::get_all_sessions(pool).await.map_err(|e| e.to_string())?;
+    Ok(sessions)
+}
+
+#[tauri::command]
+async fn get_session_messages(session_id: String, state: State<'_, AppState>) -> Result<Vec<crate::models::Message>, String> {
+    let pool = state.pool.as_ref().ok_or("Database not initialized")?;
+    let messages = database::get_session_messages(pool, &session_id).await.map_err(|e| e.to_string())?;
+    Ok(messages)
+}
+
+#[tauri::command]
 async fn upload_file_for_session(
     session_id: String,
     file_name: String,
     file_data: Vec<u8>,
     state: State<'_, AppState>,
 ) -> Result<String, String> {
-    info!(
-        "Command received: upload_file_for_session({}, {})",
-        session_id, file_name
-    );
+    info!("Command received: upload_file_for_session({}, {}, {} bytes)", session_id, file_name, file_data.len());
 
-    // Get database pool
-    let pool = state.pool.as_ref().ok_or("Database not initialized")?;
+    // Security check: file size limit (10MB)
+    const MAX_FILE_SIZE: usize = 10 * 1024 * 1024;
+    if file_data.len() > MAX_FILE_SIZE {
+        return Err("File size exceeds 10MB limit".to_string());
+    }
 
-    // Create session files directory
-    let session_dir = PortablePathManager::session_files_dir(&session_id);
-    fs::create_dir_all(&session_dir).map_err(|e| format!("Failed to create directory: {}", e))?;
+    // Security check: detect binary files before UTF-8 conversion
+    if file_data.contains(&0u8) {
+        return Err("Binary files are not supported".to_string());
+    }
 
-    // Generate unique filename to avoid conflicts
-    let file_extension = std::path::Path::new(&file_name)
+    // Security check: MIME type validation
+    let allowed_types = ["text/plain", "text/markdown", "text/csv", "application/json"];
+    if let Some(kind) = infer::get(&file_data) {
+        if !allowed_types.contains(&kind.mime_type()) {
+            return Err(format!("File type '{}' is not supported. Only text-based files are allowed.", kind.mime_type()));
+        }
+    }
+
+    // Security check: file extension allowlist
+    let allowed_extensions = ["txt", "md", "csv", "json"];
+    let extension = std::path::Path::new(&file_name)
         .extension()
         .and_then(|ext| ext.to_str())
         .unwrap_or("");
-    let unique_filename = format!("{}_{}.{}", Uuid::new_v4(), file_name, file_extension);
-    let file_path = session_dir.join(&unique_filename);
-
-    // Security: Check file size limit (10MB)
-    const MAX_FILE_SIZE: usize = 10 * 1024 * 1024;
-    if file_data.len() > MAX_FILE_SIZE {
-        return Err("File size exceeds maximum limit of 10MB".to_string());
-    }
-
-    // Security: Validate file type using MIME detection
-    let allowed_text_types = ["text/", "application/json", "application/xml", "application/javascript"];
-    let is_text_file = if let Some(kind) = infer::get(&file_data) {
-        let mime_type = kind.mime_type();
-        allowed_text_types.iter().any(|&t| mime_type.starts_with(t))
-    } else {
-        // If MIME type cannot be detected, check extension against allowlist
-        matches!(
-            file_extension.to_lowercase().as_str(),
-            "txt" | "md" | "json" | "xml" | "csv" | "log" | "yml" | "yaml" | "toml" | "ini" | "conf" | "cfg"
-        )
-    };
-
-    // Write file
-    fs::write(&file_path, file_data).map_err(|e| format!("Failed to write file: {}", e))?;
-
-    // Determine file type
-    let file_type = if file_extension.is_empty() {
-        "unknown"
-    } else {
-        file_extension
-    };
-
-    // Save to database
-    let relative_path = format!("session_{}/{}", session_id, unique_filename);
-    database::add_session_file(pool, &session_id, &relative_path, file_type)
-        .await
-        .map_err(|e| format!("Failed to save to database: {}", e))?;
-
-    // Trigger RAG Ingestion
-    let file_content_bytes = fs::read(&file_path).map_err(|e| format!("Failed to read file: {}", e))?;
     
-    // Only ingest if it's a validated text-based file
-    if is_text_file {
-        let file_content_str = String::from_utf8_lossy(&file_content_bytes).to_string();
-        info!("Ingesting file content into RAG...");
-        let metadata = serde_json::json!({
-            "source": unique_filename,
-            "session_id": session_id,
-            "file_path": relative_path
-        }).to_string();
-
-        match state.supervisor.ingest_content(file_content_str, Some(metadata)).await {
-            Ok(_) => {
-                info!("File uploaded and ingested successfully: {}", relative_path);
-                Ok(format!("File '{}' uploaded and ingested successfully", file_name))
-            }
-            Err(e) => {
-                error!("Failed to ingest file content: {}", e);
-                Err(format!("File uploaded but RAG ingestion failed: {}", e))
-            }
-        }
-    } else {
-        info!("File uploaded successfully (binary file, RAG skipped): {}", relative_path);
-        Ok(format!("File '{}' uploaded successfully", file_name))
+    if !allowed_extensions.contains(&extension) {
+        return Err(format!("File extension '.{}' is not supported. Allowed extensions: {}", extension, allowed_extensions.join(", ")));
     }
+
+    // Convert bytes to string content
+    let content = String::from_utf8(file_data).map_err(|e| format!("Invalid UTF-8 content: {}", e))?;
+
+    // Ingest the content via supervisor
+    state
+        .supervisor
+        .ingest_content(content, Some(format!("session:{}", session_id)))
+        .await
+        .map_err(|e| e.to_string())
 }
 
 fn main() {
@@ -288,10 +271,11 @@ fn main() {
         .plugin(tauri_plugin_dialog::init());
 
     // Initialize the Actor System (Supervisor) after DB
+    let model_path = PortablePathManager::models_dir().join(DEFAULT_MODEL_FILENAME);
     let supervisor = if let Ok(ref pool) = db_pool {
-        SupervisorHandle::new_with_pool(Some(pool.clone()))
+        SupervisorHandle::new_with_pool_and_model(Some(pool.clone()), model_path)
     } else {
-        SupervisorHandle::new()
+        SupervisorHandle::new_with_pool_and_model(None, model_path)
     };
 
     let pool_clone = if let Ok(ref pool) = db_pool {
@@ -315,10 +299,8 @@ fn main() {
             download_model,
             upload_file_for_session,
             create_session,
-            get_all_sessions,
-            get_session_messages,
-            process_user_message,
-            update_session
+            list_sessions,
+            get_session_messages
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

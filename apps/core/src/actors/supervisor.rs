@@ -14,15 +14,17 @@ pub struct SupervisorHandle {
 }
 
 impl SupervisorHandle {
+    #[allow(dead_code)]
     pub fn new() -> Self {
-        Self::new_with_pool(None)
+        Self::new_with_pool_and_model(None, std::path::PathBuf::from("data/models/model.gguf"))
     }
 
+    #[allow(dead_code)]
     pub fn new_with_pool(db_pool: Option<SqlitePool>) -> Self {
-        Self::new_with_pool_and_model(db_pool, None)
+        Self::new_with_pool_and_model(db_pool, std::path::PathBuf::from("data/models/model.gguf"))
     }
 
-    pub fn new_with_pool_and_model(db_pool: Option<SqlitePool>, model_path: Option<std::path::PathBuf>) -> Self {
+    pub fn new_with_pool_and_model(db_pool: Option<SqlitePool>, model_path: std::path::PathBuf) -> Self {
         let (sender, receiver) = mpsc::channel(32);
         let actor = SupervisorRunner::new(receiver, db_pool, model_path);
         tokio::spawn(async move { actor.run().await });
@@ -79,16 +81,10 @@ struct SupervisorRunner {
 }
 
 impl SupervisorRunner {
-    fn new(receiver: mpsc::Receiver<SupervisorMessage>, db_pool: Option<SqlitePool>, model_path: Option<std::path::PathBuf>) -> Self {
-        let llm_actor = if let Some(path) = model_path {
-            LlmActorHandle::new_with_model_path(path)
-        } else {
-            LlmActorHandle::new()
-        };
-        
+    fn new(receiver: mpsc::Receiver<SupervisorMessage>, db_pool: Option<SqlitePool>, model_path: std::path::PathBuf) -> Self {
         Self {
             receiver,
-            llm_actor,
+            llm_actor: LlmActorHandle::new(model_path),
             rag_actor: RagActorHandle::new_with_options(None, db_pool.clone()),
             db_pool,
         }
@@ -136,26 +132,39 @@ impl SupervisorRunner {
                     }
                 }
 
-                // 1. Emit: Analysis
-                self.emit_thinking(&window, "Analyse de la demande...")
-                    .await;
-
-                // 2. Agent 1: Analyzer (LLM Call) - using session config
-                let analysis_prompt = format!("Analyze this request and summarize the intent (max 10 words). Request: {}", content);
-                let analysis = match self.llm_actor.generate_with_params(
-                    analysis_prompt,
-                    system_prompt.clone(),
-                    temperature
-                ).await {
-                    Ok(res) => res.trim().to_string(),
-                    Err(_) => "Analyse complexe...".to_string(),
+                // Get session configuration
+                let session_config = if let Some(ref pool) = self.db_pool {
+                    match database::get_session(pool, &session_id).await {
+                        Ok(session) => Some(session.model_config),
+                        Err(e) => {
+                            error!("Failed to load session config: {}", e);
+                            None
+                        }
+                    }
+                } else {
+                    None
                 };
 
-                self.emit_thinking(&window, &format!("Intention : {}", analysis))
+                // Extract config values with defaults
+                let system_prompt = session_config.as_ref().map(|c| c.system_prompt.clone());
+                let temperature = session_config.as_ref().map(|c| c.temperature);
+
+                // 1. Emit: Analysis
+                self.emit_thinking(&window, "thinking.analyzing")
+                    .await;
+
+                // 2. Agent 1: Analyzer (LLM Call)
+                let analysis_prompt = format!("Analyze this request and summarize the intent (max 10 words). Request: {}", content);
+                let analysis = match self.llm_actor.generate_with_params(analysis_prompt, system_prompt.clone(), temperature).await {
+                    Ok(res) => res.trim().to_string(),
+                    Err(_) => "thinking.complex_analysis".to_string(),
+                };
+
+                self.emit_thinking(&window, &format!("thinking.intent|{}", analysis))
                     .await;
 
                 // 3. Emit: Context Search
-                self.emit_thinking(&window, "Vérification des connaissances locales (RAG)...")
+                self.emit_thinking(&window, "thinking.searching_context")
                     .await;
 
                 let mut context_str = String::new();
@@ -168,24 +177,24 @@ impl SupervisorRunner {
                         if !results.is_empty() {
                             self.emit_thinking(
                                 &window,
-                                &format!("{} documents pertinents trouvés.", results.len()),
+                                &format!("thinking.documents_found|{}", results.len()),
                             )
                             .await;
                             context_str = results.join("\n\n");
                         } else {
-                            self.emit_thinking(&window, "Aucun document pertinent trouvé.")
+                            self.emit_thinking(&window, "thinking.no_documents")
                                 .await;
                         }
                     }
                     Err(e) => {
                         error!("RAG Search failed: {}", e);
-                        self.emit_thinking(&window, "Erreur lors de la recherche documentaire.")
+                        self.emit_thinking(&window, "thinking.search_error")
                             .await;
                     }
                 }
 
                 // 4. Emit: Generation
-                self.emit_thinking(&window, "Formulation de la réponse...")
+                self.emit_thinking(&window, "thinking.generating_response")
                     .await;
 
                 // Load session history
@@ -235,10 +244,15 @@ impl SupervisorRunner {
 
                 // Spawn the streaming task with session config
                 let llm_handle = self.llm_actor.clone();
-                let sys_prompt = system_prompt.clone();
-                let temp = temperature;
+                let system_prompt_clone = system_prompt.clone();
+                let temperature_clone = temperature;
                 tokio::spawn(async move {
-                    let _ = llm_handle.stream_generate_with_params(final_prompt, sys_prompt, temp, chunk_tx).await;
+                    let _ = llm_handle.stream_generate_with_params(
+                        final_prompt,
+                        system_prompt_clone,
+                        temperature_clone,
+                        chunk_tx
+                    ).await;
                 });
 
                 // Consume chunks and emit to frontend
