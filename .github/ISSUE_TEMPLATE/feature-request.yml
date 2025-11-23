@@ -1,0 +1,53 @@
+---
+name: ✨ Feature Request
+description: Proposer une nouvelle fonctionnalité
+title: "[FEATURE] "
+labels: ["enhancement", "triage"]
+assignees: []
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Résumé
+      description: Brève description de la fonctionnalité proposée
+      placeholder: "En une phrase, décrivez la fonctionnalité..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problème
+      description: Quel problème cela résout-il ?
+      placeholder: "Décrivez le problème actuel..."
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solution Proposée
+      description: Comment cette fonctionnalité résout le problème
+      placeholder: "Décrivez votre solution proposée..."
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considérées
+      description: Avez-vous envisagé d'autres solutions ?
+      placeholder: "Listez les alternatives que vous avez envisagées..."
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priorité
+      description: Quelle est la priorité de cette fonctionnalité ?
+      options:
+        - Faible
+        - Moyenne
+        - Élevée
+        - Critique
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Contexte Additionnel
+      description: Toute information supplémentaire

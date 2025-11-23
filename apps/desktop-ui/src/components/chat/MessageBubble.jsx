@@ -1,7 +1,8 @@
+import React from 'react';
 import { User, Bot } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-export function MessageBubble({ role, content }) {
+export const MessageBubble = React.memo(function MessageBubble({ role, content }) {
   const isUser = role === 'user';
 
   return (
@@ -33,4 +34,4 @@ export function MessageBubble({ role, content }) {
       </div>
     </div>
   );
-}
+});

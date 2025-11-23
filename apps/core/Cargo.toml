@@ -16,9 +16,10 @@ tauri-plugin-dialog = "2.0.0-rc"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
-log = "0.4"
 thiserror = "1.0"
-env_logger = "0.11"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "registry"] }
+tracing-bunyan-formatter = "0.3"
 anyhow = "1.0"
 uuid = { version = "1.8", features = ["v4"] }
 chrono = { version = "=0.4.38", features = ["serde"] }
@@ -32,6 +33,12 @@ sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }
 infer = "0.16"
 url = "2.5"
 which = "6.0"
+validator = { version = "0.18", features = ["derive"] }
+lru = "0.12.3"
 
+aes-gcm = "0.10.3"
+rand = "0.8"
+base64 = "0.22"
 [dev-dependencies]
 tempfile = "3.10"
+wiremock = "0.6"

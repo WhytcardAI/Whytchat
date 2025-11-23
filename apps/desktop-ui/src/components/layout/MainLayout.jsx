@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useEffect, useCallback, useMemo } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { Plus, MessageSquare } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
+import { Toaster } from 'react-hot-toast';
 import { RightPanel } from './RightPanel';
 
-function HistoryGroup({ label, children }) {
+const HistoryGroup = React.memo(function HistoryGroup({ label, children }) {
   return React.createElement(
     'div',
     { className: 'space-y-2' },
@@ -20,9 +21,9 @@ function HistoryGroup({ label, children }) {
       children
     )
   );
-}
+});
 
-function HistoryItem({ label, active, icon, onClick }) {
+const HistoryItem = React.memo(function HistoryItem({ label, active, icon, onClick }) {
   return React.createElement(
     'button',
     {
@@ -45,36 +46,80 @@ function HistoryItem({ label, active, icon, onClick }) {
       label
     )
   );
-}
+});
 
 export function MainLayout({ children }) {
-  const store = useAppStore();
-  const isThinking = store.isThinking;
-  const thinkingSteps = store.thinkingSteps;
-  const sessions = store.sessions;
-  const currentSessionId = store.currentSessionId;
-  const createSession = store.createSession;
-  const setCurrentSessionId = store.setCurrentSessionId;
+  const {
+    isBackendInitialized,
+    isBackendInitializing,
+    initializeApp,
+    isThinking,
+    thinkingSteps,
+    sessions,
+    currentSessionId,
+    createSession,
+    setCurrentSessionId,
+  } = useAppStore();
   const translationResult = useTranslation('common');
   const t = translationResult.t;
 
-  function handleNewChat() {
-    createSession().catch(function(error) {
+  useEffect(function() {
+    initializeApp();
+  }, [initializeApp]);
+
+  const handleNewChat = useCallback(() => {
+    createSession('New Chat').catch(function(error) {
       console.error('Failed to create new session:', error);
     });
-  }
+  }, [createSession]);
 
-  function handleSessionSelect(sessionId) {
+  const handleSessionSelect = useCallback((sessionId) => {
     setCurrentSessionId(sessionId);
-  }
+  }, [setCurrentSessionId]);
 
-  function getSessionDisplayName(session) {
+  const getSessionDisplayName = useCallback((session) => {
     return session.title || 'Session ' + session.id.slice(-8);
+  }, []);
+
+  const currentSessionDisplay = useMemo(() => {
+    return currentSessionId ? 'Session ' + currentSessionId.slice(-8) : t('chat.header.new_session');
+  }, [currentSessionId, t]);
+
+  const sessionItems = useMemo(() => sessions.map(function(session) {
+    return React.createElement(HistoryItem, {
+      key: session.id,
+      active: session.id === currentSessionId,
+      label: getSessionDisplayName(session),
+      onClick: function() { return handleSessionSelect(session.id); }
+    });
+  }), [sessions, currentSessionId, getSessionDisplayName, handleSessionSelect]);
+
+  if (isBackendInitializing) {
+    return React.createElement(
+      'div',
+      { className: 'flex h-screen w-full items-center justify-center bg-background' },
+      React.createElement(
+        'div',
+        { className: 'flex flex-col items-center gap-4' },
+        React.createElement('div', { className: 'w-10 h-10 animate-spin rounded-full border-4 border-primary border-t-transparent' }),
+        React.createElement('p', { className: 'text-muted' }, 'Initializing Backend...')
+      )
+    );
   }
 
-  function getCurrentSessionDisplay() {
-    return currentSessionId ? 'Session ' + currentSessionId.slice(-8) : t('chat.header.new_session');
+  if (!isBackendInitialized) {
+    return React.createElement(
+      'div',
+      { className: 'flex h-screen w-full items-center justify-center bg-background' },
+      React.createElement(
+        'div',
+        { className: 'text-center' },
+        React.createElement('h1', { className: 'text-2xl font-bold text-destructive mb-2' }, 'Backend Initialization Failed'),
+        React.createElement('p', { className: 'text-muted' }, 'Could not connect to the backend. Please restart the application.')
+      )
+    );
   }
+
 
   return React.createElement(
     'div',
@@ -104,14 +149,7 @@ export function MainLayout({ children }) {
         sessions.length > 0 ? React.createElement(
           HistoryGroup,
           { label: t('sessions.group') },
-          sessions.map(function(session) {
-            return React.createElement(HistoryItem, {
-              key: session.id,
-              active: session.id === currentSessionId,
-              label: getSessionDisplayName(session),
-              onClick: function() { return handleSessionSelect(session.id); }
-            });
-          })
+          sessionItems
         ) : React.createElement(
           'div',
           { className: 'text-center text-muted text-sm mt-10' },
@@ -135,13 +173,37 @@ export function MainLayout({ children }) {
           React.createElement(
             'span',
             { className: 'font-medium text-sm text-text' },
-            getCurrentSessionDisplay()
+            currentSessionDisplay
           )
         )
       ),
       children
     ),
     // Right Panel (Orchestration)
-    React.createElement(RightPanel, { isThinking: isThinking, thinkingSteps: thinkingSteps })
+    React.createElement(RightPanel, { isThinking: isThinking, thinkingSteps: thinkingSteps }),
+    // Toast container for notifications
+    React.createElement(Toaster, {
+      position: 'bottom-right',
+      toastOptions: {
+        // Define default options
+        className: 'font-sans',
+        duration: 5000,
+        style: {
+          background: 'hsl(var(--surface))',
+          color: 'hsl(var(--text))',
+          border: '1px solid hsl(var(--border))',
+          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+        },
+
+        // Default options for specific types
+        error: {
+          duration: 8000, // Errors are more important
+          iconTheme: {
+            primary: 'hsl(var(--destructive))',
+            secondary: 'hsl(var(--surface))',
+          },
+        },
+      },
+    })
   );
 }

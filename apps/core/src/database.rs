@@ -1,12 +1,53 @@
+use crate::encryption;
 use crate::fs_manager::PortablePathManager;
 use crate::models::{Message, ModelConfig, Session, SessionFile};
 use chrono::Utc;
-use log::info;
+use tracing::info;
+use serde::{Deserialize, Serialize};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
 use sqlx::types::Json;
 use std::str::FromStr;
 use uuid::Uuid;
 
+#[derive(Serialize, Deserialize, Debug)]
+struct EncryptedConfigWrapper {
+    ciphertext: String,
+}
+
+#[derive(sqlx::FromRow)]
+struct SessionRow {
+    id: String,
+    title: String,
+    created_at: i64,
+    model_config: Json<EncryptedConfigWrapper>,
+}
+
+impl SessionRow {
+    fn into_session(self) -> Result<Session, String> {
+        let decrypted_bytes = encryption::decrypt(&self.model_config.0.ciphertext)?;
+        let model_config: ModelConfig = serde_json::from_slice(&decrypted_bytes)
+            .map_err(|e| format!("Failed to deserialize model config: {}", e))?;
+
+        Ok(Session {
+            id: self.id,
+            title: self.title,
+            created_at: self.created_at,
+            model_config: Json(model_config),
+        })
+    }
+}
+
+/// Initializes the SQLite database connection pool.
+///
+/// This function sets up the database by:
+/// 1. Determining the path to the SQLite file using `PortablePathManager`.
+/// 2. Creating the database file if it doesn't exist.
+/// 3. Establishing a connection pool with a maximum of 5 connections.
+/// 4. Running database migrations to ensure the schema is up to date.
+///
+/// # Returns
+///
+/// A `Result` containing the `SqlitePool` on success, or an `sqlx::Error` on failure.
 pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
     let db_path = PortablePathManager::db_dir().join("whytchat.sqlite");
     let db_url = format!("sqlite://{}", db_path.to_string_lossy());
@@ -20,38 +61,8 @@ pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
         .connect_with(options)
         .await?;
 
-    // Run migrations manually for now
-    // Note: We are using model_config JSON column instead of separate columns
-    // If the table exists with old schema, this might fail or need manual migration.
-    // For dev, we'll assume fresh start or compatible schema.
-    sqlx::query(
-        r#"
-        CREATE TABLE IF NOT EXISTS sessions (
-            id TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
-            created_at DATETIME NOT NULL,
-            model_config JSON NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT NOT NULL,
-            role TEXT NOT NULL,
-            content TEXT NOT NULL,
-            created_at DATETIME NOT NULL,
-            FOREIGN KEY(session_id) REFERENCES sessions(id)
-        );
-        CREATE TABLE IF NOT EXISTS session_files (
-            id TEXT PRIMARY KEY,
-            session_id TEXT NOT NULL,
-            file_path TEXT NOT NULL,
-            file_type TEXT NOT NULL,
-            added_at DATETIME NOT NULL,
-            FOREIGN KEY(session_id) REFERENCES sessions(id)
-        );
-        "#,
-    )
-    .execute(&pool)
-    .await?;
+    // Run migrations automatically
+    sqlx::migrate!("./migrations").run(&pool).await?;
 
     info!("Database initialized and migrations applied.");
 
@@ -60,6 +71,18 @@ pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
 
 // --- Sessions CRUD ---
 
+/// Creates a new session in the database.
+///
+/// # Arguments
+///
+/// * `pool` - A reference to the `SqlitePool`.
+/// * `title` - The title of the new session.
+/// * `model_config` - The `ModelConfig` associated with the session. The configuration
+///   will be encrypted before being stored in the database.
+///
+/// # Returns
+///
+/// A `Result` containing the newly created `Session` on success, or an `sqlx::Error` on failure.
 pub async fn create_session(
     pool: &SqlitePool,
     title: String,
@@ -67,47 +90,89 @@ pub async fn create_session(
 ) -> Result<Session, sqlx::Error> {
     let id = Uuid::new_v4().to_string();
     let created_at = Utc::now().timestamp();
-    let config_json = Json(model_config);
 
-    sqlx::query_as::<_, Session>(
+    // Encrypt model_config
+    let config_bytes = serde_json::to_vec(&model_config).map_err(|e| sqlx::Error::Protocol(e.to_string().into()))?;
+    let ciphertext = encryption::encrypt(&config_bytes).map_err(|e| sqlx::Error::Protocol(e.into()))?;
+    let wrapper = EncryptedConfigWrapper { ciphertext };
+    let config_json = Json(wrapper);
+
+    // We still return the original session with cleartext config to the caller,
+    // but we save the encrypted version.
+    let _ = sqlx::query(
         r#"
         INSERT INTO sessions (id, title, created_at, model_config)
         VALUES (?, ?, ?, ?)
-        RETURNING id, title, created_at, model_config as "model_config: Json<ModelConfig>"
         "#,
     )
     .bind(&id)
     .bind(&title)
     .bind(created_at)
     .bind(config_json)
-    .fetch_one(pool)
-    .await
+    .execute(pool)
+    .await?;
+
+    Ok(Session {
+        id,
+        title,
+        created_at,
+        model_config: Json(model_config),
+    })
 }
 
+/// Retrieves a single session by its ID.
+///
+/// The model configuration is decrypted before the session is returned.
+///
+/// # Arguments
+///
+/// * `pool` - A reference to the `SqlitePool`.
+/// * `id` - The ID of the session to retrieve.
+///
+/// # Returns
+///
+/// A `Result` containing the `Session` on success, or an `sqlx::Error` if not found or on failure.
 #[allow(dead_code)]
 pub async fn get_session(pool: &SqlitePool, id: &str) -> Result<Session, sqlx::Error> {
-    sqlx::query_as::<_, Session>(
+    let row = sqlx::query_as::<_, SessionRow>(
         r#"
-        SELECT id, title, created_at, model_config as "model_config: Json<ModelConfig>"
+        SELECT id, title, created_at, model_config as "model_config: Json<EncryptedConfigWrapper>"
         FROM sessions
         WHERE id = ?
         "#,
     )
     .bind(id)
     .fetch_one(pool)
-    .await
+    .await?;
+
+    row.into_session().map_err(|e| sqlx::Error::Protocol(e.into()))
 }
 
-pub async fn get_all_sessions(pool: &SqlitePool) -> Result<Vec<Session>, sqlx::Error> {
-    sqlx::query_as::<_, Session>(
+/// Lists all sessions, ordered by creation date (descending).
+///
+/// The model configuration for each session is decrypted.
+///
+/// # Arguments
+///
+/// * `pool` - A reference to the `SqlitePool`.
+///
+/// # Returns
+///
+/// A `Result` containing a `Vec<Session>` on success, or an `sqlx::Error` on failure.
+pub async fn list_sessions(pool: &SqlitePool) -> Result<Vec<Session>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, SessionRow>(
         r#"
-        SELECT id, title, created_at, model_config as "model_config: Json<ModelConfig>"
+        SELECT id, title, created_at, model_config as "model_config: Json<EncryptedConfigWrapper>"
         FROM sessions
         ORDER BY created_at DESC
         "#,
     )
     .fetch_all(pool)
-    .await
+    .await?;
+
+    rows.into_iter()
+        .map(|row| row.into_session().map_err(|e| sqlx::Error::Protocol(e.into())))
+        .collect()
 }
 
 pub async fn update_session(
@@ -121,21 +186,32 @@ pub async fn update_session(
     
     let new_title = title.unwrap_or(current_session.title);
     let new_config = model_config.unwrap_or(current_session.model_config.0);
-    let config_json = Json(new_config);
+    
+    // Encrypt new config
+    let config_bytes = serde_json::to_vec(&new_config).map_err(|e| sqlx::Error::Protocol(e.to_string().into()))?;
+    let ciphertext = encryption::encrypt(&config_bytes).map_err(|e| sqlx::Error::Protocol(e.into()))?;
+    let wrapper = EncryptedConfigWrapper { ciphertext };
+    let config_json = Json(wrapper);
 
-    sqlx::query_as::<_, Session>(
+    sqlx::query(
         r#"
         UPDATE sessions
         SET title = ?, model_config = ?
         WHERE id = ?
-        RETURNING id, title, created_at, model_config as "model_config: Json<ModelConfig>"
         "#,
     )
     .bind(&new_title)
     .bind(config_json)
     .bind(id)
-    .fetch_one(pool)
-    .await
+    .execute(pool)
+    .await?;
+
+    Ok(Session {
+        id: id.to_string(),
+        title: new_title,
+        created_at: current_session.created_at,
+        model_config: Json(new_config),
+    })
 }
 
 // --- Messages CRUD ---

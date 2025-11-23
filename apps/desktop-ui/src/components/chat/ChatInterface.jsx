@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { MessageBubble } from './MessageBubble';
 import { ThinkingBubble } from './ThinkingBubble';
 import { ChatInput } from './ChatInput';
@@ -14,13 +14,13 @@ export function ChatInterface() {
   const { setThinking, addThinkingStep, clearThinkingSteps, isThinking, thinkingSteps, currentSessionId, setCurrentSessionId, loadSessions, createSession } = useAppStore();
   const messagesEndRef = useRef(null);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
   // Load sessions and create default session if needed
   useEffect(() => {
@@ -92,9 +92,9 @@ export function ChatInterface() {
       if (unlistenThinking) unlistenThinking();
       if (unlistenToken) unlistenToken();
     };
-  }, [addThinkingStep, setThinking, clearThinkingSteps]);
+  }, [addThinkingStep]);
 
-  const handleSend = async (text, _isWebEnabled) => {
+  const handleSend = useCallback(async (text, _isWebEnabled) => {
     // 1. Add User Message
     const userMsg = { role: 'user', content: text };
     setMessages(prev => [...prev, userMsg]);
@@ -119,9 +119,9 @@ export function ChatInterface() {
       setMessages(prev => [...prev, { role: 'assistant', content: `${t('chat.error')}: ${error}` }]);
       setThinking(false);
     }
-  };
+  }, [currentSessionId, setThinking, clearThinkingSteps, t]);
 
-  const handleFileUpload = async (file) => {
+  const handleFileUpload = useCallback(async (file) => {
     setUploadStatus('uploading');
     try {
       const reader = new FileReader();
@@ -146,7 +146,13 @@ export function ChatInterface() {
       setUploadStatus('error');
       setTimeout(() => setUploadStatus(null), 3000);
     }
-  };
+  }, [currentSessionId]);
+
+  const renderedMessages = useMemo(() => {
+    return messages.map((msg, idx) => (
+      <MessageBubble key={idx} role={msg.role} content={msg.content} />
+    ));
+  }, [messages]);
 
   return (
     <div className="flex flex-col h-full w-full relative">
@@ -158,9 +164,7 @@ export function ChatInterface() {
           </div>
         )}
 
-        {messages.map((msg, idx) => (
-          <MessageBubble key={idx} role={msg.role} content={msg.content} />
-        ))}
+        {renderedMessages}
 
         {/* Thinking Bubble - Shows during generation or if steps exist */}
         {(isThinking || thinkingSteps.length > 0) && (

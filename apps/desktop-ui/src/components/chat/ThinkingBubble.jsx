@@ -1,15 +1,13 @@
-import { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { ChevronDown, ChevronRight, BrainCircuit } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-export function ThinkingBubble({ steps = [] }) {
+export const ThinkingBubble = React.memo(function ThinkingBubble({ steps = [] }) {
   const [isOpen, setIsOpen] = useState(true);
   const { t } = useTranslation('common');
 
-  if (!steps || steps.length === 0) return null;
-
   // Helper to translate step text from backend
-  function translateStep(step) {
+  const translateStep = useCallback((step) => {
     // Handle translation keys with parameters (e.g., "thinking.intent|Some intent")
     if (step.includes('|')) {
       const parts = step.split('|');
@@ -29,7 +27,9 @@ export function ThinkingBubble({ steps = [] }) {
 
     // Return as-is if not a translation key
     return step;
-  }
+  }, [t]);
+
+  if (!steps || steps.length === 0) return null;
 
   return (
     <div className="mb-4 max-w-3xl mx-auto w-full">
@@ -66,4 +66,4 @@ export function ThinkingBubble({ steps = [] }) {
       </div>
     </div>
   );
-}
+});

@@ -1,4 +1,5 @@
-use crate::actors::messages::{ActorError, RagMessage};
+use crate::actors::messages::{AppError, ActorError, RagMessage};
+use crate::actors::traits::RagActor;
 use crate::database;
 use crate::fs_manager::PortablePathManager;
 use arrow::array::{
@@ -6,6 +7,7 @@ use arrow::array::{
     StringBuilder,
 };
 use arrow::datatypes::{DataType, Field, Schema};
+use async_trait::async_trait;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use futures::TryStreamExt;
 use lancedb::{
@@ -13,38 +15,54 @@ use lancedb::{
     query::{ExecutableQuery, QueryBase},
     Connection,
 };
-use log::{error, info};
+use tracing::{error, info};
+use lru::LruCache;
 use sqlx::sqlite::SqlitePool;
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot};
 
-// --- Actor Handle (Public API) ---
+/// A handle to the `RagActor`.
+///
+/// This provides a public, cloneable interface for sending messages to the running RAG actor,
+/// which manages the knowledge base and document retrieval.
 #[derive(Clone)]
 pub struct RagActorHandle {
     sender: mpsc::Sender<RagMessage>,
 }
 
 impl RagActorHandle {
+    /// Creates a new `RagActor` with default options and returns a handle to it.
     #[allow(dead_code)]
     pub fn new() -> Self {
         Self::new_with_options(None, None)
     }
 
-    /// Crée un nouvel acteur avec des options de configuration.
-    /// Utile pour les tests pour injecter un chemin de base de données temporaire.
+    /// Creates a new `RagActor` with specific configuration options.
+    ///
+    /// This is useful for testing, allowing injection of a temporary database path or a
+    /// pre-configured database pool.
+    ///
+    /// # Arguments
+    ///
+    /// * `db_path` - An optional override for the LanceDB vector database path.
+    /// * `pool` - An optional `SqlitePool` for accessing session file metadata.
     pub fn new_with_options(db_path: Option<PathBuf>, pool: Option<SqlitePool>) -> Self {
         let (sender, receiver) = mpsc::channel(32);
         let actor = RagActorRunner::new(receiver, db_path, pool);
         tokio::spawn(async move { actor.run().await });
         Self { sender }
     }
+}
 
-    pub async fn ingest(
+#[async_trait]
+impl RagActor for RagActorHandle {
+    async fn ingest(
         &self,
         content: String,
         metadata: Option<String>,
-    ) -> Result<String, ActorError> {
+    ) -> Result<String, AppError> {
         let (send, recv) = oneshot::channel();
         let msg = RagMessage::Ingest {
             content,
@@ -54,21 +72,16 @@ impl RagActorHandle {
         self.sender
             .send(msg)
             .await
-            .map_err(|_| ActorError::Internal("RAG Actor closed".to_string()))?;
-        recv.await
-            .map_err(|_| ActorError::Internal("RAG Actor failed to respond".to_string()))?
+            .map_err(|_| AppError::Actor("RAG Actor closed".to_string()))?;
+        Ok(recv.await
+            .map_err(|_| AppError::Actor("RAG Actor failed to respond".to_string()))??)
     }
 
-    #[allow(dead_code)]
-    pub async fn search(&self, query: String) -> Result<Vec<String>, ActorError> {
-        self.search_with_session(query, None).await
-    }
-
-    pub async fn search_with_session(
+    async fn search_with_session(
         &self,
         query: String,
         session_id: Option<String>,
-    ) -> Result<Vec<String>, ActorError> {
+    ) -> Result<Vec<String>, AppError> {
         let (send, recv) = oneshot::channel();
         let msg = RagMessage::Search {
             query,
@@ -79,9 +92,9 @@ impl RagActorHandle {
         self.sender
             .send(msg)
             .await
-            .map_err(|_| ActorError::Internal("RAG Actor closed".to_string()))?;
-        recv.await
-            .map_err(|_| ActorError::Internal("RAG Actor failed to respond".to_string()))?
+            .map_err(|_| AppError::Actor("RAG Actor closed".to_string()))?;
+        Ok(recv.await
+            .map_err(|_| AppError::Actor("RAG Actor failed to respond".to_string()))??)
     }
 }
 
@@ -89,6 +102,7 @@ impl RagActorHandle {
 struct RagActorRunner {
     receiver: mpsc::Receiver<RagMessage>,
     embedding_model: Option<TextEmbedding>,
+    embedding_cache: LruCache<String, Vec<f32>>,
     db_connection: Option<Connection>,
     table_name: String,
     db_path_override: Option<PathBuf>,
@@ -104,6 +118,7 @@ impl RagActorRunner {
         Self {
             receiver,
             embedding_model: None,
+            embedding_cache: LruCache::new(NonZeroUsize::new(1000).unwrap()),
             db_connection: None,
             table_name: "knowledge_base".to_string(),
             db_path_override,
@@ -286,7 +301,7 @@ impl RagActorRunner {
     }
 
     async fn search_documents(
-        &self,
+        &mut self,
         query: String,
         session_id: Option<String>,
         limit: usize,
@@ -299,14 +314,25 @@ impl RagActorRunner {
             .as_ref()
             .ok_or(ActorError::RagError("DB not connected".to_string()))?;
 
-        // 1. Embed Query
-        let query_embedding = model
-            .embed(vec![query.clone()], None)
-            .map_err(|e| ActorError::RagError(format!("Embedding failed: {}", e)))?;
-
-        let query_vec = query_embedding
-            .first()
-            .ok_or(ActorError::RagError("No embedding generated".to_string()))?;
+        // 1. Embed Query (with cache)
+        let query_vec = match self.embedding_cache.get(&query) {
+            Some(embedding) => {
+                info!("Cache hit for query: '{}'", query);
+                embedding.clone()
+            }
+            None => {
+                info!("Cache miss for query: '{}'", query);
+                let query_embedding = model
+                    .embed(vec![query.clone()], None)
+                    .map_err(|e| ActorError::RagError(format!("Embedding failed: {}", e)))?;
+                let embedding = query_embedding
+                    .first()
+                    .ok_or(ActorError::RagError("No embedding generated".to_string()))?
+                    .clone();
+                self.embedding_cache.put(query.clone(), embedding.clone());
+                embedding
+            }
+        };
 
         // 2. Search in LanceDB
         // Check if table exists first
@@ -329,7 +355,7 @@ impl RagActorRunner {
         let mut results = table
             .query()
             .limit(limit)
-            .nearest_to(query_vec.clone())
+            .nearest_to(query_vec)
             .map_err(|e| ActorError::RagError(format!("Query setup failed: {}", e)))?
             .execute()
             .await

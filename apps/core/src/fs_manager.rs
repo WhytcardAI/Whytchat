@@ -1,11 +1,24 @@
-use log::info;
+use tracing::info;
 use std::fs;
 use std::path::PathBuf;
 
+/// Manages application paths to ensure portability between development and release builds.
+///
+/// This struct provides a centralized way to access key directories, abstracting away the
+/// differences in file structure between a debug environment (workspace root) and a
+/// release build (executable's directory).
 pub struct PortablePathManager;
 
 impl PortablePathManager {
-    /// Récupère le répertoire racine de l'application (là où se trouve l'exécutable).
+    /// Retrieves the application's root directory.
+    ///
+    /// In debug builds, this typically points to the `apps/core` crate root within the workspace.
+    /// In release builds, it points to the directory containing the executable.
+    /// This ensures that relative paths to assets (`data`, `models`, etc.) work consistently.
+    ///
+    /// # Returns
+    ///
+    /// A `PathBuf` to the calculated root directory.
     pub fn root_dir() -> PathBuf {
         #[cfg(debug_assertions)]
         {
@@ -42,27 +55,28 @@ impl PortablePathManager {
         }
     }
 
-    /// Récupère le répertoire de données principal (./data).
+    /// Returns the path to the main data directory (`<root>/data`).
     pub fn data_dir() -> PathBuf {
         Self::root_dir().join("data")
     }
 
-    /// Récupère le répertoire de la base de données (./data/db).
+    /// Returns the path to the database directory (`<root>/data/db`).
     pub fn db_dir() -> PathBuf {
         Self::data_dir().join("db")
     }
 
-    /// Récupère le répertoire des modèles (./data/models).
+    /// Returns the path to the AI models directory (`<root>/data/models`).
     pub fn models_dir() -> PathBuf {
         Self::data_dir().join("models")
     }
 
-    /// Récupère le répertoire des vecteurs (./data/vectors).
+    /// Returns the path to the vector storage directory (`<root>/data/vectors`).
     pub fn vectors_dir() -> PathBuf {
         Self::data_dir().join("vectors")
     }
 
-    /// Récupère le répertoire des fichiers de session (./data/files/session_{session_id}).
+    /// Returns the path to the directory for a specific session's files.
+    /// (`<root>/data/files/session_{session_id}`).
     #[allow(dead_code)]
     pub fn session_files_dir(session_id: &str) -> PathBuf {
         Self::data_dir()
@@ -70,8 +84,14 @@ impl PortablePathManager {
             .join(format!("session_{}", session_id))
     }
 
-    /// Initialise l'arborescence des fichiers.
-    /// Crée les dossiers data, db, models et vectors s'ils n'existent pas.
+    /// Initializes the necessary application directories.
+    ///
+    /// This function ensures that the `data`, `db`, `models`, and `vectors` directories
+    /// exist, creating them if they don't.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` which is `Ok(())` on success, or an `std::io::Error` on failure.
     pub fn init() -> Result<(), std::io::Error> {
         let data_path = Self::data_dir();
         let db_path = Self::db_dir();
