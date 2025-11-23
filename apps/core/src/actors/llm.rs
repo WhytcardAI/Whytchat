@@ -28,7 +28,7 @@ impl LlmActorHandle {
 
     pub async fn generate_with_params(&self, prompt: String, system_prompt: Option<String>, temperature: Option<f32>) -> Result<String, ActorError> {
         let (send, recv) = oneshot::channel();
-        let msg = LlmMessage::Generate {
+        let msg = LlmMessage::GenerateWithParams {
             prompt,
             system_prompt,
             temperature,
@@ -60,7 +60,7 @@ impl LlmActorHandle {
         chunk_sender: mpsc::Sender<Result<String, ActorError>>,
     ) -> Result<(), ActorError> {
         let (send, recv) = oneshot::channel();
-        let msg = LlmMessage::StreamGenerate {
+        let msg = LlmMessage::StreamGenerateWithParams {
             prompt,
             system_prompt,
             temperature,

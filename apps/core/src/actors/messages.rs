@@ -23,6 +23,12 @@ pub enum LlmMessage {
         temperature: Option<f32>,
         responder: oneshot::Sender<Result<String, ActorError>>,
     },
+    GenerateWithParams {
+        prompt: String,
+        system_prompt: Option<String>,
+        temperature: Option<f32>,
+        responder: oneshot::Sender<Result<String, ActorError>>,
+    },
     StreamGenerate {
         prompt: String,
         system_prompt: Option<String>,
@@ -31,6 +37,13 @@ pub enum LlmMessage {
         // We use mpsc for streaming multiple chunks
         chunk_sender: tokio::sync::mpsc::Sender<Result<String, ActorError>>,
         // Final signal when done (optional, but good for synchronization)
+        responder: oneshot::Sender<Result<(), ActorError>>,
+    },
+    StreamGenerateWithParams {
+        prompt: String,
+        system_prompt: Option<String>,
+        temperature: Option<f32>,
+        chunk_sender: tokio::sync::mpsc::Sender<Result<String, ActorError>>,
         responder: oneshot::Sender<Result<(), ActorError>>,
     },
 }

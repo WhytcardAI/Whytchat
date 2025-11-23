@@ -108,6 +108,22 @@ impl SupervisorRunner {
             } => {
                 info!("Supervisor received: {}", content);
 
+                // Retrieve session configuration from database
+                let (system_prompt, temperature) = if let Some(ref pool) = self.db_pool {
+                    match database::get_session(pool, &session_id).await {
+                        Ok(session) => {
+                            let config = session.model_config.0;
+                            (Some(config.system_prompt), Some(config.temperature))
+                        }
+                        Err(e) => {
+                            error!("Failed to load session config: {}", e);
+                            (None, None)
+                        }
+                    }
+                } else {
+                    (None, None)
+                };
+
                 // Save user message to database
                 if let Some(ref pool) = self.db_pool {
                     if let Err(e) = database::add_message(pool, &session_id, "user", &content).await
