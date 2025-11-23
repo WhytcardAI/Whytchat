@@ -22,33 +22,40 @@ struct AppState {
 // --- Tauri Commands ---
 #[tauri::command]
 async fn debug_chat(
+    session_id: Option<String>,
     message: String,
     window: tauri::Window,
     state: State<'_, AppState>,
 ) -> Result<String, String> {
-    info!("Command received: debug_chat({})", message);
-
-    // For now, use a default session ID. In a real implementation,
-    // this would come from the frontend or be managed per conversation.
-    let session_id = "default-session".to_string();
+    let current_session = session_id.unwrap_or_else(|| "default-session".to_string());
+    info!("Command received: debug_chat({}, {})", current_session, message);
 
     state
         .supervisor
-        .process_message(session_id, message, &window)
+        .process_message(current_session, message, &window)
         .await
         .map_err(|e| e.to_string())
 }
 
+// Default model URL - Qwen 2.5 7B Instruct
+const DEFAULT_MODEL_URL: &str = "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m.gguf";
+const DEFAULT_MODEL_FILENAME: &str = "qwen2.5-7b-instruct-q4_k_m.gguf";
+
 #[tauri::command]
-async fn download_model(window: tauri::Window) -> Result<String, String> {
+async fn download_model(window: tauri::Window, url: Option<String>) -> Result<String, String> {
     use futures::StreamExt;
     use std::io::Write;
     use tauri::Emitter;
 
-    let model_url = "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m.gguf";
+    let model_url = url.unwrap_or_else(|| DEFAULT_MODEL_URL.to_string());
     let models_dir = PortablePathManager::models_dir();
-    let model_path = models_dir.join("qwen2.5-7b-instruct-q4_k_m.gguf");
-
+    let model_filename = if model_url == DEFAULT_MODEL_URL {
+        DEFAULT_MODEL_FILENAME.to_string()
+    } else {
+        // Basic extraction of filename from URL, fallback to default if fails
+        model_url.split('/').last().unwrap_or(DEFAULT_MODEL_FILENAME).to_string()
+    };
+    let model_path = models_dir.join(&model_filename);
     if model_path.exists() {
         return Ok("Model already exists".to_string());
     }
@@ -140,18 +147,21 @@ async fn upload_file_for_session(
             "file_path": relative_path
         }).to_string();
 
-        if let Err(e) = state.supervisor.ingest_content(file_content_str, Some(metadata)).await {
-            error!("Failed to ingest file content: {}", e);
-            // We don't fail the upload if ingestion fails, but we log it.
-        } else {
-             info!("File content ingested successfully.");
+        match state.supervisor.ingest_content(file_content_str, Some(metadata)).await {
+            Ok(_) => {
+                info!("File content ingested successfully.");
+            }
+            Err(e) => {
+                error!("Failed to ingest file content: {}", e);
+                return Ok(format!("File uploaded but RAG ingestion failed: {}", e));
+            }
         }
     } else {
         info!("Skipping RAG ingestion for binary file.");
     }
 
     info!("File uploaded successfully: {}", relative_path);
-    Ok(format!("File uploaded: {}", file_name))
+    Ok(format!("File uploaded successfully: {}", file_name))
 }
 
 fn main() {

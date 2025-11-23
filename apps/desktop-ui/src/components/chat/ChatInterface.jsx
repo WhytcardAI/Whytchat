@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { MessageBubble } from './MessageBubble';
 import { ThinkingBubble } from './ThinkingBubble';
 import { ChatInput } from './ChatInput';
@@ -9,7 +9,7 @@ import { useAppStore } from '../../store/appStore';
 export function ChatInterface() {
   const [messages, setMessages] = useState([]);
   const [uploadStatus, setUploadStatus] = useState(null); // null, 'uploading', 'success', 'error'
-  const { setThinking, addThinkingStep, clearThinkingSteps, isThinking, thinkingSteps } = useAppStore();
+  const { setThinking, addThinkingStep, clearThinkingSteps, isThinking, thinkingSteps, currentSessionId } = useAppStore();
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -54,9 +54,9 @@ export function ChatInterface() {
       if (unlistenThinking) unlistenThinking();
       if (unlistenToken) unlistenToken();
     };
-  }, []);
+  }, [addThinkingStep]);
 
-  const handleSend = async (text, isWebEnabled) => {
+  const handleSend = async (text, _isWebEnabled) => {
     // 1. Add User Message
     const userMsg = { role: 'user', content: text };
     setMessages(prev => [...prev, userMsg]);
@@ -69,7 +69,10 @@ export function ChatInterface() {
       // 3. Call Backend (Real Thinking Mode)
       // The backend will emit 'chat-token' events for the response
       // We await the final result just to ensure completion, but the UI updates via events
-      await invoke('debug_chat', { message: text });
+      await invoke('debug_chat', {
+        session_id: currentSessionId || "default-session",
+        message: text
+      });
 
       setThinking(false);
 
@@ -88,7 +91,7 @@ export function ChatInterface() {
         const arrayBuffer = e.target.result;
         const fileData = Array.from(new Uint8Array(arrayBuffer));
         await invoke('upload_file_for_session', {
-          session_id: 'default-session',
+          session_id: currentSessionId || "default-session",
           file_name: file.name,
           file_data: fileData
         });
@@ -137,7 +140,6 @@ export function ChatInterface() {
           </div>
         )}
         <ChatInput onSend={handleSend} onFileUpload={handleFileUpload} disabled={isThinking} />
-        <ChatInput onSend={handleSend} disabled={isThinking} />
       </div>
     </div>
   );
