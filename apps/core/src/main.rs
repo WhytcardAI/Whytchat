@@ -13,9 +13,9 @@ use fs_manager::PortablePathManager;
 use rate_limiter::RateLimiter;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
-mod encryption;
     Arc, Mutex,
 };
+mod encryption;
 use std::time::Duration;
 use tauri::State;
 use tracing::{error, info, subscriber::set_global_default};

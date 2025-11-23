@@ -138,7 +138,7 @@ where
 fn new_production_runner(
     receiver: mpsc::Receiver<SupervisorMessage>,
     db_pool: Option<SqlitePool>,
-    model_path: std::path.PathBuf,
+    model_path: std::path::PathBuf,
 ) -> SupervisorRunner<LlmActorHandle, RagActorHandle> {
     SupervisorRunner {
         receiver,
