@@ -53,15 +53,13 @@ const _highlight = (node, addItems, text, className) => {
       }
     }
   } else if (node.matches && !node.matches("button, select, textarea")) {
-    node.childNodes.forEach((el) => _highlight(el, addItems, text, className));
+    node.childNodes.forEach(function(el) { return _highlight(el, addItems, text, className) });
   }
 };
 const _highlightText = (thisNode, text, className) => {
   let addItems = [];
   _highlight(thisNode, addItems, text, className);
-  addItems.forEach((obj) =>
-    obj.parent.insertAdjacentElement("beforebegin", obj.target)
-  );
+  for (const obj of addItems) obj.parent.insertAdjacentElement("beforebegin", obj.target)
 };
 
 /**
@@ -86,7 +84,7 @@ const SphinxHighlight = {
     window.history.replaceState({}, "", url);
 
     // get individual terms from highlight string
-    const terms = highlight.toLowerCase().split(/\s+/).filter(x => x);
+    const terms = highlight.toLowerCase().split(/\s+/).filter(function(x) { return x });
     if (terms.length === 0) return; // nothing to do
 
     // There should never be more than one element matching "div.body"
