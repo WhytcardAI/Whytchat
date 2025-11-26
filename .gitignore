@@ -60,6 +60,7 @@ Desktop.ini
 *.pem
 *.key
 secrets/
+.encryption_key
 
 # === Runtime Data (downloaded at runtime) ===
 data/

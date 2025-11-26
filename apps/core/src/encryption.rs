@@ -5,30 +5,104 @@ use aes_gcm::{
 use base64::{engine::general_purpose, Engine as _};
 use rand::Rng;
 use std::env;
+use std::fs;
+use std::path::PathBuf;
+use std::sync::OnceLock;
+
+use crate::fs_manager::PortablePathManager;
 
 const NONCE_SIZE: usize = 12;
 
-/// Retrieves the 32-byte encryption key from the `ENCRYPTION_KEY` environment variable.
-///
-/// This function reads the environment variable and converts it into a fixed-size 32-byte array.
-/// If the variable is shorter than 32 bytes, it's padded with zeros. If it's longer, it's truncated.
+/// Global cached encryption key (generated once at startup)
+static ENCRYPTION_KEY: OnceLock<[u8; 32]> = OnceLock::new();
+
+/// Gets the path to the key file in the data directory
+fn get_key_file_path() -> PathBuf {
+    PortablePathManager::data_dir().join(".encryption_key")
+}
+
+/// Generates a cryptographically secure 32-byte key
+fn generate_secure_key() -> [u8; 32] {
+    let mut key = [0u8; 32];
+    rand::thread_rng().fill(&mut key);
+    key
+}
+
+/// Retrieves the 32-byte encryption key.
+/// 
+/// Priority order:
+/// 1. Cached key (if already loaded this session)
+/// 2. ENCRYPTION_KEY environment variable (for testing/CI)
+/// 3. Stored key file in data directory
+/// 4. Generate new key and save it
 ///
 /// # Returns
 ///
-/// A `Result` containing the 32-byte key array, or an error `String` if the environment
-/// variable is not set.
+/// A `Result` containing the 32-byte key array, or an error `String` on failure.
 pub fn get_encryption_key() -> Result<[u8; 32], String> {
-    let key_str = env::var("ENCRYPTION_KEY").map_err(|_| "ENCRYPTION_KEY environment variable not set")?;
+    // Return cached key if available
+    if let Some(key) = ENCRYPTION_KEY.get() {
+        return Ok(*key);
+    }
 
-    // We expect a 32-byte key.
-    // For simplicity, we pad with zeros if shorter, and truncate if longer.
-    // In a production environment, this should be handled more robustly (e.g., hex decoding).
-    let mut key_bytes = [0u8; 32];
-    let bytes = key_str.as_bytes();
-    let len = bytes.len().min(32);
-    key_bytes[..len].copy_from_slice(&bytes[..len]);
+    // Try environment variable first (for testing/CI)
+    if let Ok(key_str) = env::var("ENCRYPTION_KEY") {
+        let mut key_bytes = [0u8; 32];
+        let bytes = key_str.as_bytes();
+        let len = bytes.len().min(32);
+        key_bytes[..len].copy_from_slice(&bytes[..len]);
+        let _ = ENCRYPTION_KEY.set(key_bytes);
+        return Ok(key_bytes);
+    }
 
-    Ok(key_bytes)
+    // Try to load from file
+    let key_path = get_key_file_path();
+    
+    let key = if key_path.exists() {
+        // Load existing key
+        let key_b64 = fs::read_to_string(&key_path)
+            .map_err(|e| format!("Failed to read encryption key file: {}", e))?;
+        
+        let key_bytes = general_purpose::STANDARD
+            .decode(key_b64.trim())
+            .map_err(|e| format!("Failed to decode encryption key: {}", e))?;
+        
+        if key_bytes.len() != 32 {
+            return Err(format!("Invalid key length: expected 32, got {}", key_bytes.len()));
+        }
+        
+        let mut key = [0u8; 32];
+        key.copy_from_slice(&key_bytes);
+        key
+    } else {
+        // Generate new key and save it
+        let key = generate_secure_key();
+        
+        // Ensure parent directory exists
+        if let Some(parent) = key_path.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|e| format!("Failed to create data directory: {}", e))?;
+        }
+        
+        // Save key as base64
+        let key_b64 = general_purpose::STANDARD.encode(key);
+        fs::write(&key_path, &key_b64)
+            .map_err(|e| format!("Failed to save encryption key: {}", e))?;
+        
+        // Set file permissions (Unix only)
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let perms = fs::Permissions::from_mode(0o600);
+            let _ = fs::set_permissions(&key_path, perms);
+        }
+        
+        key
+    };
+
+    // Cache the key
+    let _ = ENCRYPTION_KEY.set(key);
+    Ok(key)
 }
 
 /// Encrypts data using AES-256-GCM.
