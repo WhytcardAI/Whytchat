@@ -1,5 +1,0 @@
-ignore:
-  - "apps/core/tools/**"
-  - "apps/desktop-ui/dist/**"
-  - "**/node_modules/**"
-  - "**/target/**"
