@@ -89,6 +89,8 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.87.0"
 
       - name: Install dependencies
         run: |
@@ -141,6 +143,8 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.87.0"
 
       - name: Install system dependencies
         run: |
