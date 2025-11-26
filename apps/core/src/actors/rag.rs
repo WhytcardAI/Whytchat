@@ -124,8 +124,8 @@ struct RagActorRunner {
 }
 
 impl RagActorRunner {
-    // NOTE: NonZeroUsize::new(1000) is guaranteed to return Some since 1000 > 0.
-    // Using expect() here per STANDARDS.md: "lazy_static peut paniquer si l'état est irrécupérable"
+    // NOTE: NonZeroUsize::new(1000) always succeeds since 1000 > 0.
+    // match + panic! is used instead of expect() because expect() is not const fn.
     const CACHE_SIZE: NonZeroUsize = match NonZeroUsize::new(1000) {
         Some(size) => size,
         None => panic!("Cache size must be non-zero"),
