@@ -67,19 +67,19 @@ jobs:
         run: |
           echo "## Secret Patterns Check" >> $GITHUB_STEP_SUMMARY
           FOUND=0
-          
+
           # API keys
           if grep -rn "api[_-]\?key\s*[:=]\s*[\"'][^\"']\{20,\}[\"']" apps --include="*.rs" --include="*.js" --include="*.jsx" 2>/dev/null | grep -v test; then
             echo "⚠️ Potential API keys found" >> $GITHUB_STEP_SUMMARY
             FOUND=1
           fi
-          
+
           # Passwords
           if grep -rn "password\s*[:=]\s*[\"'][^\"']\{8,\}[\"']" apps --include="*.rs" --include="*.js" 2>/dev/null | grep -v test | grep -v placeholder; then
             echo "⚠️ Potential passwords found" >> $GITHUB_STEP_SUMMARY
             FOUND=1
           fi
-          
+
           if [ $FOUND -eq 0 ]; then
             echo "✅ No secrets detected" >> $GITHUB_STEP_SUMMARY
           fi
@@ -104,7 +104,7 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           cargo license --manifest-path apps/core/Cargo.toml 2>&1 | head -30 >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          
+
           # Check for GPL
           if cargo license --manifest-path apps/core/Cargo.toml --json 2>/dev/null | grep -i "GPL"; then
             echo "⚠️ GPL dependencies found" >> $GITHUB_STEP_SUMMARY

@@ -32,18 +32,6 @@ impl PortablePathManager {
         CUSTOM_DATA_PATH.get()
     }
 
-    /// Check if running in portable mode (marker file exists next to executable)
-    /// Only used in release builds - in debug mode we always use workspace root
-    #[cfg(not(debug_assertions))]
-    fn is_portable_mode() -> bool {
-        if let Ok(exe_path) = std::env::current_exe() {
-            let marker = exe_path.parent().map(|p| p.join("portable.marker"));
-            marker.map(|m| m.exists()).unwrap_or(false)
-        } else {
-            false
-        }
-    }
-
     /// Gets the executable's directory
     /// Only used in release builds - in debug mode we always use workspace root
     #[cfg(not(debug_assertions))]

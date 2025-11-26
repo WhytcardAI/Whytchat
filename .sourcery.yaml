@@ -50,17 +50,15 @@ github:
     - draft
 
 # =============================================================================
-# Review Settings
+# Review Settings (Deprecated in v1)
 # =============================================================================
-review:
-  # Focus areas
-  rule_settings:
-    enable_default_rules: true
-
-    rule_types:
-      - refactoring
-      - suggestion
-      - comment
+# Note: review section is deprecated in Sourcery v1
+# rule_settings:
+#   enable_default_rules: true
+#   rule_types:
+#     - refactoring
+#     - suggestion
+#     - comment
 
 # =============================================================================
 # Clone Detection
