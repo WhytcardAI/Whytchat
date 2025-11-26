@@ -13,7 +13,7 @@ import { cn } from '../../lib/utils';
 export function ChatInterface() {
   const { t } = useTranslation();
   const [uploadStatus, setUploadStatus] = useState(null); // null, 'uploading', 'success', 'error'
-  const { isThinking, thinkingSteps, currentSessionId, setCurrentSessionId, loadSessions, createSession } = useAppStore();
+  const { isThinking, thinkingSteps, currentSessionId, setCurrentSessionId, loadSessions, createSession, quickAction, clearQuickAction } = useAppStore();
 
   const { messages, sendMessage } = useChatStream(currentSessionId);
 
@@ -32,6 +32,14 @@ export function ChatInterface() {
     loadSessions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
+
+  // Handle Quick Actions (RAG)
+  useEffect(() => {
+    if (quickAction && currentSessionId) {
+      sendMessage(quickAction.prompt, currentSessionId);
+      clearQuickAction();
+    }
+  }, [quickAction, currentSessionId, sendMessage, clearQuickAction]);
 
   const handleSend = useCallback(async (text, _isWebEnabled) => {
     let activeSessionId = currentSessionId;

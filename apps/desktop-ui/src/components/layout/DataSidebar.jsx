@@ -1,11 +1,11 @@
 import { useRef } from 'react';
 import { useAppStore } from '../../store/appStore';
-import { Upload, FolderPlus, FileText, Trash2 } from 'lucide-react';
+import { Upload, FolderPlus, FileText, Trash2, Brain, FileSearch } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export function DataSidebar() {
   const { t } = useTranslation('common');
-  const { sessionFiles, uploadFile, currentSessionId } = useAppStore();
+  const { sessionFiles, uploadFile, currentSessionId, setQuickAction } = useAppStore();
   const fileInputRef = useRef(null);
 
   const handleUploadClick = () => {
@@ -23,6 +23,22 @@ export function DataSidebar() {
     }
     // Reset input
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleAnalyze = (fileName) => {
+    setQuickAction({
+      type: 'analyze',
+      payload: fileName,
+      prompt: t('rag.analyze_prompt', 'Can you analyze the file {{fileName}} and tell me what it is about?', { fileName })
+    });
+  };
+
+  const handleSummarize = (fileName) => {
+    setQuickAction({
+      type: 'summarize',
+      payload: fileName,
+      prompt: t('rag.summarize_prompt', 'Please provide a concise summary of {{fileName}}.', { fileName })
+    });
   };
 
   return (
@@ -59,20 +75,41 @@ export function DataSidebar() {
             </div>
           ) : (
             <div className="space-y-1">
-              {sessionFiles.map((file, index) => (
-                <div key={file.id || index} className="group flex items-center gap-3 p-2 rounded-lg hover:bg-surface/80 transition-colors border border-transparent hover:border-border/50">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-                    <FileText size={16} />
+              {sessionFiles.map((file, index) => {
+                const fileName = (file.file_path || file.path || '').split('/').pop();
+                return (
+                  <div key={file.id || index} className="group flex items-center gap-3 p-2 rounded-lg hover:bg-surface/80 transition-colors border border-transparent hover:border-border/50">
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                      <FileText size={16} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-text truncate">{fileName}</p>
+                      <p className="text-[10px] text-muted truncate">{file.file_type}</p>
+                    </div>
+
+                    {/* Quick Actions */}
+                    <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleAnalyze(fileName)}
+                        title={t('rag.analyze', 'Analyze')}
+                        className="p-1.5 text-muted hover:text-primary transition-colors"
+                      >
+                        <Brain size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleSummarize(fileName)}
+                        title={t('rag.summarize', 'Summarize')}
+                        className="p-1.5 text-muted hover:text-primary transition-colors"
+                      >
+                        <FileSearch size={14} />
+                      </button>
+                      <button className="p-1.5 text-muted hover:text-destructive transition-colors">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-text truncate">{(file.file_path || file.path || '').split('/').pop()}</p>
-                    <p className="text-[10px] text-muted truncate">{file.file_type}</p>
-                  </div>
-                  <button className="opacity-0 group-hover:opacity-100 p-1.5 text-muted hover:text-destructive transition-all">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

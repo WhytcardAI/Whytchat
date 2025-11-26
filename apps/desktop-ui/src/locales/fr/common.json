@@ -34,7 +34,14 @@
     "input": {
       "placeholder": "Tapez votre message...",
       "send": "Envoyer"
-    }
+    },
+    "attach": "Joindre un fichier"
+  },
+  "rag": {
+    "analyze": "Analyser",
+    "summarize": "Résumer",
+    "analyze_prompt": "Peux-tu analyser le fichier {{fileName}} et me dire de quoi il parle ?",
+    "summarize_prompt": "Fais-moi un résumé concis de {{fileName}}."
   },
   "nav": {
     "new_chat": "Nouvelle"

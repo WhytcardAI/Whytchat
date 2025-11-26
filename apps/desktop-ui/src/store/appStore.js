@@ -351,6 +351,15 @@ export const useAppStore = create(
       toast.error(message);
       set({ error: message });
     },
+
+    // Quick Actions (for RAG/File interactions)
+    quickAction: null,
+    setQuickAction: function(action) {
+      return set({ quickAction: action });
+    },
+    clearQuickAction: function() {
+      return set({ quickAction: null });
+    },
   }),
   {
     name: 'whytchat-storage',

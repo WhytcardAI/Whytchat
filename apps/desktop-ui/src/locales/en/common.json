@@ -34,7 +34,14 @@
     "input": {
       "placeholder": "Type your message...",
       "send": "Send"
-    }
+    },
+    "attach": "Attach file"
+  },
+  "rag": {
+    "analyze": "Analyze",
+    "summarize": "Summarize",
+    "analyze_prompt": "Can you analyze the file {{fileName}} and tell me what it is about?",
+    "summarize_prompt": "Please provide a concise summary of {{fileName}}."
   },
   "nav": {
     "new_chat": "New Chat"

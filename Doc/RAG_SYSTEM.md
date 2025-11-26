@@ -57,12 +57,12 @@ Contrairement à beaucoup de systèmes RAG qui mélangent toutes les données da
 
 La table `knowledge_base` suit ce schéma Arrow :
 
-| Champ      | Type               | Description                             |
-| :--------- | :----------------- | :-------------------------------------- |
-| `id`       | Utf8               | UUID unique du chunk.                   |
-| `content`  | Utf8               | Le texte brut du chunk.                 |
-| `metadata` | Utf8               | Tag de fichier (ex: `file:123-abc`).    |
-| `vector`   | FixedSizeList<f32> | Le vecteur d'embedding (dim 384).       |
+| Champ      | Type               | Description                          |
+| :--------- | :----------------- | :----------------------------------- |
+| `id`       | Utf8               | UUID unique du chunk.                |
+| `content`  | Utf8               | Le texte brut du chunk.              |
+| `metadata` | Utf8               | Tag de fichier (ex: `file:123-abc`). |
+| `vector`   | FixedSizeList<f32> | Le vecteur d'embedding (dim 384).    |
 
 ## 🚀 Performance & Optimisations
 
