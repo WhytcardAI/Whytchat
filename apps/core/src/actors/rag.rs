@@ -124,6 +124,10 @@ struct RagActorRunner {
 }
 
 impl RagActorRunner {
+    /// The cache size for the embedding cache.
+    /// NonZeroUsize::new(1000) always succeeds since 1000 > 0.
+    const CACHE_SIZE: NonZeroUsize = NonZeroUsize::new(1000).expect("Cache size must be non-zero");
+
     fn new(
         receiver: mpsc::Receiver<RagMessage>,
         db_path_override: Option<PathBuf>,
@@ -132,7 +136,7 @@ impl RagActorRunner {
         Self {
             receiver,
             embedding_model: None,
-            embedding_cache: LruCache::new(NonZeroUsize::new(1000).unwrap()),
+            embedding_cache: LruCache::new(Self::CACHE_SIZE),
             db_connection: None,
             table_name: "knowledge_base".to_string(),
             db_path_override,
@@ -143,7 +147,25 @@ impl RagActorRunner {
     async fn run(mut self) {
         info!("RagActor started");
 
-        // Initialize FastEmbed with local cache directory
+        // Initialize components - errors are logged but don't stop the actor
+        // as it can still function with reduced capabilities
+        if let Err(e) = self.initialize_embedding_model() {
+            error!("Failed to initialize embedding model: {}", e);
+        }
+
+        if let Err(e) = self.initialize_lancedb().await {
+            error!("Failed to initialize LanceDB: {}", e);
+        }
+
+        while let Some(msg) = self.receiver.recv().await {
+            self.handle_message(msg).await;
+        }
+        info!("RagActor stopped");
+    }
+
+    /// Initializes the FastEmbed embedding model.
+    /// Returns an error if the model cannot be loaded.
+    fn initialize_embedding_model(&mut self) -> Result<(), ActorError> {
         let embeddings_dir = PortablePathManager::models_dir().join("embeddings");
         let mut options = InitOptions::new(EmbeddingModel::AllMiniLML6V2);
         options.show_download_progress = false;
@@ -153,11 +175,15 @@ impl RagActorRunner {
             Ok(model) => {
                 info!("Embedding model loaded successfully");
                 self.embedding_model = Some(model);
+                Ok(())
             }
-            Err(e) => error!("Failed to load embedding model: {}", e),
+            Err(e) => Err(ActorError::RagError(format!("Failed to load embedding model: {}", e))),
         }
+    }
 
-        // Initialize LanceDB
+    /// Initializes the LanceDB vector database connection.
+    /// Returns an error if the database path is invalid or connection fails.
+    async fn initialize_lancedb(&mut self) -> Result<(), ActorError> {
         let db_path = self
             .db_path_override
             .clone()
@@ -167,23 +193,32 @@ impl RagActorRunner {
         if self.db_path_override.is_some() {
             if let Some(parent) = db_path.parent() {
                 if let Err(e) = std::fs::create_dir_all(parent) {
-                    error!("Failed to create database directory at {:?}: {}", parent, e);
+                    return Err(ActorError::RagError(format!(
+                        "Failed to create database directory at {:?}: {}",
+                        parent, e
+                    )));
                 }
             }
         }
 
-        match connect(db_path.to_str().unwrap()).execute().await {
+        let db_path_str = db_path.to_str().ok_or_else(|| {
+            ActorError::RagError(format!(
+                "Failed to convert database path to string: {:?}",
+                db_path
+            ))
+        })?;
+
+        match connect(db_path_str).execute().await {
             Ok(conn) => {
                 info!("Connected to LanceDB at {:?}", db_path);
                 self.db_connection = Some(conn);
+                Ok(())
             }
-            Err(e) => error!("Failed to connect to LanceDB: {}", e),
+            Err(e) => Err(ActorError::RagError(format!(
+                "Failed to connect to LanceDB: {}",
+                e
+            ))),
         }
-
-        while let Some(msg) = self.receiver.recv().await {
-            self.handle_message(msg).await;
-        }
-        info!("RagActor stopped");
     }
 
     async fn handle_message(&mut self, msg: RagMessage) {

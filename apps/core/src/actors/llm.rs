@@ -435,7 +435,8 @@ impl LlmActorRunner {
         payload["temperature"] = serde_json::Value::Number(
             serde_json::Number::from_f64(temp as f64).unwrap_or_else(|| {
                 warn!("Invalid temperature value: {}. Using default 0.7.", temp);
-                serde_json::Number::from_f64(0.7).unwrap()
+                // NOTE: from_f64(0.7) is guaranteed to succeed since 0.7 is a valid float
+                serde_json::Number::from_f64(0.7).expect("0.7 is a valid float constant")
             }),
         );
 
@@ -509,7 +510,8 @@ impl LlmActorRunner {
         payload["temperature"] = serde_json::Value::Number(
             serde_json::Number::from_f64(temp as f64).unwrap_or_else(|| {
                 warn!("Invalid temperature value: {}. Using default 0.7.", temp);
-                serde_json::Number::from_f64(0.7).unwrap()
+                // NOTE: from_f64(0.7) is guaranteed to succeed since 0.7 is a valid float
+                serde_json::Number::from_f64(0.7).expect("0.7 is a valid float constant")
             }),
         );
 

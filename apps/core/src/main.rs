@@ -71,6 +71,49 @@ impl AppState {
     }
 }
 
+// --- State Access Utilities ---
+
+/// Acquires the app_handle lock and returns the initialized state reference.
+/// Returns an error if the lock is poisoned or the state is not initialized.
+fn get_initialized_state(state: &AppState) -> Result<std::sync::MutexGuard<'_, Option<InitializedState>>, String> { get_lock(&state.app_handle) }
+    state.app_handle.lock()
+        .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))
+}
+
+/// Extracts the database pool from the initialized state.
+/// This is a convenience function that handles the common pattern of getting just the pool.
+fn get_pool(state: &AppState) -> Result<sqlx::sqlite::SqlitePool, String> {
+    let handle = get_initialized_state(state)?;
+    let initialized_state = handle.as_ref().ok_or("Application state not found")?;
+    Ok(initialized_state.pool.clone())
+}
+
+/// Extracts both the database pool and supervisor handle from the initialized state.
+/// Used by commands that need to interact with both the database and the actor system.
+fn get_pool_and_supervisor(state: &AppState) -> Result<(sqlx::sqlite::SqlitePool, SupervisorHandle), String> {
+    let handle = get_initialized_state(state)?;
+    let initialized_state = handle.as_ref().ok_or("Application state not found")?;
+    Ok((initialized_state.pool.clone(), initialized_state.supervisor.clone()))
+}
+
+/// Checks rate limit for a session and returns the pool and supervisor if allowed.
+/// This combines the common pattern of rate limiting before processing a request.
+fn check_rate_limit_and_get_resources(
+    state: &AppState,
+    session_id: &str,
+) -> Result<(sqlx::sqlite::SqlitePool, SupervisorHandle), String> {
+    let handle = get_initialized_state(state)?;
+    let initialized_state = handle.as_ref().ok_or("Application state not found")?;
+
+    let mut limiter = initialized_state.rate_limiter.lock()
+        .map_err(|e| format!("Failed to acquire rate_limiter lock: {}", e))?;
+    if !limiter.check(session_id) {
+        return Err(error::AppError::RateLimited.to_string());
+    }
+
+    Ok((initialized_state.pool.clone(), initialized_state.supervisor.clone()))
+}
+
 // --- Tauri Commands ---
 
 /// Asynchronously initializes the application's backend services.
@@ -100,7 +143,8 @@ async fn initialize_app(state: State<'_, AppState>) -> Result<(), String> {
     let supervisor = SupervisorHandle::new_with_pool_and_model(Some(db_pool.clone()), model_path);
 
     // Store the initialized state
-    let mut app_handle = state.app_handle.lock().unwrap();
+    let mut app_handle = state.app_handle.lock()
+        .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
     *app_handle = Some(InitializedState {
         supervisor,
         pool: db_pool,
@@ -151,17 +195,13 @@ async fn debug_chat(
     info!("│ Message: {} chars", message.len());
     info!("└─────────────────────────────────────────────────────┘");
 
-    let (pool, supervisor) = {
-        let handle = state.app_handle.lock().unwrap();
-        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
-
-        let mut limiter = initialized_state.rate_limiter.lock().unwrap();
-        if !limiter.check(&current_session) {
-            error!("Rate limit exceeded for session: {}", current_session);
-            return Err(error::AppError::RateLimited.to_string());
-        }
-        (initialized_state.pool.clone(), initialized_state.supervisor.clone())
-    };
+    let (pool, supervisor) = check_rate_limit_and_get_resources(&state, &current_session)
+        .map_err(|e| {
+            if e.contains("Rate limit") {
+                error!("Rate limit exceeded for session: {}", current_session);
+            }
+            e
+        })?;
 
     // Ensure session exists
     if database::get_session(&pool, &current_session).await.is_err() {
@@ -207,11 +247,7 @@ async fn create_session(
         return Err("Application is not initialized yet.".to_string());
     }
 
-    let pool = {
-        let handle = state.app_handle.lock().unwrap();
-        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
-        initialized_state.pool.clone()
-    };
+    let pool = get_pool(&state)?;
 
     // Set system prompt based on language or use provided one
     let final_system_prompt = if let Some(prompt) = system_prompt {
@@ -250,11 +286,7 @@ async fn list_sessions(state: State<'_, AppState>) -> Result<Vec<crate::models::
         return Err("Application is not initialized yet.".to_string());
     }
 
-    let pool = {
-        let handle = state.app_handle.lock().unwrap();
-        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
-        initialized_state.pool.clone()
-    };
+    let pool = get_pool(&state)?;
 
     let sessions = database::list_sessions(&pool)
         .await
@@ -272,11 +304,7 @@ async fn get_session_messages(
         return Err("Application is not initialized yet.".to_string());
     }
 
-    let pool = {
-        let handle = state.app_handle.lock().unwrap();
-        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
-        initialized_state.pool.clone()
-    };
+    let pool = get_pool(&state)?;
 
     let messages = database::get_session_messages(&pool, &session_id)
         .await
@@ -294,11 +322,7 @@ async fn get_session_files(
         return Err("Application is not initialized yet.".to_string());
     }
 
-    let pool = {
-        let handle = state.app_handle.lock().unwrap();
-        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
-        initialized_state.pool.clone()
-    };
+    let pool = get_pool(&state)?;
 
     let files = database::get_session_files(&pool, &session_id)
         .await
@@ -318,11 +342,7 @@ async fn update_session(
         return Err("Application is not initialized yet.".to_string());
     }
 
-    let pool = {
-        let handle = state.app_handle.lock().unwrap();
-        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
-        initialized_state.pool.clone()
-    };
+    let pool = get_pool(&state)?;
 
     database::update_session(&pool, &session_id, title, model_config)
         .await
@@ -340,11 +360,7 @@ async fn toggle_session_favorite(
         return Err("Application is not initialized yet.".to_string());
     }
 
-    let pool = {
-        let handle = state.app_handle.lock().unwrap();
-        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
-        initialized_state.pool.clone()
-    };
+    let pool = get_pool(&state)?;
 
     database::toggle_session_favorite(&pool, &session_id)
         .await
@@ -361,11 +377,7 @@ async fn delete_session(
         return Err("Application is not initialized yet.".to_string());
     }
 
-    let pool = {
-        let handle = state.app_handle.lock().unwrap();
-        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
-        initialized_state.pool.clone()
-    };
+    let pool = get_pool(&state)?;
 
     database::delete_session(&pool, &session_id)
         .await
@@ -384,11 +396,7 @@ async fn create_folder(
         return Err("Application is not initialized yet.".to_string());
     }
 
-    let pool = {
-        let handle = state.app_handle.lock().unwrap();
-        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
-        initialized_state.pool.clone()
-    };
+    let pool = get_pool(&state)?;
 
     database::create_folder(&pool, name, color, folder_type)
         .await
@@ -404,11 +412,7 @@ async fn list_folders(
         return Err("Application is not initialized yet.".to_string());
     }
 
-    let pool = {
-        let handle = state.app_handle.lock().unwrap();
-        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
-        initialized_state.pool.clone()
-    };
+    let pool = get_pool(&state)?;
 
     database::list_folders(&pool)
         .await
@@ -425,11 +429,7 @@ async fn delete_folder(
         return Err("Application is not initialized yet.".to_string());
     }
 
-    let pool = {
-        let handle = state.app_handle.lock().unwrap();
-        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
-        initialized_state.pool.clone()
-    };
+    let pool = get_pool(&state)?;
 
     database::delete_folder(&pool, &folder_id)
         .await
@@ -447,11 +447,7 @@ async fn move_session_to_folder(
         return Err("Application is not initialized yet.".to_string());
     }
 
-    let pool = {
-        let handle = state.app_handle.lock().unwrap();
-        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
-        initialized_state.pool.clone()
-    };
+    let pool = get_pool(&state)?;
 
     database::move_session_to_folder(&pool, &session_id, folder_id.as_deref())
         .await
@@ -469,11 +465,7 @@ async fn move_file_to_folder(
         return Err("Application is not initialized yet.".to_string());
     }
 
-    let pool = {
-        let handle = state.app_handle.lock().unwrap();
-        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
-        initialized_state.pool.clone()
-    };
+    let pool = get_pool(&state)?;
 
     database::move_file_to_folder(&pool, &file_id, folder_id.as_deref())
         .await
@@ -490,11 +482,7 @@ async fn delete_file(
         return Err("Application is not initialized yet.".to_string());
     }
 
-    let pool = {
-        let handle = state.app_handle.lock().unwrap();
-        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
-        initialized_state.pool.clone()
-    };
+    let pool = get_pool(&state)?;
 
     // 1. Remove from DB and get path
     let file_path_str = database::delete_library_file(&pool, &file_id)
@@ -522,11 +510,7 @@ async fn reindex_library(state: State<'_, AppState>) -> Result<String, String> {
 
     info!("Starting library reindexing...");
 
-    let (pool, supervisor) = {
-        let handle = state.app_handle.lock().unwrap();
-        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
-        (initialized_state.pool.clone(), initialized_state.supervisor.clone())
-    };
+    let (pool, supervisor) = get_pool_and_supervisor(&state)?;
 
     let files = database::list_library_files(&pool)
         .await
@@ -581,11 +565,7 @@ async fn list_library_files(
         return Err("Application is not initialized yet.".to_string());
     }
 
-    let pool = {
-        let handle = state.app_handle.lock().unwrap();
-        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
-        initialized_state.pool.clone()
-    };
+    let pool = get_pool(&state)?;
 
     database::list_library_files(&pool)
         .await
@@ -612,14 +592,7 @@ async fn save_generated_file(
     info!("└─────────────────────────────────────────────────────┘");
 
     // Get pool and supervisor
-    let (pool, supervisor) = {
-        let handle = state.app_handle.lock().unwrap();
-        if let Some(s) = handle.as_ref() {
-            (s.pool.clone(), s.supervisor.clone())
-        } else {
-            return Err("Application state not found".to_string());
-        }
-    };
+    let (pool, supervisor) = get_pool_and_supervisor(&state)?;
 
     // 1. Save file to disk
     let file_uuid = uuid::Uuid::new_v4().to_string();
@@ -730,14 +703,7 @@ async fn upload_file_for_session(
     info!("   ✓ Extracted {} characters from file", content.len());
 
     // Get pool and supervisor from state
-    let (pool, supervisor) = {
-        let handle = state.app_handle.lock().unwrap();
-        if let Some(s) = handle.as_ref() {
-            (s.pool.clone(), s.supervisor.clone())
-        } else {
-            return Err("Application state not found".to_string());
-        }
-    };
+    let (pool, supervisor) = get_pool_and_supervisor(&state)?;
 
     // Ensure session exists (Fix for FOREIGN KEY constraint failed)
     if database::get_session(&pool, &session_id).await.is_err() {
@@ -820,14 +786,7 @@ async fn link_library_file_to_session(
     info!("│ File ID: {}", file_id);
     info!("└─────────────────────────────────────────────────────┘");
 
-    let pool = {
-        let handle = state.app_handle.lock().unwrap();
-        if let Some(s) = handle.as_ref() {
-            s.pool.clone()
-        } else {
-            return Err("Application state not found".to_string());
-        }
-    };
+    let pool = get_pool(&state)?;
 
     // Verify file exists in library
     let _file = database::get_library_file(&pool, &file_id)
