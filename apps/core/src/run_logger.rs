@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 use tracing::{error, info, warn};
 
 /// Maximum number of runs to keep in the log file
@@ -62,8 +62,9 @@ pub struct ErrorEntry {
     pub context: Option<String>,
 }
 
-/// Global run logger instance
-static GLOBAL_LOGGER: Mutex<Option<RunLogger>> = Mutex::new(None);
+/// Global run logger instance. Uses OnceLock for safe one-time initialization
+/// and Mutex for interior mutability.
+static GLOBAL_LOGGER: OnceLock<Mutex<RunLogger>> = OnceLock::new();
 
 /// Logger for tracking application runs
 pub struct RunLogger {
@@ -117,12 +118,9 @@ impl RunLogger {
     }
 
     /// Initializes the global run logger.
-    /// Call this at application startup.
+    /// Call this at application startup. Safe to call multiple times - only the first call initializes.
     pub fn init_global() {
-        let mut global = GLOBAL_LOGGER.lock().unwrap();
-        if global.is_none() {
-            *global = Some(Self::start_run());
-        }
+        GLOBAL_LOGGER.get_or_init(|| Mutex::new(Self::start_run()));
     }
 
     /// Gets the path to the run.log file.
@@ -169,20 +167,32 @@ impl RunLogger {
     }
 
     /// Logs an error with context to the global logger.
+    /// Logs a warning if the mutex lock fails.
     pub fn global_log_error_with_context(message: &str, context: Option<&str>) {
-        if let Ok(mut global) = GLOBAL_LOGGER.lock() {
-            if let Some(logger) = global.as_mut() {
-                logger.log_error_with_context(message, context);
+        if let Some(logger_mutex) = GLOBAL_LOGGER.get() {
+            match logger_mutex.lock() {
+                Ok(mut logger) => {
+                    logger.log_error_with_context(message, context);
+                }
+                Err(e) => {
+                    warn!("Run logger mutex poisoned, cannot log error: {}", e);
+                }
             }
         }
     }
 
     /// Logs info to the global logger.
+    /// Note: This triggers a file write for persistence.
     pub fn global_log_info(message: &str) {
-        if let Ok(mut global) = GLOBAL_LOGGER.lock() {
-            if let Some(logger) = global.as_mut() {
-                logger.log_info(message);
-                logger.write_to_file();
+        if let Some(logger_mutex) = GLOBAL_LOGGER.get() {
+            match logger_mutex.lock() {
+                Ok(mut logger) => {
+                    logger.log_info(message);
+                    logger.write_to_file();
+                }
+                Err(e) => {
+                    warn!("Run logger mutex poisoned, cannot log info: {}", e);
+                }
             }
         }
     }
@@ -221,12 +231,29 @@ impl RunLogger {
     }
 
     /// Completes the global run logger.
+    /// Logs a warning if the mutex lock fails.
     pub fn complete_global(success: bool) {
-        if let Ok(mut global) = GLOBAL_LOGGER.lock() {
-            if let Some(logger) = global.as_mut() {
-                logger.complete_run(success);
+        if let Some(logger_mutex) = GLOBAL_LOGGER.get() {
+            match logger_mutex.lock() {
+                Ok(mut logger) => {
+                    logger.complete_run(success);
+                }
+                Err(e) => {
+                    warn!("Run logger mutex poisoned, cannot complete run: {}", e);
+                }
             }
         }
+    }
+
+    /// Checks if there were any errors logged in the current global run.
+    /// Returns true if there are errors, false otherwise or if logger isn't initialized.
+    pub fn global_has_errors() -> bool {
+        if let Some(logger_mutex) = GLOBAL_LOGGER.get() {
+            if let Ok(logger) = logger_mutex.lock() {
+                return !logger.current_run.errors.is_empty();
+            }
+        }
+        false
     }
 
     /// Writes the current run to the log file, maintaining only the last MAX_RUNS entries.
@@ -247,9 +274,10 @@ impl RunLogger {
             runs.push(self.current_run.clone());
         }
 
-        // Keep only the last MAX_RUNS entries
-        while runs.len() > MAX_RUNS {
-            runs.remove(0);
+        // Keep only the last MAX_RUNS entries - efficiently remove from front
+        if runs.len() > MAX_RUNS {
+            let excess = runs.len() - MAX_RUNS;
+            runs.drain(..excess);
         }
 
         // Write back to file

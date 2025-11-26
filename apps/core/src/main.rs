@@ -1418,8 +1418,9 @@ fn main() {
         match event {
             RunEvent::Exit => {
                 info!("Application exit event received. Cleaning up...");
-                // Complete the run log with success status
-                run_logger::RunLogger::complete_global(true);
+                // Complete the run log - mark as failure if there were any errors logged
+                let success = !run_logger::RunLogger::global_has_errors();
+                run_logger::RunLogger::complete_global(success);
                 // Force kill any remaining llama-server processes on Windows
                 #[cfg(windows)]
                 {
