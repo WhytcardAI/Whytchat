@@ -21,14 +21,14 @@ use std::sync::{
     Arc, Mutex,
 };
 mod encryption;
-use futures::StreamExt;
-use std::fs::File;
 use std::time::Duration;
-use tauri::{Emitter, RunEvent, State, WindowEvent};
-use tokio::io::AsyncWriteExt;
-use tracing::{error, info, subscriber::set_global_default, warn};
+use tauri::{Emitter, State, RunEvent, WindowEvent};
+use tracing::{error, info, warn, subscriber::set_global_default};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
+use std::fs::File;
+use tokio::io::AsyncWriteExt;
+use futures::StreamExt;
 use zip::ZipArchive;
 
 // --- Constants ---
@@ -75,12 +75,8 @@ impl AppState {
 
 /// Acquires the app_handle lock and returns the initialized state reference.
 /// Returns an error if the lock is poisoned or the state is not initialized.
-fn get_initialized_state(
-    state: &AppState,
-) -> Result<std::sync::MutexGuard<'_, Option<InitializedState>>, String> {
-    state
-        .app_handle
-        .lock()
+fn get_initialized_state(state: &AppState) -> Result<std::sync::MutexGuard<'_, Option<InitializedState>>, String> {
+    state.app_handle.lock()
         .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))
 }
 
@@ -94,15 +90,10 @@ fn get_pool(state: &AppState) -> Result<sqlx::sqlite::SqlitePool, String> {
 
 /// Extracts both the database pool and supervisor handle from the initialized state.
 /// Used by commands that need to interact with both the database and the actor system.
-fn get_pool_and_supervisor(
-    state: &AppState,
-) -> Result<(sqlx::sqlite::SqlitePool, SupervisorHandle), String> {
+fn get_pool_and_supervisor(state: &AppState) -> Result<(sqlx::sqlite::SqlitePool, SupervisorHandle), String> {
     let handle = get_initialized_state(state)?;
     let initialized_state = handle.as_ref().ok_or("Application state not found")?;
-    Ok((
-        initialized_state.pool.clone(),
-        initialized_state.supervisor.clone(),
-    ))
+    Ok((initialized_state.pool.clone(), initialized_state.supervisor.clone()))
 }
 
 /// Checks rate limit for a session and returns the pool and supervisor if allowed.
@@ -114,18 +105,13 @@ fn check_rate_limit_and_get_resources(
     let handle = get_initialized_state(state)?;
     let initialized_state = handle.as_ref().ok_or("Application state not found")?;
 
-    let mut limiter = initialized_state
-        .rate_limiter
-        .lock()
+    let mut limiter = initialized_state.rate_limiter.lock()
         .map_err(|e| format!("Failed to acquire rate_limiter lock: {}", e))?;
     if !limiter.check(session_id) {
         return Err(error::AppError::RateLimited.to_string());
     }
 
-    Ok((
-        initialized_state.pool.clone(),
-        initialized_state.supervisor.clone(),
-    ))
+    Ok((initialized_state.pool.clone(), initialized_state.supervisor.clone()))
 }
 
 // --- Tauri Commands ---
@@ -157,9 +143,7 @@ async fn initialize_app(state: State<'_, AppState>) -> Result<(), String> {
     let supervisor = SupervisorHandle::new_with_pool_and_model(Some(db_pool.clone()), model_path);
 
     // Store the initialized state
-    let mut app_handle = state
-        .app_handle
-        .lock()
+    let mut app_handle = state.app_handle.lock()
         .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
     *app_handle = Some(InitializedState {
         supervisor,
@@ -211,8 +195,8 @@ async fn debug_chat(
     info!("│ Message: {} chars", message.len());
     info!("└─────────────────────────────────────────────────────┘");
 
-    let (pool, supervisor) =
-        check_rate_limit_and_get_resources(&state, &current_session).map_err(|e| {
+    let (pool, supervisor) = check_rate_limit_and_get_resources(&state, &current_session)
+        .map_err(|e| {
             if e.contains("Rate limit") {
                 error!("Rate limit exceeded for session: {}", current_session);
             }
@@ -220,24 +204,14 @@ async fn debug_chat(
         })?;
 
     // Ensure session exists
-    if database::get_session(&pool, &current_session)
-        .await
-        .is_err()
-    {
+    if database::get_session(&pool, &current_session).await.is_err() {
         info!("Session {} not found, creating it...", current_session);
         let model_config = models::ModelConfig {
             model_id: DEFAULT_MODEL_FILENAME.to_string(),
             temperature: 0.7,
             system_prompt: String::new(),
         };
-        if let Err(e) = database::create_session_with_id(
-            &pool,
-            &current_session,
-            "New Chat".to_string(),
-            model_config,
-        )
-        .await
-        {
+        if let Err(e) = database::create_session_with_id(&pool, &current_session, "New Chat".to_string(), model_config).await {
             error!("Failed to auto-create session {}: {}", current_session, e);
             return Err(format!("Failed to create session: {}", e));
         }
@@ -267,7 +241,7 @@ async fn create_session(
     language: Option<String>,
     system_prompt: Option<String>,
     temperature: Option<f32>,
-    state: State<'_, AppState>,
+    state: State<'_, AppState>
 ) -> Result<String, String> {
     if !state.is_initialized.load(Ordering::SeqCst) {
         return Err("Application is not initialized yet.".to_string());
@@ -395,7 +369,10 @@ async fn toggle_session_favorite(
 
 #[tracing::instrument(skip(state))]
 #[tauri::command]
-async fn delete_session(session_id: String, state: State<'_, AppState>) -> Result<(), String> {
+async fn delete_session(
+    session_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
     if !state.is_initialized.load(Ordering::SeqCst) {
         return Err("Application is not initialized yet.".to_string());
     }
@@ -428,7 +405,9 @@ async fn create_folder(
 
 #[tracing::instrument(skip(state))]
 #[tauri::command]
-async fn list_folders(state: State<'_, AppState>) -> Result<Vec<models::Folder>, String> {
+async fn list_folders(
+    state: State<'_, AppState>,
+) -> Result<Vec<models::Folder>, String> {
     if !state.is_initialized.load(Ordering::SeqCst) {
         return Err("Application is not initialized yet.".to_string());
     }
@@ -442,7 +421,10 @@ async fn list_folders(state: State<'_, AppState>) -> Result<Vec<models::Folder>,
 
 #[tracing::instrument(skip(state))]
 #[tauri::command]
-async fn delete_folder(folder_id: String, state: State<'_, AppState>) -> Result<(), String> {
+async fn delete_folder(
+    folder_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
     if !state.is_initialized.load(Ordering::SeqCst) {
         return Err("Application is not initialized yet.".to_string());
     }
@@ -492,7 +474,10 @@ async fn move_file_to_folder(
 
 #[tracing::instrument(skip(state))]
 #[tauri::command]
-async fn delete_file(file_id: String, state: State<'_, AppState>) -> Result<(), String> {
+async fn delete_file(
+    file_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
     if !state.is_initialized.load(Ordering::SeqCst) {
         return Err("Application is not initialized yet.".to_string());
     }
@@ -507,8 +492,7 @@ async fn delete_file(file_id: String, state: State<'_, AppState>) -> Result<(), 
     // 2. Remove from disk
     let path = std::path::Path::new(&file_path_str);
     if path.exists() {
-        std::fs::remove_file(path)
-            .map_err(|e| format!("Failed to delete file from disk: {}", e))?;
+        std::fs::remove_file(path).map_err(|e| format!("Failed to delete file from disk: {}", e))?;
         info!("Deleted file from disk: {:?}", path);
     } else {
         warn!("File not found on disk, skipping deletion: {:?}", path);
@@ -545,16 +529,18 @@ async fn reindex_library(state: State<'_, AppState>) -> Result<String, String> {
         }
 
         match tokio::fs::read_to_string(path).await {
-            Ok(content) => match supervisor.reindex_file(file.id.clone(), content).await {
-                Ok(_) => {
-                    info!("Reindexed file: {}", file.name);
-                    success_count += 1;
+            Ok(content) => {
+                match supervisor.reindex_file(file.id.clone(), content).await {
+                    Ok(_) => {
+                        info!("Reindexed file: {}", file.name);
+                        success_count += 1;
+                    }
+                    Err(e) => {
+                        error!("Failed to reindex file {}: {}", file.name, e);
+                        error_count += 1;
+                    }
                 }
-                Err(e) => {
-                    error!("Failed to reindex file {}: {}", file.name, e);
-                    error_count += 1;
-                }
-            },
+            }
             Err(e) => {
                 error!("Failed to read file {}: {}", file.name, e);
                 error_count += 1;
@@ -611,14 +597,10 @@ async fn save_generated_file(
     // 1. Save file to disk
     let file_uuid = uuid::Uuid::new_v4().to_string();
     let files_dir = PortablePathManager::data_dir().join("files");
-    std::fs::create_dir_all(&files_dir)
-        .map_err(|e| format!("Failed to create files directory: {}", e))?;
+    std::fs::create_dir_all(&files_dir).map_err(|e| format!("Failed to create files directory: {}", e))?;
 
     // Basic sanitization
-    let safe_name = file_name.replace(
-        |c: char| !c.is_alphanumeric() && c != '.' && c != '-' && c != '_',
-        "_",
-    );
+    let safe_name = file_name.replace(|c: char| !c.is_alphanumeric() && c != '.' && c != '-' && c != '_', "_");
     let extension = std::path::Path::new(&safe_name)
         .extension()
         .and_then(|ext| ext.to_str())
@@ -648,10 +630,8 @@ async fn save_generated_file(
         &safe_name,
         &file_path.to_string_lossy(),
         file_type,
-        content.len() as i64,
-    )
-    .await
-    .map_err(|e| format!("Failed to add file to library: {}", e))?;
+        content.len() as i64
+    ).await.map_err(|e| format!("Failed to add file to library: {}", e))?;
 
     // 3. Link to session
     database::link_file_to_session(&pool, &session_id, &file_uuid)
@@ -727,32 +707,21 @@ async fn upload_file_for_session(
 
     // Ensure session exists (Fix for FOREIGN KEY constraint failed)
     if database::get_session(&pool, &session_id).await.is_err() {
-        info!(
-            "Session {} not found during upload, creating it...",
-            session_id
-        );
+        info!("Session {} not found during upload, creating it...", session_id);
         let model_config = models::ModelConfig {
             model_id: DEFAULT_MODEL_FILENAME.to_string(),
             temperature: 0.7,
             system_prompt: String::new(),
         };
-        if let Err(e) = database::create_session_with_id(
-            &pool,
-            &session_id,
-            "New Chat".to_string(),
-            model_config,
-        )
-        .await
-        {
-            return Err(format!("Failed to auto-create session: {}", e));
+        if let Err(e) = database::create_session_with_id(&pool, &session_id, "New Chat".to_string(), model_config).await {
+             return Err(format!("Failed to auto-create session: {}", e));
         }
     }
 
     // 1. Save file to disk (Global Library Storage)
     let file_uuid = uuid::Uuid::new_v4().to_string();
     let files_dir = PortablePathManager::data_dir().join("files");
-    std::fs::create_dir_all(&files_dir)
-        .map_err(|e| format!("Failed to create files directory: {}", e))?;
+    std::fs::create_dir_all(&files_dir).map_err(|e| format!("Failed to create files directory: {}", e))?;
 
     let extension = std::path::Path::new(&file_name)
         .extension()
@@ -780,10 +749,8 @@ async fn upload_file_for_session(
         &file_name,
         &file_path.to_string_lossy(),
         file_type,
-        file_data.len() as i64,
-    )
-    .await
-    .map_err(|e| format!("Failed to add file to library: {}", e))?;
+        file_data.len() as i64
+    ).await.map_err(|e| format!("Failed to add file to library: {}", e))?;
 
     // Link to session
     database::link_file_to_session(&pool, &session_id, &file_uuid)
@@ -867,8 +834,10 @@ async fn download_file<P: AsRef<std::path::Path>>(
         let head_res = client.head(url).send().await;
 
         match head_res {
-            Ok(res) if res.status().is_success() => res.content_length().unwrap_or(0),
-            _ => 0,
+            Ok(res) if res.status().is_success() => {
+                res.content_length().unwrap_or(0)
+            }
+            _ => 0
         }
     };
 
@@ -902,26 +871,18 @@ async fn download_file<P: AsRef<std::path::Path>>(
         total_size
     };
 
-    info!(
-        "Total file size: {} bytes, already downloaded: {} bytes",
-        total_size, existing_size
-    );
+    info!("Total file size: {} bytes, already downloaded: {} bytes", total_size, existing_size);
 
     // If file is already complete, skip download
     if total_size > 0 && existing_size >= total_size {
         info!("File already fully downloaded, skipping");
-        window
-            .emit("download-progress", progress_base + progress_scale)
-            .ok();
+        window.emit("download-progress", progress_base + progress_scale).ok();
         return Ok(());
     }
 
     // Also, if total_size is 0, it's an error.
     if total_size == 0 {
-        return Err(format!(
-            "Failed to get valid content length from '{}', size was 0.",
-            url
-        ));
+        return Err(format!("Failed to get valid content length from '{}', size was 0.", url));
     }
 
     // Build request with Range header for resume
@@ -977,8 +938,7 @@ async fn download_file<P: AsRef<std::path::Path>>(
 
     while let Some(item) = stream.next().await {
         let chunk = item.map_err(|e| format!("Error while downloading file: {}", e))?;
-        writer
-            .write_all(&chunk)
+        writer.write_all(&chunk)
             .await
             .map_err(|e| format!("Error while writing to file: {}", e))?;
         downloaded += chunk.len() as u64;
@@ -993,21 +953,15 @@ async fn download_file<P: AsRef<std::path::Path>>(
             last_emit = std::time::Instant::now();
         }
     }
-    writer
-        .flush()
-        .await
-        .map_err(|e| format!("Error flushing file: {}", e))?;
+    writer.flush().await.map_err(|e| format!("Error flushing file: {}", e))?;
     info!("Download complete: {:?} ({} bytes)", path_ref, downloaded);
     Ok(())
 }
 
 fn extract_zip<P: AsRef<std::path::Path>>(zip_path: P, extract_to: P) -> Result<(), String> {
     let file = File::open(zip_path).map_err(|e| format!("Failed to open zip file: {}", e))?;
-    let mut archive =
-        ZipArchive::new(file).map_err(|e| format!("Failed to read zip archive: {}", e))?;
-    archive
-        .extract(extract_to)
-        .map_err(|e| format!("Failed to extract zip archive: {}", e))?;
+    let mut archive = ZipArchive::new(file).map_err(|e| format!("Failed to read zip archive: {}", e))?;
+    archive.extract(extract_to).map_err(|e| format!("Failed to extract zip archive: {}", e))?;
     Ok(())
 }
 
@@ -1016,7 +970,11 @@ fn extract_zip<P: AsRef<std::path::Path>>(zip_path: P, extract_to: P) -> Result<
 fn validate_llama_installation(llama_dir: &std::path::Path) -> Result<(), String> {
     // Critical files that MUST exist for llama-server to work
     let required_files = if cfg!(windows) {
-        vec!["llama-server.exe", "llama.dll", "ggml.dll"]
+        vec![
+            "llama-server.exe",
+            "llama.dll",
+            "ggml.dll",
+        ]
     } else {
         vec!["llama-server"]
     };
@@ -1040,16 +998,11 @@ fn validate_llama_installation(llama_dir: &std::path::Path) -> Result<(), String
     }
 
     // Check that llama-server.exe is not 0 bytes (corrupted download)
-    let server_exe = if cfg!(windows) {
-        "llama-server.exe"
-    } else {
-        "llama-server"
-    };
+    let server_exe = if cfg!(windows) { "llama-server.exe" } else { "llama-server" };
     let server_path = llama_dir.join(server_exe);
 
     if let Ok(meta) = std::fs::metadata(&server_path) {
-        if meta.len() < 1024 * 1024 {
-            // Less than 1 MB is definitely wrong
+        if meta.len() < 1024 * 1024 { // Less than 1 MB is definitely wrong
             return Err(format!(
                 "llama-server binary appears corrupted (size: {} bytes). \
                  Delete {:?} and restart the app.",
@@ -1068,8 +1021,8 @@ fn validate_model_file(model_path: &std::path::Path) -> Result<(), String> {
         return Err(format!("Model file not found at {:?}", model_path));
     }
 
-    let meta =
-        std::fs::metadata(model_path).map_err(|e| format!("Cannot read model file: {}", e))?;
+    let meta = std::fs::metadata(model_path)
+        .map_err(|e| format!("Cannot read model file: {}", e))?;
 
     let size = meta.len();
 
@@ -1077,20 +1030,20 @@ fn validate_model_file(model_path: &std::path::Path) -> Result<(), String> {
         return Err(format!(
             "Model file incomplete: {} bytes (minimum {} bytes required). \
              Delete the file and restart the download.",
-            size, MIN_MODEL_SIZE_BYTES
+            size,
+            MIN_MODEL_SIZE_BYTES
         ));
     }
 
     // Quick GGUF header check: first 4 bytes should be "GGUF" magic
-    let file =
-        std::fs::File::open(model_path).map_err(|e| format!("Cannot open model file: {}", e))?;
+    let file = std::fs::File::open(model_path)
+        .map_err(|e| format!("Cannot open model file: {}", e))?;
 
     let mut reader = std::io::BufReader::new(file);
     let mut magic = [0u8; 4];
 
     use std::io::Read;
-    reader
-        .read_exact(&mut magic)
+    reader.read_exact(&mut magic)
         .map_err(|e| format!("Cannot read model header: {}", e))?;
 
     // GGUF magic is "GGUF" in little-endian
@@ -1102,10 +1055,7 @@ fn validate_model_file(model_path: &std::path::Path) -> Result<(), String> {
         ));
     }
 
-    info!(
-        "✓ Model file validated: {:.2} GB, valid GGUF format",
-        size as f64 / 1024.0 / 1024.0 / 1024.0
-    );
+    info!("✓ Model file validated: {:.2} GB, valid GGUF format", size as f64 / 1024.0 / 1024.0 / 1024.0);
     Ok(())
 }
 
@@ -1148,10 +1098,7 @@ fn run_quick_preflight_check() -> preflight::PreflightReport {
 
 /// Tauri command to run diagnostic tests for a specific category.
 #[tauri::command]
-async fn run_diagnostic_category(
-    category: String,
-    window: tauri::Window,
-) -> Result<Vec<diagnostics::TestResult>, String> {
+async fn run_diagnostic_category(category: String, window: tauri::Window) -> Result<Vec<diagnostics::TestResult>, String> {
     info!("Running diagnostic tests for category: {}", category);
 
     let results = diagnostics::run_category_tests(&category).await;
@@ -1170,18 +1117,12 @@ async fn download_model(window: tauri::Window) -> Result<(), String> {
     info!("Starting model download process...");
 
     // Emit initial progress
-    window
-        .emit("download-progress", 0)
-        .map_err(|e| e.to_string())?;
+    window.emit("download-progress", 0).map_err(|e| e.to_string())?;
 
     // 1. Check and Download llama-server
     let tools_dir = PortablePathManager::tools_dir();
     let llama_dir = tools_dir.join("llama");
-    let server_exe_name = if cfg!(windows) {
-        "llama-server.exe"
-    } else {
-        "llama-server"
-    };
+    let server_exe_name = if cfg!(windows) { "llama-server.exe" } else { "llama-server" };
 
     // Check if installation exists AND is valid
     let server_needs_install = if llama_dir.exists() && llama_dir.join(server_exe_name).exists() {
@@ -1218,17 +1159,17 @@ async fn download_model(window: tauri::Window) -> Result<(), String> {
         let zip_path_clone = zip_path.clone();
         let llama_dir_clone = llama_dir.clone();
 
-        tokio::task::spawn_blocking(move || extract_zip(&zip_path_clone, &llama_dir_clone))
-            .await
-            .map_err(|e| format!("Task join error: {}", e))??;
+        tokio::task::spawn_blocking(move || {
+            extract_zip(&zip_path_clone, &llama_dir_clone)
+        })
+        .await
+        .map_err(|e| format!("Task join error: {}", e))??;
 
         // Validate extraction: check that critical files exist
         validate_llama_installation(&llama_dir)?;
         info!("✓ llama-server installation validated");
     }
-    window
-        .emit("download-progress", 20)
-        .map_err(|e| e.to_string())?;
+    window.emit("download-progress", 20).map_err(|e| e.to_string())?;
 
     // 2. Check and Download Model
     let models_dir = PortablePathManager::models_dir();
@@ -1258,17 +1199,11 @@ async fn download_model(window: tauri::Window) -> Result<(), String> {
     };
 
     if !model_needs_download {
-        window
-            .emit("download-progress", 50)
-            .map_err(|e| e.to_string())?;
+        window.emit("download-progress", 50).map_err(|e| e.to_string())?;
         tokio::time::sleep(Duration::from_millis(200)).await;
-        window
-            .emit("download-progress", 90)
-            .map_err(|e| e.to_string())?;
+        window.emit("download-progress", 90).map_err(|e| e.to_string())?;
         tokio::time::sleep(Duration::from_millis(200)).await;
-        window
-            .emit("download-progress", 100)
-            .map_err(|e| e.to_string())?;
+        window.emit("download-progress", 100).map_err(|e| e.to_string())?;
         return Ok(());
     }
 
@@ -1280,9 +1215,7 @@ async fn download_model(window: tauri::Window) -> Result<(), String> {
     // Validate downloaded model
     validate_model_file(&model_path)?;
     info!("✓ Model download complete and validated.");
-    window
-        .emit("download-progress", 80)
-        .map_err(|e| e.to_string())?;
+    window.emit("download-progress", 80).map_err(|e| e.to_string())?;
 
     // 3. Initialize FastEmbed model (downloads ONNX model if needed) (80-95%)
     info!("┌─────────────────────────────────────────────────────┐");
@@ -1307,9 +1240,7 @@ async fn download_model(window: tauri::Window) -> Result<(), String> {
     match embedding_result {
         Ok(_) => {
             info!("   ✓ Embedding model initialized successfully");
-            window
-                .emit("download-progress", 95)
-                .map_err(|e| e.to_string())?;
+            window.emit("download-progress", 95).map_err(|e| e.to_string())?;
         }
         Err(e) => {
             error!("   ✗ Failed to initialize embedding model: {}", e);
@@ -1317,9 +1248,7 @@ async fn download_model(window: tauri::Window) -> Result<(), String> {
         }
     }
 
-    window
-        .emit("download-progress", 100)
-        .map_err(|e| e.to_string())?;
+    window.emit("download-progress", 100).map_err(|e| e.to_string())?;
     info!("╔══════════════════════════════════════════════════════╗");
     info!("║  ✅ ALL MODELS DOWNLOADED SUCCESSFULLY               ║");
     info!("╚══════════════════════════════════════════════════════╝");
@@ -1340,8 +1269,8 @@ fn init_tracing() {
                           sqlx=warn,\
                           info";
 
-    let env_filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default_filter));
+    let env_filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new(default_filter));
     let formatting_layer = BunyanFormattingLayer::new("whytchat_core".into(), std::io::stdout);
     let subscriber = Registry::default()
         .with(env_filter)
@@ -1407,11 +1336,7 @@ fn main() {
                     info!("Cleanup: killed any remaining llama-server.exe processes");
                 }
             }
-            RunEvent::WindowEvent {
-                label,
-                event: WindowEvent::CloseRequested { .. },
-                ..
-            } => {
+            RunEvent::WindowEvent { label, event: WindowEvent::CloseRequested { .. }, .. } => {
                 info!("Window {} close requested", label);
             }
             _ => {}
