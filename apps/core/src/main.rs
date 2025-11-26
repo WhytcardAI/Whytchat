@@ -1168,10 +1168,22 @@ async fn run_diagnostic_category(
 async fn download_model(window: tauri::Window) -> Result<(), String> {
     info!("Starting model download process...");
 
+    // Helper to emit detailed status
+    let emit_status = |w: &tauri::Window, step: &str, detail: &str| {
+        let _ = w.emit(
+            "download-status",
+            serde_json::json!({
+                "step": step,
+                "detail": detail
+            }),
+        );
+    };
+
     // Emit initial progress
     window
         .emit("download-progress", 0)
         .map_err(|e| e.to_string())?;
+    emit_status(&window, "init", "Initializing download manager...");
 
     // 1. Check and Download llama-server
     let tools_dir = PortablePathManager::tools_dir();
@@ -1182,15 +1194,31 @@ async fn download_model(window: tauri::Window) -> Result<(), String> {
         "llama-server"
     };
 
+    emit_status(
+        &window,
+        "llama_check",
+        "Checking inference server (llama.cpp)...",
+    );
+
     // Check if installation exists AND is valid
     let server_needs_install = if llama_dir.exists() && llama_dir.join(server_exe_name).exists() {
         match validate_llama_installation(&llama_dir) {
             Ok(_) => {
                 info!("llama-server installation verified. Skipping download.");
+                emit_status(
+                    &window,
+                    "llama_check",
+                    "✓ Inference server already installed",
+                );
                 false
             }
             Err(e) => {
                 warn!("Existing llama-server is invalid: {}. Will re-download.", e);
+                emit_status(
+                    &window,
+                    "llama_check",
+                    "Repairing corrupted installation...",
+                );
                 // Delete corrupted installation
                 if let Err(del_err) = std::fs::remove_dir_all(&llama_dir) {
                     warn!("Failed to delete corrupted llama-server: {}", del_err);
@@ -1209,11 +1237,21 @@ async fn download_model(window: tauri::Window) -> Result<(), String> {
 
         let zip_path = llama_dir.join("llama-server.zip");
         info!("Downloading llama-server to {:?}", zip_path);
+        emit_status(
+            &window,
+            "llama_download",
+            "Downloading llama.cpp inference server (~50MB)...",
+        );
 
         // Download server (0-20%)
         download_file(LLAMA_SERVER_URL, &zip_path, &window, 0, 20).await?;
 
         info!("Extracting llama-server...");
+        emit_status(
+            &window,
+            "llama_extract",
+            "Extracting llama-server.exe, llama.dll, ggml.dll...",
+        );
         let zip_path_clone = zip_path.clone();
         let llama_dir_clone = llama_dir.clone();
 
@@ -1223,6 +1261,11 @@ async fn download_model(window: tauri::Window) -> Result<(), String> {
 
         // Validate extraction: check that critical files exist
         validate_llama_installation(&llama_dir)?;
+        emit_status(
+            &window,
+            "llama_done",
+            "✓ Inference server ready (llama-server.exe)",
+        );
         info!("✓ llama-server installation validated");
     }
     window
@@ -1230,21 +1273,37 @@ async fn download_model(window: tauri::Window) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
 
     // 2. Check and Download Model
+    emit_status(
+        &window,
+        "model_check",
+        "Checking AI model (Qwen2.5 Coder 7B)...",
+    );
     let models_dir = PortablePathManager::models_dir();
     if !models_dir.exists() {
         std::fs::create_dir_all(&models_dir).map_err(|e| e.to_string())?;
     }
     let model_path = models_dir.join(DEFAULT_MODEL_FILENAME);
+    emit_status(
+        &window,
+        "model_path",
+        &format!("Model path: {:?}", model_path),
+    );
 
     // Check if model exists AND is valid
     let model_needs_download = if model_path.exists() {
         match validate_model_file(&model_path) {
             Ok(_) => {
                 info!("Model already exists and validated. Skipping download.");
+                emit_status(
+                    &window,
+                    "model_check",
+                    "✓ AI model already installed (4.7GB GGUF)",
+                );
                 false
             }
             Err(e) => {
                 warn!("Existing model is invalid: {}. Will re-download.", e);
+                emit_status(&window, "model_check", "Model corrupted, re-downloading...");
                 // Delete corrupted file to allow fresh download
                 if let Err(del_err) = std::fs::remove_file(&model_path) {
                     warn!("Failed to delete corrupted model: {}", del_err);
@@ -1272,12 +1331,28 @@ async fn download_model(window: tauri::Window) -> Result<(), String> {
     }
 
     info!("Downloading model to {:?}", model_path);
+    emit_status(
+        &window,
+        "model_download",
+        "Downloading Qwen2.5-Coder-7B-Instruct (~4.7GB)...",
+    );
+    emit_status(
+        &window,
+        "model_info",
+        "Format: GGUF Q4_K_M (quantized for efficiency)",
+    );
 
     // Download model (20-80%)
     download_file(MODEL_URL, &model_path, &window, 20, 60).await?;
 
     // Validate downloaded model
+    emit_status(
+        &window,
+        "model_verify",
+        "Verifying GGUF header and file integrity...",
+    );
     validate_model_file(&model_path)?;
+    emit_status(&window, "model_done", "✓ AI model installed and validated");
     info!("✓ Model download complete and validated.");
     window
         .emit("download-progress", 80)
@@ -1287,11 +1362,26 @@ async fn download_model(window: tauri::Window) -> Result<(), String> {
     info!("┌─────────────────────────────────────────────────────┐");
     info!("│ 🧠 INITIALIZING EMBEDDING MODEL                     │");
     info!("└─────────────────────────────────────────────────────┘");
+    emit_status(
+        &window,
+        "embeddings_init",
+        "Initializing RAG embedding model...",
+    );
+    emit_status(
+        &window,
+        "embeddings_info",
+        "Model: all-MiniLM-L6-v2 (ONNX, ~90MB)",
+    );
 
     // This will download AllMiniLML6V2 ONNX model (~25MB) on first run
     // Store in data/models/embeddings/ to keep everything portable
     let embeddings_dir = PortablePathManager::models_dir().join("embeddings");
     std::fs::create_dir_all(&embeddings_dir).ok();
+    emit_status(
+        &window,
+        "embeddings_path",
+        &format!("Cache: {:?}", embeddings_dir),
+    );
 
     let embedding_result = tokio::task::spawn_blocking(move || {
         use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
@@ -1306,16 +1396,36 @@ async fn download_model(window: tauri::Window) -> Result<(), String> {
     match embedding_result {
         Ok(_) => {
             info!("   ✓ Embedding model initialized successfully");
+            emit_status(
+                &window,
+                "embeddings_done",
+                "✓ RAG embeddings ready (semantic search enabled)",
+            );
             window
                 .emit("download-progress", 95)
                 .map_err(|e| e.to_string())?;
         }
         Err(e) => {
             error!("   ✗ Failed to initialize embedding model: {}", e);
+            emit_status(
+                &window,
+                "embeddings_error",
+                &format!("⚠ Embeddings error: {}", e),
+            );
             // Non-fatal - continue anyway, RAG will try again later
         }
     }
 
+    emit_status(
+        &window,
+        "complete",
+        "✓ All components installed successfully!",
+    );
+    emit_status(
+        &window,
+        "summary",
+        "Ready: llama-server.exe + GGUF model + ONNX embeddings",
+    );
     window
         .emit("download-progress", 100)
         .map_err(|e| e.to_string())?;

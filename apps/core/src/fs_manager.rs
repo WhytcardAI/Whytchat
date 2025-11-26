@@ -1,7 +1,7 @@
-use tracing::info;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::OnceLock;
+use tracing::info;
 
 /// Global storage for custom data path (set during onboarding or from config)
 static CUSTOM_DATA_PATH: OnceLock<PathBuf> = OnceLock::new();
@@ -48,15 +48,16 @@ impl PortablePathManager {
     /// Only used in release builds - in debug mode we always use workspace root
     #[cfg(not(debug_assertions))]
     fn exe_dir() -> Option<PathBuf> {
-        std::env::current_exe().ok().and_then(|p| p.parent().map(|p| p.to_path_buf()))
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
     }
 
     /// Retrieves the application's root directory.
     ///
     /// Priority order in Release mode:
     /// 1. Custom path set via `set_custom_path()` (user choice during onboarding)
-    /// 2. Portable mode: executable directory (if `portable.marker` exists)
-    /// 3. Default: User's local app data folder
+    /// 2. ALWAYS use the executable directory (Portable/Self-contained mode)
     ///
     /// # Returns
     ///
@@ -79,16 +80,8 @@ impl PortablePathManager {
             // Check if we are at workspace root and apps/core exists
             let core_path = path.join("apps").join("core");
             if core_path.exists() {
-                // In the monorepo structure, we return the workspace root.
-                // This ensures that 'data' and 'tools' directories are created at the workspace root,
-                // OUTSIDE of 'apps/core'.
-                // This is critical because 'apps/core' is watched by Tauri/Cargo in dev mode.
-                // Writing large files (models) inside a watched directory triggers a rebuild/restart,
-                // causing the download to fail and the app to loop.
                 return path;
             }
-
-            // Fallback: maybe we are already in apps/core (if target was local)
             path
         }
 
@@ -96,35 +89,15 @@ impl PortablePathManager {
         {
             use tracing::error;
 
-            // Priority 1: Portable mode (marker file next to executable)
-            if Self::is_portable_mode() {
-                if let Some(exe_dir) = Self::exe_dir() {
-                    info!("Running in PORTABLE mode from: {:?}", exe_dir);
-                    return exe_dir;
-                }
+            // In Release mode, we ALWAYS use the executable directory.
+            // This ensures all data (models, db, vectors) stays within the installation folder.
+            // NOTE: If installed to Program Files, the app must be run as Admin to write data.
+            if let Some(exe_dir) = Self::exe_dir() {
+                info!("Using Installation Directory as Root: {:?}", exe_dir);
+                return exe_dir;
             }
 
-            // Priority 2: User's local app data (default for installed apps)
-            #[cfg(target_os = "windows")]
-            if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
-                let path = PathBuf::from(local_app_data).join("WhytChat");
-                if !path.exists() {
-                    let _ = std::fs::create_dir_all(&path);
-                }
-                info!("Using LOCALAPPDATA path: {:?}", path);
-                return path;
-            }
-
-            #[cfg(not(target_os = "windows"))]
-            if let Ok(home) = std::env::var("HOME") {
-                let path = PathBuf::from(home).join(".local").join("share").join("whytchat");
-                if !path.exists() {
-                    let _ = std::fs::create_dir_all(&path);
-                }
-                return path;
-            }
-
-            // Fallback to executable directory
+            // Fallback (should rarely happen)
             match std::env::current_exe() {
                 Ok(mut path) => {
                     path.pop(); // Remove executable name

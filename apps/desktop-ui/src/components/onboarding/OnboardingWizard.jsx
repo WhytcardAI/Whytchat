@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Shield, CheckCircle, ArrowRight } from 'lucide-react';
+import { Shield, ArrowRight, Terminal, Server, Brain, Database, Cpu } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { cn } from '../../lib/utils';
 import { invoke } from '@tauri-apps/api/core';
@@ -21,6 +21,8 @@ export function OnboardingWizard() {
   const [downloadStatus, setDownloadStatus] = useState('waiting'); // waiting, downloading, complete, error
   const [diagnosticsComplete, setDiagnosticsComplete] = useState(false);
   const [diagnosticsPassed, setDiagnosticsPassed] = useState(false);
+  const [statusLogs, setStatusLogs] = useState([]);
+  const [currentStep, setCurrentStep] = useState('init');
   const { completeOnboarding } = useAppStore();
 
   const [tipIndex, setTipIndex] = useState(0);
@@ -50,13 +52,25 @@ export function OnboardingWizard() {
 
   const startDownload = async () => {
     setDownloadStatus('downloading');
+    setStatusLogs([]);
 
     // Listen for progress events
-    const unlisten = await listen('download-progress', (event) => {
+    const unlistenProgress = await listen('download-progress', (event) => {
       setDownloadProgress(event.payload);
       if (event.payload >= 100) {
         setDownloadStatus('complete');
       }
+    });
+
+    // Listen for detailed status events
+    const unlistenStatus = await listen('download-status', (event) => {
+      const { step, detail } = event.payload;
+      setCurrentStep(step);
+      setStatusLogs(prev => {
+        // Keep last 10 logs for performance
+        const newLogs = [...prev, { step, detail, time: new Date().toLocaleTimeString() }];
+        return newLogs.slice(-10);
+      });
     });
 
     try {
@@ -74,8 +88,10 @@ export function OnboardingWizard() {
     } catch (error) {
       console.error("Download failed:", error);
       setDownloadStatus('error');
+      setStatusLogs(prev => [...prev, { step: 'error', detail: error.toString(), time: new Date().toLocaleTimeString() }]);
     } finally {
-      unlisten();
+      unlistenProgress();
+      unlistenStatus();
     }
   };
 
@@ -166,39 +182,91 @@ export function OnboardingWizard() {
           )}
 
           {step === 3 && (
-            <div className="flex-1 flex flex-col items-center justify-center animate-in fade-in slide-in-from-right-4 duration-500">
-              <div className="w-full max-w-md space-y-6">
+            <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-500 overflow-hidden">
+              <div className="w-full max-w-lg mx-auto space-y-4">
                 <div className="flex justify-between text-sm font-medium text-text mb-2">
                   <span>{t('onboarding.model.downloading')}</span>
                   <span>{Math.round(downloadProgress)}%</span>
                 </div>
 
                 {/* Progress Bar */}
-                <div className="h-4 bg-border rounded-full overflow-hidden">
+                <div className="h-3 bg-border rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-primary transition-all duration-200 ease-out"
+                    className="h-full bg-gradient-to-r from-primary to-green-500 transition-all duration-200 ease-out"
                     style={{ width: `${downloadProgress}%` }}
                   />
                 </div>
 
-                <div className="mt-6 min-h-[80px] flex items-center justify-center p-4 bg-primary/5 rounded-lg border border-primary/10">
-                  <p key={tipIndex} className="text-sm text-center text-muted animate-in fade-in slide-in-from-bottom-2 duration-500">
+                {/* Backend Console - Shows what's happening */}
+                <div className="mt-4 bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-gray-800 border-b border-gray-700">
+                    <Terminal size={14} className="text-green-400" />
+                    <span className="text-xs font-mono text-gray-400">
+                      {currentStep !== 'init' ? `Backend Console — ${currentStep}` : 'Backend Console'}
+                    </span>
+                    <div className={cn(
+                      "ml-auto w-2 h-2 rounded-full",
+                      downloadStatus === 'downloading' ? "bg-green-500 animate-pulse" :
+                      downloadStatus === 'complete' ? "bg-green-500" : "bg-gray-500"
+                    )} />
+                  </div>
+                  <div className="p-3 h-32 overflow-y-auto font-mono text-xs space-y-1">
+                    {statusLogs.length === 0 ? (
+                      <div className="text-gray-500">Initializing...</div>
+                    ) : (
+                      statusLogs.map((log, i) => (
+                        <div key={i} className={cn(
+                          "flex gap-2",
+                          log.step === 'error' ? "text-red-400" :
+                          log.detail.startsWith('✓') ? "text-green-400" :
+                          log.detail.startsWith('⚠') ? "text-yellow-400" :
+                          "text-gray-300"
+                        )}>
+                          <span className="text-gray-600">[{log.time}]</span>
+                          <span>{log.detail}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Component Status Grid */}
+                <div className="grid grid-cols-3 gap-2 mt-4">
+                  <ComponentStatus
+                    icon={<Server size={16} />}
+                    label="Inference Server"
+                    status={downloadProgress >= 20 ? 'done' : downloadProgress > 0 ? 'loading' : 'pending'}
+                  />
+                  <ComponentStatus
+                    icon={<Brain size={16} />}
+                    label="AI Model (GGUF)"
+                    status={downloadProgress >= 80 ? 'done' : downloadProgress >= 20 ? 'loading' : 'pending'}
+                  />
+                  <ComponentStatus
+                    icon={<Database size={16} />}
+                    label="Embeddings (ONNX)"
+                    status={downloadProgress >= 95 ? 'done' : downloadProgress >= 80 ? 'loading' : 'pending'}
+                  />
+                </div>
+
+                {/* Educational Tips */}
+                <div className="mt-4 min-h-[60px] flex items-center justify-center p-3 bg-primary/5 rounded-lg border border-primary/10">
+                  <p key={tipIndex} className="text-xs text-center text-muted animate-in fade-in slide-in-from-bottom-2 duration-500">
                     {t(TIPS[tipIndex])}
                   </p>
                 </div>
 
-                <p className="text-center text-xs text-muted">
-                  {downloadStatus === 'downloading' && t('onboarding.model.downloading')}
-                  {downloadStatus === 'complete' && t('onboarding.model.complete')}
-                  {downloadStatus === 'error' && t('onboarding.model.error')}
-                </p>
-
-                <div className="bg-surface border border-border p-4 rounded-lg mt-8 space-y-3">
-                  <StepItem label={t('onboarding.model.steps.init')} done={downloadProgress > 0} />
-                  <StepItem label={t('onboarding.model.steps.download')} done={downloadProgress >= 20} />
-                  <StepItem label={t('onboarding.model.steps.verify')} done={downloadProgress >= 80} />
-                  <StepItem label={t('onboarding.model.steps.embeddings')} done={downloadProgress >= 95} />
-                  <StepItem label={t('onboarding.model.steps.load')} done={downloadProgress === 100} />
+                {/* Architecture Info */}
+                <div className="bg-surface border border-border p-3 rounded-lg space-y-2 text-xs">
+                  <div className="flex items-center gap-2 text-muted">
+                    <Cpu size={12} />
+                    <span>Installing to: <code className="text-primary">{"<install_path>/data/"}</code></span>
+                  </div>
+                  <div className="text-muted opacity-75">
+                    • llama-server.exe → Inference engine (llama.cpp)<br/>
+                    • default-model.gguf → Qwen2.5-Coder 7B quantized<br/>
+                    • embeddings/ → all-MiniLM-L6-v2 for RAG search
+                  </div>
                 </div>
               </div>
             </div>
@@ -245,13 +313,19 @@ export function OnboardingWizard() {
   );
 }
 
-function StepItem({ label, done }) {
+function ComponentStatus({ icon, label, status }) {
   return (
-    <div className="flex items-center gap-3 text-sm">
-      <div className={cn("w-5 h-5 rounded-full flex items-center justify-center border", done ? "bg-green-500 border-green-500 text-primary-foreground" : "border-border text-transparent")}>
-        <CheckCircle size={12} />
-      </div>
-      <span className={cn(done ? "text-text" : "text-muted")}>{label}</span>
+    <div className={cn(
+      "flex flex-col items-center p-2 rounded-lg border text-center",
+      status === 'done' ? "bg-green-500/10 border-green-500/30 text-green-400" :
+      status === 'loading' ? "bg-primary/10 border-primary/30 text-primary animate-pulse" :
+      "bg-border/30 border-border text-muted"
+    )}>
+      <div className="mb-1">{icon}</div>
+      <span className="text-xs font-medium">{label}</span>
+      <span className="text-[10px] opacity-75">
+        {status === 'done' ? '✓ Ready' : status === 'loading' ? 'Installing...' : 'Pending'}
+      </span>
     </div>
   );
 }
