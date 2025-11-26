@@ -59,42 +59,45 @@ impl BrainAnalyzer {
         let text_lower = text.to_lowercase();
 
         // French indicators
-        let french_chars = text.chars().filter(|c| {
-            matches!(*c, 'é' | 'è' | 'ê' | 'ë' | 'à' | 'â' | 'ù' | 'û' | 'ô' | 'î' | 'ï' | 'ç' | 'œ')
-        }).count();
+        let french_chars = text
+            .chars()
+            .filter(|c| {
+                matches!(
+                    *c,
+                    'é' | 'è' | 'ê' | 'ë' | 'à' | 'â' | 'ù' | 'û' | 'ô' | 'î' | 'ï' | 'ç' | 'œ'
+                )
+            })
+            .count();
 
         let french_words = [
-            "le", "la", "les", "un", "une", "des", "du", "de", "et", "ou", "mais",
-            "je", "tu", "il", "elle", "nous", "vous", "ils", "elles",
-            "est", "sont", "être", "avoir", "faire", "pour", "dans", "sur", "avec",
-            "comment", "pourquoi", "quand", "qui", "que", "quoi",
+            "le", "la", "les", "un", "une", "des", "du", "de", "et", "ou", "mais", "je", "tu",
+            "il", "elle", "nous", "vous", "ils", "elles", "est", "sont", "être", "avoir", "faire",
+            "pour", "dans", "sur", "avec", "comment", "pourquoi", "quand", "qui", "que", "quoi",
             "bonjour", "salut", "merci", "s'il",
         ];
 
         let english_words = [
-            "the", "a", "an", "is", "are", "was", "were", "be", "been",
-            "have", "has", "had", "do", "does", "did",
-            "i", "you", "he", "she", "it", "we", "they",
-            "and", "or", "but", "for", "with", "from", "to", "in", "on",
-            "what", "why", "how", "when", "where", "who",
+            "the", "a", "an", "is", "are", "was", "were", "be", "been", "have", "has", "had", "do",
+            "does", "did", "i", "you", "he", "she", "it", "we", "they", "and", "or", "but", "for",
+            "with", "from", "to", "in", "on", "what", "why", "how", "when", "where", "who",
             "hello", "hi", "please", "thank",
         ];
 
         let french_word_count = french_words
             .iter()
             .filter(|w| {
-                text_lower.split_whitespace().any(|word| {
-                    word.trim_matches(|c: char| !c.is_alphanumeric()) == **w
-                })
+                text_lower
+                    .split_whitespace()
+                    .any(|word| word.trim_matches(|c: char| !c.is_alphanumeric()) == **w)
             })
             .count();
 
         let english_word_count = english_words
             .iter()
             .filter(|w| {
-                text_lower.split_whitespace().any(|word| {
-                    word.trim_matches(|c: char| !c.is_alphanumeric()) == **w
-                })
+                text_lower
+                    .split_whitespace()
+                    .any(|word| word.trim_matches(|c: char| !c.is_alphanumeric()) == **w)
             })
             .count();
 
@@ -235,8 +238,10 @@ impl BrainAnalyzer {
             if semantic_confidence > regex_result.confidence && semantic_intent != Intent::Unknown {
                 info!(
                     "Using semantic intent: {:?} ({:.2}) over regex: {:?} ({:.2})",
-                    semantic_intent, semantic_confidence,
-                    regex_result.intent, regex_result.confidence
+                    semantic_intent,
+                    semantic_confidence,
+                    regex_result.intent,
+                    regex_result.confidence
                 );
                 return IntentResult {
                     intent: semantic_intent,
@@ -281,7 +286,9 @@ mod tests {
 
         let packet = brain.analyze("Bonjour!");
         assert_eq!(packet.intent.intent, Intent::Greeting);
-        assert!(packet.suggested_strategies.contains(&Strategy::SimpleResponse));
+        assert!(packet
+            .suggested_strategies
+            .contains(&Strategy::SimpleResponse));
         assert!(!packet.should_use_rag);
     }
 
@@ -291,7 +298,9 @@ mod tests {
 
         let packet = brain.analyze("Write a Python function to sort an array");
         assert_eq!(packet.intent.intent, Intent::CodeRequest);
-        assert!(packet.suggested_strategies.contains(&Strategy::CodeGeneration));
+        assert!(packet
+            .suggested_strategies
+            .contains(&Strategy::CodeGeneration));
     }
 
     #[test]
@@ -316,7 +325,7 @@ mod tests {
 
         let packet = brain.analyze(
             "Explain the difference between microservices and monolith architecture \
-             in terms of database transactions and container orchestration"
+             in terms of database transactions and container orchestration",
         );
 
         assert!(packet.should_use_rag);
@@ -330,22 +339,25 @@ mod tests {
         let packet = brain.analyze("Create a Rust function for database queries");
 
         assert!(!packet.keywords.is_empty());
-        let keyword_strings: Vec<&str> = packet.keywords.iter().map(|k| k.keyword.as_str()).collect();
-        assert!(keyword_strings.contains(&"rust") || keyword_strings.contains(&"function") || keyword_strings.contains(&"database"));
+        let keyword_strings: Vec<&str> =
+            packet.keywords.iter().map(|k| k.keyword.as_str()).collect();
+        assert!(
+            keyword_strings.contains(&"rust")
+                || keyword_strings.contains(&"function")
+                || keyword_strings.contains(&"database")
+        );
     }
 
     #[test]
     fn test_analysis_with_rag() {
         let brain = BrainAnalyzer::new();
 
-        let rag_results = vec![
-            RagResult {
-                content: "Test content".to_string(),
-                relevance_score: 0.9,
-                source: Some("test.rs".to_string()),
-                chunk_id: "chunk1".to_string(),
-            }
-        ];
+        let rag_results = vec![RagResult {
+            content: "Test content".to_string(),
+            relevance_score: 0.9,
+            source: Some("test.rs".to_string()),
+            chunk_id: "chunk1".to_string(),
+        }];
 
         let packet = brain.analyze_with_rag("test query", rag_results);
 

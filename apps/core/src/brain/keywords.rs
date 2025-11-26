@@ -8,54 +8,186 @@ use std::collections::{HashMap, HashSet};
 
 /// Stopwords for French language
 const STOPWORDS_FR: &[&str] = &[
-    "le", "la", "les", "un", "une", "des", "du", "de", "d", "l",
-    "et", "ou", "où", "mais", "donc", "or", "ni", "car",
-    "je", "tu", "il", "elle", "on", "nous", "vous", "ils", "elles",
-    "me", "te", "se", "lui", "leur", "y", "en",
-    "mon", "ton", "son", "ma", "ta", "sa", "mes", "tes", "ses",
-    "notre", "votre", "nos", "vos", "leur", "leurs",
-    "ce", "cet", "cette", "ces", "ça", "ceci", "cela",
-    "qui", "que", "quoi", "dont", "lequel", "laquelle",
-    "ne", "pas", "plus", "moins", "très", "trop", "peu", "bien", "mal",
-    "être", "est", "sont", "était", "étaient", "sera", "seront",
-    "avoir", "ai", "as", "a", "avons", "avez", "ont", "avait", "avaient",
-    "faire", "fait", "fais", "font", "faisait",
-    "aller", "va", "vais", "vont", "allait",
-    "pouvoir", "peut", "peux", "peuvent", "pouvait",
-    "vouloir", "veut", "veux", "veulent", "voulait",
-    "devoir", "doit", "dois", "doivent", "devait",
-    "dans", "sur", "sous", "avec", "sans", "pour", "par", "entre",
-    "avant", "après", "pendant", "depuis", "jusqu", "jusque",
-    "ici", "là", "voici", "voilà",
-    "quand", "comment", "pourquoi", "combien",
-    "tout", "tous", "toute", "toutes", "autre", "autres",
-    "même", "mêmes", "aussi", "encore", "déjà", "toujours", "jamais",
-    "si", "alors", "ainsi", "comme", "parce", "puisque", "lorsque",
-    "oui", "non", "peut-être",
-    "c", "n", "s", "t", "qu", "j", "m",
+    "le",
+    "la",
+    "les",
+    "un",
+    "une",
+    "des",
+    "du",
+    "de",
+    "d",
+    "l",
+    "et",
+    "ou",
+    "où",
+    "mais",
+    "donc",
+    "or",
+    "ni",
+    "car",
+    "je",
+    "tu",
+    "il",
+    "elle",
+    "on",
+    "nous",
+    "vous",
+    "ils",
+    "elles",
+    "me",
+    "te",
+    "se",
+    "lui",
+    "leur",
+    "y",
+    "en",
+    "mon",
+    "ton",
+    "son",
+    "ma",
+    "ta",
+    "sa",
+    "mes",
+    "tes",
+    "ses",
+    "notre",
+    "votre",
+    "nos",
+    "vos",
+    "leur",
+    "leurs",
+    "ce",
+    "cet",
+    "cette",
+    "ces",
+    "ça",
+    "ceci",
+    "cela",
+    "qui",
+    "que",
+    "quoi",
+    "dont",
+    "lequel",
+    "laquelle",
+    "ne",
+    "pas",
+    "plus",
+    "moins",
+    "très",
+    "trop",
+    "peu",
+    "bien",
+    "mal",
+    "être",
+    "est",
+    "sont",
+    "était",
+    "étaient",
+    "sera",
+    "seront",
+    "avoir",
+    "ai",
+    "as",
+    "a",
+    "avons",
+    "avez",
+    "ont",
+    "avait",
+    "avaient",
+    "faire",
+    "fait",
+    "fais",
+    "font",
+    "faisait",
+    "aller",
+    "va",
+    "vais",
+    "vont",
+    "allait",
+    "pouvoir",
+    "peut",
+    "peux",
+    "peuvent",
+    "pouvait",
+    "vouloir",
+    "veut",
+    "veux",
+    "veulent",
+    "voulait",
+    "devoir",
+    "doit",
+    "dois",
+    "doivent",
+    "devait",
+    "dans",
+    "sur",
+    "sous",
+    "avec",
+    "sans",
+    "pour",
+    "par",
+    "entre",
+    "avant",
+    "après",
+    "pendant",
+    "depuis",
+    "jusqu",
+    "jusque",
+    "ici",
+    "là",
+    "voici",
+    "voilà",
+    "quand",
+    "comment",
+    "pourquoi",
+    "combien",
+    "tout",
+    "tous",
+    "toute",
+    "toutes",
+    "autre",
+    "autres",
+    "même",
+    "mêmes",
+    "aussi",
+    "encore",
+    "déjà",
+    "toujours",
+    "jamais",
+    "si",
+    "alors",
+    "ainsi",
+    "comme",
+    "parce",
+    "puisque",
+    "lorsque",
+    "oui",
+    "non",
+    "peut-être",
+    "c",
+    "n",
+    "s",
+    "t",
+    "qu",
+    "j",
+    "m",
 ];
 
 /// Stopwords for English language
 const STOPWORDS_EN: &[&str] = &[
-    "the", "a", "an", "and", "or", "but", "nor", "for", "yet", "so",
-    "i", "you", "he", "she", "it", "we", "they", "me", "him", "her", "us", "them",
-    "my", "your", "his", "her", "its", "our", "their",
-    "mine", "yours", "hers", "ours", "theirs",
-    "this", "that", "these", "those",
-    "who", "whom", "which", "what", "whose",
-    "is", "am", "are", "was", "were", "be", "been", "being",
-    "have", "has", "had", "having", "do", "does", "did", "doing",
-    "will", "would", "shall", "should", "can", "could", "may", "might", "must",
-    "in", "on", "at", "to", "from", "by", "with", "about", "against",
-    "between", "into", "through", "during", "before", "after", "above", "below",
-    "up", "down", "out", "off", "over", "under", "again", "further",
-    "here", "there", "where", "when", "why", "how",
-    "all", "each", "every", "both", "few", "more", "most", "other", "some", "any",
-    "no", "not", "only", "own", "same", "than", "too", "very",
-    "just", "also", "now", "then", "once", "always", "never",
-    "if", "because", "as", "until", "while", "although", "though",
-    "yes", "no", "maybe",
-    "s", "t", "ve", "re", "ll", "d", "m",
+    "the", "a", "an", "and", "or", "but", "nor", "for", "yet", "so", "i", "you", "he", "she", "it",
+    "we", "they", "me", "him", "her", "us", "them", "my", "your", "his", "her", "its", "our",
+    "their", "mine", "yours", "hers", "ours", "theirs", "this", "that", "these", "those", "who",
+    "whom", "which", "what", "whose", "is", "am", "are", "was", "were", "be", "been", "being",
+    "have", "has", "had", "having", "do", "does", "did", "doing", "will", "would", "shall",
+    "should", "can", "could", "may", "might", "must", "in", "on", "at", "to", "from", "by", "with",
+    "about", "against", "between", "into", "through", "during", "before", "after", "above",
+    "below", "up", "down", "out", "off", "over", "under", "again", "further", "here", "there",
+    "where", "when", "why", "how", "all", "each", "every", "both", "few", "more", "most", "other",
+    "some", "any", "no", "not", "only", "own", "same", "than", "too", "very", "just", "also",
+    "now", "then", "once", "always", "never", "if", "because", "as", "until", "while", "although",
+    "though", "yes", "no", "maybe", "s", "t", "ve", "re", "ll", "d", "m",
 ];
 
 /// Result of keyword extraction
@@ -101,12 +233,22 @@ impl KeywordExtractor {
         let mut idf_weights = HashMap::new();
 
         // Very specific terms (high IDF)
-        for term in ["algorithm", "database", "function", "module", "interface", "struct", "enum"] {
+        for term in [
+            "algorithm",
+            "database",
+            "function",
+            "module",
+            "interface",
+            "struct",
+            "enum",
+        ] {
             idf_weights.insert(term, 2.5);
         }
 
         // Technical terms (medium-high IDF)
-        for term in ["code", "file", "error", "data", "system", "user", "api", "config"] {
+        for term in [
+            "code", "file", "error", "data", "system", "user", "api", "config",
+        ] {
             idf_weights.insert(term, 2.0);
         }
 
@@ -219,7 +361,11 @@ impl KeywordExtractor {
             .collect();
 
         // Sort by score descending
-        tfidf_scores.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+        tfidf_scores.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Return top N
         tfidf_scores.into_iter().take(max_results).collect()
@@ -250,7 +396,11 @@ mod tests {
 
         // Should contain important terms
         let keyword_strings: Vec<&str> = keywords.iter().map(|k| k.keyword.as_str()).collect();
-        assert!(keyword_strings.contains(&"rust") || keyword_strings.contains(&"function") || keyword_strings.contains(&"database"));
+        assert!(
+            keyword_strings.contains(&"rust")
+                || keyword_strings.contains(&"function")
+                || keyword_strings.contains(&"database")
+        );
     }
 
     #[test]
@@ -274,7 +424,11 @@ mod tests {
         assert!(!keywords.is_empty());
 
         let keyword_strings: Vec<&str> = keywords.iter().map(|k| k.keyword.as_str()).collect();
-        assert!(keyword_strings.contains(&"fonction") || keyword_strings.contains(&"données") || keyword_strings.contains(&"analyser"));
+        assert!(
+            keyword_strings.contains(&"fonction")
+                || keyword_strings.contains(&"données")
+                || keyword_strings.contains(&"analyser")
+        );
     }
 
     #[test]

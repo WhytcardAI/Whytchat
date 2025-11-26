@@ -11,6 +11,7 @@ mod fs_manager;
 mod models;
 mod preflight;
 mod rate_limiter;
+mod run_logger;
 mod text_extract;
 
 use actors::supervisor::SupervisorHandle;
@@ -140,27 +141,33 @@ async fn initialize_app(state: State<'_, AppState>) -> Result<(), String> {
     }
 
     info!("Initializing application...");
+    run_logger::RunLogger::global_log_info("Initializing application...");
 
     // Initialize File System
     if let Err(e) = PortablePathManager::init() {
-        error!("Failed to initialize portable file system: {}", e);
+        let err_msg = format!("Failed to initialize portable file system: {}", e);
+        error!("{}", err_msg);
+        run_logger::RunLogger::global_log_error_with_context(&err_msg, Some("initialize_app"));
         return Err(format!("FS Init failed: {}", e));
     }
 
     // Initialize Database
-    let db_pool = database::init_db()
-        .await
-        .map_err(|e| format!("Failed to initialize database: {}", e))?;
+    let db_pool = database::init_db().await.map_err(|e| {
+        let err_msg = format!("Failed to initialize database: {}", e);
+        run_logger::RunLogger::global_log_error_with_context(&err_msg, Some("initialize_app"));
+        err_msg
+    })?;
 
     // Initialize Supervisor
     let model_path = PortablePathManager::models_dir().join(DEFAULT_MODEL_FILENAME);
     let supervisor = SupervisorHandle::new_with_pool_and_model(Some(db_pool.clone()), model_path);
 
     // Store the initialized state
-    let mut app_handle = state
-        .app_handle
-        .lock()
-        .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
+    let mut app_handle = state.app_handle.lock().map_err(|e| {
+        let err_msg = format!("Failed to acquire app_handle lock: {}", e);
+        run_logger::RunLogger::global_log_error_with_context(&err_msg, Some("initialize_app"));
+        err_msg
+    })?;
     *app_handle = Some(InitializedState {
         supervisor,
         pool: db_pool,
@@ -169,6 +176,7 @@ async fn initialize_app(state: State<'_, AppState>) -> Result<(), String> {
 
     // Mark as initialized
     state.is_initialized.store(true, Ordering::SeqCst);
+    run_logger::RunLogger::global_log_info("Application initialized successfully");
     info!("\n╔══════════════════════════════════════════════════════╗");
     info!("║  ✅ APPLICATION INITIALIZED SUCCESSFULLY              ║");
     info!("╚══════════════════════════════════════════════════════╝\n");
@@ -1167,6 +1175,7 @@ async fn run_diagnostic_category(
 #[tauri::command]
 async fn download_model(window: tauri::Window) -> Result<(), String> {
     info!("Starting model download process...");
+    run_logger::RunLogger::global_log_info("Starting model download process");
 
     // Emit initial progress
     window
@@ -1191,6 +1200,10 @@ async fn download_model(window: tauri::Window) -> Result<(), String> {
             }
             Err(e) => {
                 warn!("Existing llama-server is invalid: {}. Will re-download.", e);
+                run_logger::RunLogger::global_log_error_with_context(
+                    &format!("Invalid llama-server installation: {}", e),
+                    Some("download_model"),
+                );
                 // Delete corrupted installation
                 if let Err(del_err) = std::fs::remove_dir_all(&llama_dir) {
                     warn!("Failed to delete corrupted llama-server: {}", del_err);
@@ -1312,6 +1325,10 @@ async fn download_model(window: tauri::Window) -> Result<(), String> {
         }
         Err(e) => {
             error!("   ✗ Failed to initialize embedding model: {}", e);
+            run_logger::RunLogger::global_log_error_with_context(
+                &format!("Failed to initialize embedding model: {}", e),
+                Some("download_model"),
+            );
             // Non-fatal - continue anyway, RAG will try again later
         }
     }
@@ -1319,6 +1336,7 @@ async fn download_model(window: tauri::Window) -> Result<(), String> {
     window
         .emit("download-progress", 100)
         .map_err(|e| e.to_string())?;
+    run_logger::RunLogger::global_log_info("All models downloaded successfully");
     info!("╔══════════════════════════════════════════════════════╗");
     info!("║  ✅ ALL MODELS DOWNLOADED SUCCESSFULLY               ║");
     info!("╚══════════════════════════════════════════════════════╝");
@@ -1352,6 +1370,9 @@ fn init_tracing() {
 fn main() {
     dotenv::dotenv().ok();
     init_tracing();
+
+    // Initialize the global run logger to track application runs
+    run_logger::RunLogger::init_global();
 
     // Ensure LLAMA_AUTH_TOKEN is set globally for all components (Actors, Diagnostics)
     if std::env::var("LLAMA_AUTH_TOKEN").is_err() {
@@ -1397,6 +1418,8 @@ fn main() {
         match event {
             RunEvent::Exit => {
                 info!("Application exit event received. Cleaning up...");
+                // Complete the run log with success status
+                run_logger::RunLogger::complete_global(true);
                 // Force kill any remaining llama-server processes on Windows
                 #[cfg(windows)]
                 {

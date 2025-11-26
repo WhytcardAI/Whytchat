@@ -1,7 +1,7 @@
-use tracing::info;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::OnceLock;
+use tracing::info;
 
 /// Global storage for custom data path (set during onboarding or from config)
 static CUSTOM_DATA_PATH: OnceLock<PathBuf> = OnceLock::new();
@@ -48,7 +48,9 @@ impl PortablePathManager {
     /// Only used in release builds - in debug mode we always use workspace root
     #[cfg(not(debug_assertions))]
     fn exe_dir() -> Option<PathBuf> {
-        std::env::current_exe().ok().and_then(|p| p.parent().map(|p| p.to_path_buf()))
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
     }
 
     /// Retrieves the application's root directory.
@@ -117,7 +119,10 @@ impl PortablePathManager {
 
             #[cfg(not(target_os = "windows"))]
             if let Ok(home) = std::env::var("HOME") {
-                let path = PathBuf::from(home).join(".local").join("share").join("whytchat");
+                let path = PathBuf::from(home)
+                    .join(".local")
+                    .join("share")
+                    .join("whytchat");
                 if !path.exists() {
                     let _ = std::fs::create_dir_all(&path);
                 }
@@ -166,6 +171,11 @@ impl PortablePathManager {
         Self::data_dir().join("vectors")
     }
 
+    /// Returns the path to the logs directory (`<root>/data/logs`).
+    pub fn logs_dir() -> PathBuf {
+        Self::data_dir().join("logs")
+    }
+
     /// Returns the path to the directory for a specific session's files.
     /// (`<root>/data/files/session_{session_id}`).
     #[allow(dead_code)]
@@ -189,6 +199,7 @@ impl PortablePathManager {
         let models_path = Self::models_dir();
         let vectors_path = Self::vectors_dir();
         let tools_path = Self::tools_dir();
+        let logs_path = Self::logs_dir();
 
         if !data_path.exists() {
             info!("Creating data directory: {:?}", data_path);
@@ -213,6 +224,11 @@ impl PortablePathManager {
         if !tools_path.exists() {
             info!("Creating tools directory: {:?}", tools_path);
             fs::create_dir_all(&tools_path)?;
+        }
+
+        if !logs_path.exists() {
+            info!("Creating logs directory: {:?}", logs_path);
+            fs::create_dir_all(&logs_path)?;
         }
 
         Ok(())

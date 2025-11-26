@@ -18,7 +18,8 @@ const NONCE_SIZE: usize = 12;
 /// A `Result` containing the 32-byte key array, or an error `String` if the environment
 /// variable is not set.
 pub fn get_encryption_key() -> Result<[u8; 32], String> {
-    let key_str = env::var("ENCRYPTION_KEY").map_err(|_| "ENCRYPTION_KEY environment variable not set")?;
+    let key_str =
+        env::var("ENCRYPTION_KEY").map_err(|_| "ENCRYPTION_KEY environment variable not set")?;
 
     // We expect a 32-byte key.
     // For simplicity, we pad with zeros if shorter, and truncate if longer.
@@ -104,11 +105,15 @@ mod tests {
 
     #[test]
     fn test_encryption_decryption() {
-        temp_env::with_var("ENCRYPTION_KEY", Some("01234567890123456789012345678901"), || {
-            let data = b"Sensitive Data";
-            let encrypted = encrypt(data).expect("Encryption failed");
-            let decrypted = decrypt(&encrypted).expect("Decryption failed");
-            assert_eq!(data, &decrypted[..]);
-        });
+        temp_env::with_var(
+            "ENCRYPTION_KEY",
+            Some("01234567890123456789012345678901"),
+            || {
+                let data = b"Sensitive Data";
+                let encrypted = encrypt(data).expect("Encryption failed");
+                let decrypted = decrypt(&encrypted).expect("Decryption failed");
+                assert_eq!(data, &decrypted[..]);
+            },
+        );
     }
 }

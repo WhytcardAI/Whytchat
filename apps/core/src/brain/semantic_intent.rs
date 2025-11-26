@@ -129,7 +129,8 @@ impl SemanticIntentClassifier {
     /// Create a new semantic classifier
     /// Uses the existing FastEmbed model from data/models/embeddings/
     pub fn new() -> Option<Self> {
-        let embeddings_dir = crate::fs_manager::PortablePathManager::models_dir().join("embeddings");
+        let embeddings_dir =
+            crate::fs_manager::PortablePathManager::models_dir().join("embeddings");
         let mut options = InitOptions::new(EmbeddingModel::AllMiniLML6V2);
         options.show_download_progress = false;
         options.cache_dir = embeddings_dir;
@@ -147,7 +148,10 @@ impl SemanticIntentClassifier {
                 Some(classifier)
             }
             Err(e) => {
-                warn!("Failed to load embedding model for intent classification: {}", e);
+                warn!(
+                    "Failed to load embedding model for intent classification: {}",
+                    e
+                );
                 None
             }
         }

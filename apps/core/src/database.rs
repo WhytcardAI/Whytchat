@@ -2,11 +2,11 @@ use crate::encryption;
 use crate::fs_manager::PortablePathManager;
 use crate::models::{Folder, LibraryFile, Message, ModelConfig, Session, SessionFile};
 use chrono::Utc;
-use tracing::info;
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
 use sqlx::types::Json;
 use std::str::FromStr;
+use tracing::info;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -110,7 +110,8 @@ pub async fn create_session_with_id(
     let updated_at = created_at;
 
     // Encrypt model_config
-    let config_bytes = serde_json::to_vec(&model_config).map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
+    let config_bytes =
+        serde_json::to_vec(&model_config).map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
     let ciphertext = encryption::encrypt(&config_bytes).map_err(sqlx::Error::Protocol)?;
     let wrapper = EncryptedConfigWrapper { ciphertext };
     let config_json = Json(wrapper);
@@ -215,7 +216,8 @@ pub async fn update_session(
     let new_config = model_config.unwrap_or(current_session.model_config.0);
 
     // Encrypt new config
-    let config_bytes = serde_json::to_vec(&new_config).map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
+    let config_bytes =
+        serde_json::to_vec(&new_config).map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
     let ciphertext = encryption::encrypt(&config_bytes).map_err(sqlx::Error::Protocol)?;
     let wrapper = EncryptedConfigWrapper { ciphertext };
     let config_json = Json(wrapper);
@@ -247,10 +249,7 @@ pub async fn update_session(
 }
 
 /// Toggle favorite status for a session.
-pub async fn toggle_session_favorite(
-    pool: &SqlitePool,
-    id: &str,
-) -> Result<bool, sqlx::Error> {
+pub async fn toggle_session_favorite(pool: &SqlitePool, id: &str) -> Result<bool, sqlx::Error> {
     let current = get_session(pool, id).await?;
     let new_favorite = !current.is_favorite;
 
@@ -271,10 +270,7 @@ pub async fn toggle_session_favorite(
 }
 
 /// Delete a session and all its messages and files.
-pub async fn delete_session(
-    pool: &SqlitePool,
-    id: &str,
-) -> Result<(), sqlx::Error> {
+pub async fn delete_session(pool: &SqlitePool, id: &str) -> Result<(), sqlx::Error> {
     info!("Request to delete session: {}", id);
     let mut tx = pool.begin().await?;
 
@@ -600,10 +596,7 @@ pub async fn move_file_to_folder(
 
 /// Delete a library file and its session links.
 /// Returns the path of the file so it can be deleted from disk.
-pub async fn delete_library_file(
-    pool: &SqlitePool,
-    file_id: &str,
-) -> Result<String, sqlx::Error> {
+pub async fn delete_library_file(pool: &SqlitePool, file_id: &str) -> Result<String, sqlx::Error> {
     // Get file path first
     let file = sqlx::query_as::<_, LibraryFile>(
         r#"

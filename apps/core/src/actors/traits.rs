@@ -9,7 +9,12 @@ use tokio::sync::mpsc;
 #[async_trait]
 pub trait LlmActor: Send + Sync + 'static {
     /// Generates a complete text response based on a prompt and optional parameters.
-    async fn generate_with_params(&self, prompt: String, system_prompt: Option<String>, temperature: Option<f32>) -> Result<String, AppError>;
+    async fn generate_with_params(
+        &self,
+        prompt: String,
+        system_prompt: Option<String>,
+        temperature: Option<f32>,
+    ) -> Result<String, AppError>;
 
     /// Generates a streaming response, sending chunks of text as they are produced.
     async fn stream_generate_with_params(
@@ -30,7 +35,11 @@ pub trait RagActor: Send + Sync + 'static {
     async fn ingest(&self, content: String, metadata: Option<String>) -> Result<String, AppError>;
 
     /// Searches the knowledge base for content relevant to a query.
-    async fn search_with_filters(&self, query: String, file_ids: Vec<String>) -> Result<Vec<SearchResult>, AppError>;
+    async fn search_with_filters(
+        &self,
+        query: String,
+        file_ids: Vec<String>,
+    ) -> Result<Vec<SearchResult>, AppError>;
 
     /// Deletes all vectors associated with a specific file.
     async fn delete_for_file(&self, file_id: String) -> Result<(), AppError>;

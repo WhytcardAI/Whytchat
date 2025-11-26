@@ -11,14 +11,15 @@ pub fn extract_text_from_file(file_name: &str, file_data: &[u8]) -> Result<Strin
         .map(|s| s.to_lowercase())
         .unwrap_or_default();
 
-    info!("Extracting text from file: {} (type: {})", file_name, extension);
+    info!(
+        "Extracting text from file: {} (type: {})",
+        file_name, extension
+    );
 
     match extension.as_str() {
         // Plain text formats - direct UTF-8 conversion
-        "txt" | "md" | "csv" | "json" => {
-            String::from_utf8(file_data.to_vec())
-                .map_err(|e| format!("Invalid UTF-8 content: {}", e))
-        }
+        "txt" | "md" | "csv" | "json" => String::from_utf8(file_data.to_vec())
+            .map_err(|e| format!("Invalid UTF-8 content: {}", e)),
 
         // PDF extraction
         "pdf" => extract_pdf_text(file_data),
@@ -58,19 +59,24 @@ fn extract_docx_text(file_data: &[u8]) -> Result<String, String> {
             // Extract text from document body
             for child in docx.document.children {
                 if let docx_rs::DocumentChild::Paragraph(para) = child {
-                    let para_text: String = para.children.iter()
+                    let para_text: String = para
+                        .children
+                        .iter()
                         .filter_map(|pc| {
                             if let docx_rs::ParagraphChild::Run(run) = pc {
-                                Some(run.children.iter()
-                                    .filter_map(|rc| {
-                                        if let docx_rs::RunChild::Text(t) = rc {
-                                            Some(t.text.clone())
-                                        } else {
-                                            None
-                                        }
-                                    })
-                                    .collect::<Vec<_>>()
-                                    .join(""))
+                                Some(
+                                    run.children
+                                        .iter()
+                                        .filter_map(|rc| {
+                                            if let docx_rs::RunChild::Text(t) = rc {
+                                                Some(t.text.clone())
+                                            } else {
+                                                None
+                                            }
+                                        })
+                                        .collect::<Vec<_>>()
+                                        .join(""),
+                                )
                             } else {
                                 None
                             }
@@ -165,7 +171,9 @@ mod tests {
 
     #[test]
     fn test_french_content() {
-        let content = "Bonjour le monde!\nCeci est un test avec des caractères spéciaux: é, è, à, ç".as_bytes();
+        let content =
+            "Bonjour le monde!\nCeci est un test avec des caractères spéciaux: é, è, à, ç"
+                .as_bytes();
         let result = extract_text_from_file("french.txt", content);
         assert!(result.is_ok());
         let text = result.unwrap();

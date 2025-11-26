@@ -147,7 +147,9 @@ impl ContextPacket {
     #[allow(dead_code)]
     pub fn is_code_related(&self) -> bool {
         matches!(self.intent.intent, super::intent::Intent::CodeRequest)
-            || self.suggested_strategies.contains(&Strategy::CodeGeneration)
+            || self
+                .suggested_strategies
+                .contains(&Strategy::CodeGeneration)
     }
 
     /// Get a summary for logging
