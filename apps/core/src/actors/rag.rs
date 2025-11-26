@@ -124,12 +124,9 @@ struct RagActorRunner {
 }
 
 impl RagActorRunner {
-    // NOTE: NonZeroUsize::new(1000) always succeeds since 1000 > 0.
-    // match + panic! is used instead of expect() because expect() is not const fn.
-    const CACHE_SIZE: NonZeroUsize = match NonZeroUsize::new(1000) {
-        Some(size) => size,
-        None => panic!("Cache size must be non-zero"),
-    };
+    /// The cache size for the embedding cache.
+    /// NonZeroUsize::new(1000) always succeeds since 1000 > 0.
+    const CACHE_SIZE: NonZeroUsize = NonZeroUsize::new(1000).expect("Cache size must be non-zero");
 
     fn new(
         receiver: mpsc::Receiver<RagMessage>,
