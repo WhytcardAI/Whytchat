@@ -75,7 +75,7 @@ impl AppState {
 
 /// Acquires the app_handle lock and returns the initialized state reference.
 /// Returns an error if the lock is poisoned or the state is not initialized.
-fn get_initialized_state(state: &AppState) -> Result<std::sync::MutexGuard<'_, Option<InitializedState>>, String> { get_lock(&state.app_handle) }
+fn get_initialized_state(state: &AppState) -> Result<std::sync::MutexGuard<'_, Option<InitializedState>>, String> {
     state.app_handle.lock()
         .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))
 }
