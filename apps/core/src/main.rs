@@ -211,8 +211,8 @@ async fn debug_chat(
     info!("│ Message: {} chars", message.len());
     info!("└─────────────────────────────────────────────────────┘");
 
-    let (pool, supervisor) =
-        check_rate_limit_and_get_resources(&state, &current_session).inspect_err(|e| {
+    let (pool, supervisor) = check_rate_limit_and_get_resources(&state, &current_session)
+        .inspect_err(|e| {
             if e.contains("Rate limit") {
                 error!("Rate limit exceeded for session: {}", current_session);
             }

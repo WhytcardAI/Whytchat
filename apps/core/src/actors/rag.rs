@@ -1,9 +1,9 @@
-use crate::actors::messages::{AppError, ActorError, RagMessage, SearchResult};
+use crate::actors::messages::{ActorError, AppError, RagMessage, SearchResult};
 use crate::actors::traits::RagActor;
 use crate::fs_manager::PortablePathManager;
 use arrow::array::{
-    Array, FixedSizeListBuilder, Float32Builder, RecordBatch, RecordBatchIterator, StringArray,
-    StringBuilder, Float32Array,
+    Array, FixedSizeListBuilder, Float32Array, Float32Builder, RecordBatch, RecordBatchIterator,
+    StringArray, StringBuilder,
 };
 use arrow::datatypes::{DataType, Field, Schema};
 use async_trait::async_trait;
@@ -14,13 +14,13 @@ use lancedb::{
     query::{ExecutableQuery, QueryBase},
     Connection,
 };
-use tracing::{error, info, warn};
 use lru::LruCache;
 use sqlx::sqlite::SqlitePool;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot};
+use tracing::{error, info, warn};
 
 /// A handle to the `RagActor`.
 ///
@@ -57,11 +57,7 @@ impl RagActorHandle {
 
 #[async_trait]
 impl RagActor for RagActorHandle {
-    async fn ingest(
-        &self,
-        content: String,
-        metadata: Option<String>,
-    ) -> Result<String, AppError> {
+    async fn ingest(&self, content: String, metadata: Option<String>) -> Result<String, AppError> {
         let (send, recv) = oneshot::channel();
         let msg = RagMessage::Ingest {
             content,
@@ -72,8 +68,11 @@ impl RagActor for RagActorHandle {
             .send(msg)
             .await
             .map_err(|_| AppError::Actor(ActorError::Internal("RAG Actor closed".to_string())))?;
-        Ok(recv.await
-            .map_err(|_| AppError::Actor(ActorError::Internal("RAG Actor failed to respond".to_string())))??)
+        Ok(recv.await.map_err(|_| {
+            AppError::Actor(ActorError::Internal(
+                "RAG Actor failed to respond".to_string(),
+            ))
+        })??)
     }
 
     async fn search_with_filters(
@@ -92,8 +91,11 @@ impl RagActor for RagActorHandle {
             .send(msg)
             .await
             .map_err(|_| AppError::Actor(ActorError::Internal("RAG Actor closed".to_string())))?;
-        Ok(recv.await
-            .map_err(|_| AppError::Actor(ActorError::Internal("RAG Actor failed to respond".to_string())))??)
+        Ok(recv.await.map_err(|_| {
+            AppError::Actor(ActorError::Internal(
+                "RAG Actor failed to respond".to_string(),
+            ))
+        })??)
     }
 
     async fn delete_for_file(&self, file_id: String) -> Result<(), AppError> {
@@ -106,8 +108,11 @@ impl RagActor for RagActorHandle {
             .send(msg)
             .await
             .map_err(|_| AppError::Actor(ActorError::Internal("RAG Actor closed".to_string())))?;
-        Ok(recv.await
-            .map_err(|_| AppError::Actor(ActorError::Internal("RAG Actor failed to respond".to_string())))??)
+        Ok(recv.await.map_err(|_| {
+            AppError::Actor(ActorError::Internal(
+                "RAG Actor failed to respond".to_string(),
+            ))
+        })??)
     }
 }
 
@@ -179,7 +184,10 @@ impl RagActorRunner {
                 self.embedding_model = Some(model);
                 Ok(())
             }
-            Err(e) => Err(ActorError::RagError(format!("Failed to load embedding model: {}", e))),
+            Err(e) => Err(ActorError::RagError(format!(
+                "Failed to load embedding model: {}",
+                e
+            ))),
         }
     }
 
@@ -246,10 +254,7 @@ impl RagActorRunner {
                     warn!("Failed to send search response (channel closed)");
                 }
             }
-            RagMessage::DeleteForFile {
-                file_id,
-                responder,
-            } => {
+            RagMessage::DeleteForFile { file_id, responder } => {
                 let result = self.delete_document_vectors(file_id).await;
                 if responder.send(result.map_err(AppError::from)).is_err() {
                     warn!("Failed to send delete response (channel closed)");
@@ -281,7 +286,9 @@ impl RagActorRunner {
 
         for line in content.split('\n') {
             let trimmed = line.trim();
-            if trimmed.is_empty() { continue; }
+            if trimmed.is_empty() {
+                continue;
+            }
 
             if current_chunk.len() + trimmed.len() > target_chunk_size {
                 // Chunk is full, push it
@@ -309,13 +316,16 @@ impl RagActorRunner {
         }
 
         // Filter out very small chunks that might be noise
-        let chunks: Vec<String> = chunks.into_iter()
-            .filter(|s| s.len() > 20)
-            .collect();
+        let chunks: Vec<String> = chunks.into_iter().filter(|s| s.len() > 20).collect();
 
         if chunks.is_empty() {
-            warn!("Document ingestion skipped: No valid chunks found (content length: {})", content.len());
-            return Ok("No valid chunks to ingest (content might be too short or empty)".to_string());
+            warn!(
+                "Document ingestion skipped: No valid chunks found (content length: {})",
+                content.len()
+            );
+            return Ok(
+                "No valid chunks to ingest (content might be too short or empty)".to_string(),
+            );
         }
 
         // 2. Generate Embeddings
@@ -496,31 +506,34 @@ impl RagActorRunner {
             let content_col = batch.column_by_name("content").ok_or(ActorError::RagError(
                 "Column 'content' not found".to_string(),
             ))?;
-            let metadata_col = batch.column_by_name("metadata").ok_or(ActorError::RagError(
-                "Column 'metadata' not found".to_string(),
-            ))?;
-            let distance_col = batch.column_by_name("_distance").ok_or(ActorError::RagError(
-                "Column '_distance' not found".to_string(),
-            ))?;
+            let metadata_col = batch
+                .column_by_name("metadata")
+                .ok_or(ActorError::RagError(
+                    "Column 'metadata' not found".to_string(),
+                ))?;
+            let distance_col = batch
+                .column_by_name("_distance")
+                .ok_or(ActorError::RagError(
+                    "Column '_distance' not found".to_string(),
+                ))?;
 
-            let content_array = content_col
-                .as_any()
-                .downcast_ref::<StringArray>()
-                .ok_or(ActorError::RagError(
-                    "Failed to downcast content column".to_string(),
-                ))?;
-            let metadata_array = metadata_col
-                .as_any()
-                .downcast_ref::<StringArray>()
-                .ok_or(ActorError::RagError(
-                    "Failed to downcast metadata column".to_string(),
-                ))?;
-            let distance_array = distance_col
-                .as_any()
-                .downcast_ref::<Float32Array>()
-                .ok_or(ActorError::RagError(
-                    "Failed to downcast distance column".to_string(),
-                ))?;
+            let content_array =
+                content_col
+                    .as_any()
+                    .downcast_ref::<StringArray>()
+                    .ok_or(ActorError::RagError(
+                        "Failed to downcast content column".to_string(),
+                    ))?;
+            let metadata_array =
+                metadata_col
+                    .as_any()
+                    .downcast_ref::<StringArray>()
+                    .ok_or(ActorError::RagError(
+                        "Failed to downcast metadata column".to_string(),
+                    ))?;
+            let distance_array = distance_col.as_any().downcast_ref::<Float32Array>().ok_or(
+                ActorError::RagError("Failed to downcast distance column".to_string()),
+            )?;
 
             for i in 0..content_array.len() {
                 if !content_array.is_null(i) {
@@ -582,4 +595,3 @@ impl RagActorRunner {
         Ok(())
     }
 }
-
