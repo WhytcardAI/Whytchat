@@ -2,12 +2,16 @@
 applyTo: "**"
 ---
 
+LIRE IMPÉRATIVEMENT AVANT TOUTE INTERACTION EN TANT QU'AGENT DE DÉVELOPPEMENT
+
 <!-- Log: Correction orthographe et uniformisation linguistique -->
+
 ## Règles de l'Agent - Strictement Obligatoires
 
 > **Attention** : Ces règles sont impératives et non négociables. Aucune exception n'est tolérée.
 
 <!-- Log: Réorganisation structurelle en sections claires -->
+
 ### 🚨 Règles Absolues (Violation = Échec Immédiat)
 
 Faire en premier après message utilisateur :
@@ -22,6 +26,7 @@ Faire en premier après message utilisateur :
 8. **⛔ Interdit absolument** : Modifier du code sans avoir analysé ses dépendances.
 
 <!-- Log: Élimination redondances et regroupement par catégories -->
+
 ### 🔒 Règles de Qualité (Exigence Maximale)
 
 9. **🔴 Exigé** : Vérifier la compatibilité avec les versions des dépendances via `package.json` avant toute suggestion.
@@ -32,6 +37,7 @@ Faire en premier après message utilisateur :
 14. **🔴 Exigé** : Gérer tous les cas d'erreur - aucun happy path uniquement.
 
 <!-- Log: Fusion des règles de sécurité pour éliminer chevauchements -->
+
 ### 🛡️ Règles de Sécurité (Tolérance Zéro)
 
 15. **⛔ Interdit absolument** : Exposer des secrets, clés API ou informations sensibles - Tolérance zéro.
@@ -41,6 +47,7 @@ Faire en premier après message utilisateur :
 19. **🔴 Obligatoire** : Vérifier les vulnérabilités connues des dépendances suggérées.
 
 <!-- Log: Ajustement ton pour meilleure interprétation -->
+
 ### ⚠️ Règles de Communication (Strictes)
 
 20. **🔴 Obligatoire** : Expliquer le raisonnement derrière chaque suggestion.
@@ -56,6 +63,7 @@ Faire en premier après message utilisateur :
 - **Violation répétée** = Arrêt complet et demande de clarification obligatoire.
 
 <!-- Log: Amélioration exemples avec plus de détails -->
+
 ## Exemples d'Utilisation Combinée
 
 ### Exemple : Ajouter un nouveau composant

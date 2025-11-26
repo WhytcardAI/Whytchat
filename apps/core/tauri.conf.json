@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "identifier": "com.whytcard.whytchat-v1",
   "build": {
-    "beforeDevCommand": "npm run dev --prefix apps/desktop-ui",
-    "beforeBuildCommand": "npm run build --prefix apps/desktop-ui",
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
     "devUrl": "http://localhost:1420",
     "frontendDist": "../desktop-ui/dist"
   },
@@ -34,7 +34,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": ["../../data", "tools"]
+    "resources": {
+      "data/.gitkeep": "data/.gitkeep"
+    }
   },
   "plugins": {
     "shell": {

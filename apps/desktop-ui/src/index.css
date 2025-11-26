@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Tauri window drag region support for touch/pen on Windows */
+*[data-tauri-drag-region] {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
 @layer base {
   :root {
     --background: 250 250 250; /* zinc-50 */

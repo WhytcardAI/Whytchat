@@ -28,6 +28,10 @@ apps/core/bundle/
 *.exe
 *.nsis
 
+# === Build Tools (downloaded for compilation) ===
+apps/core/tools/protoc/
+apps/core/tools/cmake/
+
 # === OS Files ===
 .DS_Store
 .DS_Store?
