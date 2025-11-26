@@ -1,0 +1,14 @@
+This is a test document for WhytChat E2E testing.
+
+The secret code is 42.
+
+This file is used to verify:
+1. File upload functionality
+2. Text extraction
+3. RAG (Retrieval-Augmented Generation) search
+4. Context-aware responses
+
+Additional test content:
+- Machine learning is a subset of artificial intelligence
+- Rust is a systems programming language
+- WhytChat is a local-first AI application
