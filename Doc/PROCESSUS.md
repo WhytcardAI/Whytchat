@@ -55,7 +55,7 @@ sequenceDiagram
 
     User->>UI: Envoie message
     UI->>Supervisor: invoke('debug_chat')
-    
+
     rect rgb(200, 240, 200)
         Note over Supervisor,Brain: Analyse Intention
         Supervisor->>Brain: analyze(text)
@@ -74,7 +74,7 @@ sequenceDiagram
         LLM-->>Supervisor: Token
         Supervisor-->>UI: Event 'chat-token'
     end
-    
+
     Supervisor->>Supervisor: Sauvegarder Réponse Complète (DB)
 ```
 
@@ -84,23 +84,53 @@ Import de fichiers pour enrichir la base de connaissances.
 
 ```mermaid
 sequenceDiagram
-    participant UI as React UI
+    participant UI as KnowledgeView
     participant Main as Main.rs
+    participant Extract as text_extract.rs
     participant RAG as Actor: RAG
     participant VectorDB as LanceDB
 
-    UI->>Main: invoke('upload_file')
-    Main->>Main: Écrire fichier sur disque
-    Main->>Main: Insert SQLite (Metadata)
-    Main->>RAG: ingest_file(path)
-    
-    RAG->>RAG: Split Text (Chunks)
-    RAG->>RAG: Generate Embeddings (FastEmbed)
-    RAG->>VectorDB: Insert Vectors
+    UI->>Main: invoke('upload_file_for_session')
+    Main->>Extract: extract_text_from_file()
+    Extract-->>Main: Contenu texte (UTF-8/PDF/DOCX)
+    Main->>Main: Écrire fichier original sur disque
+    Main->>Main: Insert SQLite (library_files + session_files_link)
+    Main->>RAG: ingest_content(text, metadata)
+
+    RAG->>RAG: Split Text (Chunks avec overlap)
+    RAG->>RAG: Generate Embeddings (FastEmbed 384-dim)
+    RAG->>VectorDB: Insert Vectors avec tag file:{uuid}
     RAG-->>UI: Ingestion Complete
 ```
 
-## 5. Inférence LLM (Détail Technique)
+### Formats Supportés
+
+| Extension                      | Extraction                | Crate         |
+| ------------------------------ | ------------------------- | ------------- |
+| `.txt`, `.md`, `.csv`, `.json` | UTF-8 direct              | N/A           |
+| `.pdf`                         | `extract_text_from_mem()` | `pdf-extract` |
+| `.docx`, `.doc`                | Itération paragraphes     | `docx-rs`     |
+
+## 5. Liaison de Fichiers Existants
+
+Lors de la création d'une session, l'utilisateur peut sélectionner des fichiers de la bibliothèque.
+
+```mermaid
+sequenceDiagram
+    participant UI as SessionWizard
+    participant Main as Main.rs
+    participant DB as SQLite
+
+    UI->>Main: invoke('link_library_file_to_session')
+    Main->>DB: get_library_file(file_id)
+    DB-->>Main: LibraryFile (vérifie existence)
+    Main->>DB: link_file_to_session(session_id, file_id)
+    Main-->>UI: OK (pas de ré-ingestion)
+```
+
+> **Note** : Les vecteurs existent déjà dans LanceDB, seule la table de liaison est mise à jour.
+
+## 6. Inférence LLM (Détail Technique)
 
 Comment le backend Rust communique avec le processus `llama-server`.
 
@@ -109,12 +139,13 @@ Comment le backend Rust communique avec le processus `llama-server`.
 3.  **Llama-server** répond en SSE (Server-Sent Events).
 4.  **Rust** lit le flux ligne par ligne, parse `data: {...}` et extrait le champ `content`.
 
-## 6. Diagnostics
+## 7. Diagnostics
 
 Le module de diagnostics permet de tester la chaîne entière sans interaction utilisateur manuelle.
 
-*   **Test RAG** : Crée un fichier temporaire, l'ingère, fait une recherche, vérifie le résultat, nettoie.
-*   **Test LLM** : Envoie un prompt simple ("Say hello") et chronomètre la réponse.
+- **Test RAG** : Crée un fichier temporaire, l'ingère, fait une recherche, vérifie le résultat, nettoie.
+- **Test LLM** : Envoie un prompt simple ("Say hello") et chronomètre la réponse.
 
 ---
-*Dernière mise à jour : Novembre 2025*
+
+_Dernière mise à jour : Novembre 2025_

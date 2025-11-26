@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Paperclip } from 'lucide-react';
+import { Send, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
+import { logger } from '../../lib/logger';
 
-export function ChatInput({ onSend, onFileUpload, disabled }) {
+export function ChatInput({ onSend, disabled }) {
   const [input, setInput] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef(null);
-  const fileInputRef = useRef(null);
   const { t } = useTranslation('common');
 
   // Auto-resize textarea
@@ -21,6 +21,7 @@ export function ChatInput({ onSend, onFileUpload, disabled }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!input.trim() || disabled) return;
+    logger.ui.submit('ChatInput', { messageLength: input.length });
     onSend(input, false);
     setInput('');
     // Reset textarea height
@@ -32,21 +33,8 @@ export function ChatInput({ onSend, onFileUpload, disabled }) {
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      logger.ui.keypress('Enter', 'ChatInput');
       handleSubmit(e);
-    }
-  };
-
-  const handleFileClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file && onFileUpload) {
-      onFileUpload(file);
-    }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
     }
   };
 
@@ -62,33 +50,10 @@ export function ChatInput({ onSend, onFileUpload, disabled }) {
           "border shadow-lg",
           isFocused
             ? "border-primary/50 shadow-glow ring-2 ring-primary/20"
-            : "border-border shadow-black/5",
+            : "border-border shadow-black/5"
         )}
       >
         <div className="flex items-end p-2 gap-2">
-          {/* Attachment Button */}
-          <button
-            type="button"
-            onClick={handleFileClick}
-            disabled={disabled}
-            className={cn(
-              "p-3 rounded-xl transition-all duration-200",
-              "text-muted hover:text-text hover:bg-surface-hover",
-              "focus:outline-none focus:ring-2 focus:ring-primary/30",
-              disabled && "opacity-50 cursor-not-allowed"
-            )}
-            title={t('chat.attach', 'Attach file')}
-          >
-            <Paperclip size={20} />
-          </button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            className="hidden"
-            accept=".txt,.md,.csv,.json"
-          />
-
           {/* Input Area */}
           <textarea
             ref={textareaRef}
@@ -99,7 +64,7 @@ export function ChatInput({ onSend, onFileUpload, disabled }) {
             onBlur={() => setIsFocused(false)}
             placeholder={t('chat.placeholder', 'Send a message to WhytChat...')}
             className={cn(
-              "flex-1 bg-transparent text-text py-3 px-1",
+              "flex-1 bg-transparent text-text py-3 px-3",
               "min-h-[48px] max-h-[150px] resize-none",
               "focus:outline-none text-sm leading-relaxed",
               "placeholder:text-muted/60",
@@ -117,7 +82,7 @@ export function ChatInput({ onSend, onFileUpload, disabled }) {
               "p-3 rounded-xl transition-all duration-200",
               "focus:outline-none focus:ring-2 focus:ring-primary/30",
               canSend
-                ? "bg-primary text-white shadow-lg shadow-primary/30 hover:bg-primary/90 hover:shadow-glow active:scale-95"
+                ? "bg-primary text-primary-foreground dark:text-zinc-900 shadow-lg shadow-primary/30 hover:opacity-90 hover:shadow-glow active:scale-95"
                 : "bg-muted/20 text-muted cursor-not-allowed"
             )}
           >

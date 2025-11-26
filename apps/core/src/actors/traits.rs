@@ -1,4 +1,4 @@
-use crate::actors::messages::{AppError};
+use crate::actors::messages::{AppError, SearchResult};
 use async_trait::async_trait;
 use tokio::sync::mpsc;
 
@@ -30,5 +30,8 @@ pub trait RagActor: Send + Sync + 'static {
     async fn ingest(&self, content: String, metadata: Option<String>) -> Result<String, AppError>;
 
     /// Searches the knowledge base for content relevant to a query.
-    async fn search_with_filters(&self, query: String, file_ids: Vec<String>) -> Result<Vec<String>, AppError>;
+    async fn search_with_filters(&self, query: String, file_ids: Vec<String>) -> Result<Vec<SearchResult>, AppError>;
+
+    /// Deletes all vectors associated with a specific file.
+    async fn delete_for_file(&self, file_id: String) -> Result<(), AppError>;
 }

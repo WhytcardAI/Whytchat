@@ -3,6 +3,7 @@ import { MessageSquare, Star, MoreVertical, FolderInput, Trash2 } from 'lucide-r
 import { useTranslation } from 'react-i18next';
 import { useAppStore } from '../../store/appStore';
 import { cn } from '../../lib/utils';
+import { logger } from '../../lib/logger';
 
 export function SessionItem({ session, active, onClick }) {
   const { t } = useTranslation('common');
@@ -13,22 +14,26 @@ export function SessionItem({ session, active, onClick }) {
 
   const handleFavorite = async (e) => {
     e.stopPropagation();
+    logger.ui.click('SessionItem:Favorite', { sessionId: session.id });
     await toggleFavorite(session.id);
   };
 
   const handleMenuClick = (e) => {
     e.stopPropagation();
+    logger.ui.click('SessionItem:Menu', { sessionId: session.id });
     setShowMenu(!showMenu);
     setShowFolderMenu(false);
   };
 
   const handleMoveToFolder = async (folderId) => {
+    logger.ui.click('SessionItem:MoveToFolder', { sessionId: session.id, folderId });
     await moveSessionToFolder(session.id, folderId);
     setShowMenu(false);
     setShowFolderMenu(false);
   };
 
   const handleDelete = async () => {
+    logger.ui.click('SessionItem:Delete', { sessionId: session.id });
     await deleteSession(session.id);
     setShowMenu(false);
     setShowDeleteConfirm(false);
@@ -37,25 +42,27 @@ export function SessionItem({ session, active, onClick }) {
   const displayName = session.title || 'Session ' + session.id.slice(-8);
 
   return (
-    <div className="relative group">
-      <button
+    <div className="relative group px-2">
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick(e);
+          }
+        }}
         className={cn(
-          'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all text-left',
+          'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all text-left border border-transparent cursor-pointer select-none',
           active
-            ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
-            : 'text-muted hover:bg-surface/80 hover:text-text'
+            ? 'bg-surface text-primary border-border shadow-sm'
+            : 'text-muted-foreground hover:bg-surface/50 hover:text-foreground'
         )}
       >
-        <span
-          className={cn(
-            'w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors',
-            active ? 'bg-primary/20 text-primary' : 'bg-background text-muted group-hover:text-text'
-          )}
-        >
-          <MessageSquare size={16} />
-        </span>
-        <span className="truncate flex-1">{displayName}</span>
+        <MessageSquare size={16} className={cn("shrink-0", active ? "text-primary" : "text-muted-foreground/50")} />
+
+        <span className="truncate flex-1 font-medium">{displayName}</span>
 
         {/* Favorite star */}
         <button
@@ -64,7 +71,7 @@ export function SessionItem({ session, active, onClick }) {
             'p-1 rounded transition-all',
             session.is_favorite
               ? 'text-yellow-500 hover:text-yellow-600'
-              : 'text-muted/30 hover:text-yellow-500 opacity-0 group-hover:opacity-100'
+              : 'text-muted/20 hover:text-yellow-500 opacity-0 group-hover:opacity-100'
           )}
           title={session.is_favorite ? t('sessions.unfavorite', 'Remove from favorites') : t('sessions.favorite', 'Add to favorites')}
         >
@@ -74,15 +81,11 @@ export function SessionItem({ session, active, onClick }) {
         {/* More menu */}
         <button
           onClick={handleMenuClick}
-          className="p-1 rounded text-muted/30 hover:text-text opacity-0 group-hover:opacity-100 transition-all"
+          className="p-1 rounded text-muted/20 hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"
         >
           <MoreVertical size={14} />
         </button>
-
-        {active && (
-          <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-        )}
-      </button>
+      </div>
 
       {/* Context Menu */}
       {showMenu && (

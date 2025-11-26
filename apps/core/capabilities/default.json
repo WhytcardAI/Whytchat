@@ -8,6 +8,7 @@
     "core:event:allow-listen",
     "core:event:allow-emit",
     "core:window:default",
+    "core:window:allow-close",
     "core:webview:default",
     "shell:default",
     "shell:allow-open",

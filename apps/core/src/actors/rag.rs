@@ -1,9 +1,9 @@
-use crate::actors::messages::{AppError, ActorError, RagMessage};
+use crate::actors::messages::{AppError, ActorError, RagMessage, SearchResult};
 use crate::actors::traits::RagActor;
 use crate::fs_manager::PortablePathManager;
 use arrow::array::{
     Array, FixedSizeListBuilder, Float32Builder, RecordBatch, RecordBatchIterator, StringArray,
-    StringBuilder,
+    StringBuilder, Float32Array,
 };
 use arrow::datatypes::{DataType, Field, Schema};
 use async_trait::async_trait;
@@ -80,12 +80,26 @@ impl RagActor for RagActorHandle {
         &self,
         query: String,
         file_ids: Vec<String>,
-    ) -> Result<Vec<String>, AppError> {
+    ) -> Result<Vec<SearchResult>, AppError> {
         let (send, recv) = oneshot::channel();
         let msg = RagMessage::Search {
             query,
             file_ids,
             limit: 3, // Default limit
+            responder: send,
+        };
+        self.sender
+            .send(msg)
+            .await
+            .map_err(|_| AppError::Actor(ActorError::Internal("RAG Actor closed".to_string())))?;
+        Ok(recv.await
+            .map_err(|_| AppError::Actor(ActorError::Internal("RAG Actor failed to respond".to_string())))??)
+    }
+
+    async fn delete_for_file(&self, file_id: String) -> Result<(), AppError> {
+        let (send, recv) = oneshot::channel();
+        let msg = RagMessage::DeleteForFile {
+            file_id,
             responder: send,
         };
         self.sender
@@ -105,6 +119,7 @@ struct RagActorRunner {
     db_connection: Option<Connection>,
     table_name: String,
     db_path_override: Option<PathBuf>,
+    #[allow(dead_code)]
     pool: Option<SqlitePool>,
 }
 
@@ -179,7 +194,7 @@ impl RagActorRunner {
                 responder,
             } => {
                 let result = self.ingest_document(content, metadata).await;
-                if let Err(_) = responder.send(result.map_err(AppError::from)) {
+                if responder.send(result.map_err(AppError::from)).is_err() {
                     warn!("Failed to send ingest response (channel closed)");
                 }
             }
@@ -190,8 +205,17 @@ impl RagActorRunner {
                 responder,
             } => {
                 let result = self.search_documents(query, file_ids, limit).await;
-                if let Err(_) = responder.send(result.map_err(AppError::from)) {
+                if responder.send(result.map_err(AppError::from)).is_err() {
                     warn!("Failed to send search response (channel closed)");
+                }
+            }
+            RagMessage::DeleteForFile {
+                file_id,
+                responder,
+            } => {
+                let result = self.delete_document_vectors(file_id).await;
+                if responder.send(result.map_err(AppError::from)).is_err() {
+                    warn!("Failed to send delete response (channel closed)");
                 }
             }
         }
@@ -210,15 +234,51 @@ impl RagActorRunner {
             .as_ref()
             .ok_or(ActorError::RagError("DB not connected".to_string()))?;
 
-        // 1. Simple Chunking with overlap for better context
-        let chunks: Vec<String> = content
-            .split('\n')
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty() && s.len() > 20)
+        // 1. Improved Chunking with overlap
+        // We accumulate lines until we reach a target size (e.g., 512 chars)
+        // and then emit a chunk. We keep an overlap (e.g., 50 chars) from the previous chunk.
+        let target_chunk_size = 512;
+        let overlap_size = 50;
+        let mut chunks: Vec<String> = Vec::new();
+        let mut current_chunk = String::new();
+
+        for line in content.split('\n') {
+            let trimmed = line.trim();
+            if trimmed.is_empty() { continue; }
+
+            if current_chunk.len() + trimmed.len() > target_chunk_size {
+                // Chunk is full, push it
+                chunks.push(current_chunk.clone());
+
+                // Start new chunk with overlap
+                let start_index = if current_chunk.len() > overlap_size {
+                    current_chunk.len() - overlap_size
+                } else {
+                    0
+                };
+                let overlap = current_chunk[start_index..].to_string();
+                current_chunk = overlap + " " + trimmed;
+            } else {
+                if !current_chunk.is_empty() {
+                    current_chunk.push(' ');
+                }
+                current_chunk.push_str(trimmed);
+            }
+        }
+
+        // Push the last chunk if not empty
+        if !current_chunk.is_empty() {
+            chunks.push(current_chunk);
+        }
+
+        // Filter out very small chunks that might be noise
+        let chunks: Vec<String> = chunks.into_iter()
+            .filter(|s| s.len() > 20)
             .collect();
 
         if chunks.is_empty() {
-            return Ok("No valid chunks to ingest".to_string());
+            warn!("Document ingestion skipped: No valid chunks found (content length: {})", content.len());
+            return Ok("No valid chunks to ingest (content might be too short or empty)".to_string());
         }
 
         // 2. Generate Embeddings
@@ -319,7 +379,7 @@ impl RagActorRunner {
         query: String,
         file_ids: Vec<String>,
         limit: usize,
-    ) -> Result<Vec<String>, ActorError> {
+    ) -> Result<Vec<SearchResult>, ActorError> {
         let model = self.embedding_model.as_ref().ok_or(ActorError::RagError(
             "Embedding model not loaded".to_string(),
         ))?;
@@ -399,24 +459,90 @@ impl RagActorRunner {
             let content_col = batch.column_by_name("content").ok_or(ActorError::RagError(
                 "Column 'content' not found".to_string(),
             ))?;
+            let metadata_col = batch.column_by_name("metadata").ok_or(ActorError::RagError(
+                "Column 'metadata' not found".to_string(),
+            ))?;
+            let distance_col = batch.column_by_name("_distance").ok_or(ActorError::RagError(
+                "Column '_distance' not found".to_string(),
+            ))?;
 
-            let content_array =
-                content_col
-                    .as_any()
-                    .downcast_ref::<StringArray>()
-                    .ok_or(ActorError::RagError(
-                        "Failed to downcast content column".to_string(),
-                    ))?;
+            let content_array = content_col
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .ok_or(ActorError::RagError(
+                    "Failed to downcast content column".to_string(),
+                ))?;
+            let metadata_array = metadata_col
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .ok_or(ActorError::RagError(
+                    "Failed to downcast metadata column".to_string(),
+                ))?;
+            let distance_array = distance_col
+                .as_any()
+                .downcast_ref::<Float32Array>()
+                .ok_or(ActorError::RagError(
+                    "Failed to downcast distance column".to_string(),
+                ))?;
 
             for i in 0..content_array.len() {
                 if !content_array.is_null(i) {
-                    let text = content_array.value(i);
-                    documents.push(text.to_string());
+                    let text = content_array.value(i).to_string();
+                    let meta = if metadata_array.is_null(i) {
+                        None
+                    } else {
+                        Some(metadata_array.value(i).to_string())
+                    };
+                    let score = if distance_array.is_null(i) {
+                        0.0
+                    } else {
+                        distance_array.value(i)
+                    };
+
+                    documents.push(SearchResult {
+                        content: text,
+                        metadata: meta,
+                        score,
+                    });
                 }
             }
         }
 
         Ok(documents)
+    }
+
+    async fn delete_document_vectors(&self, file_id: String) -> Result<(), ActorError> {
+        let conn = self
+            .db_connection
+            .as_ref()
+            .ok_or(ActorError::RagError("DB not connected".to_string()))?;
+
+        let table_names = conn
+            .table_names()
+            .execute()
+            .await
+            .map_err(|e| ActorError::RagError(format!("Failed to list tables: {}", e)))?;
+
+        if !table_names.contains(&self.table_name) {
+            return Ok(());
+        }
+
+        let table = conn
+            .open_table(&self.table_name)
+            .execute()
+            .await
+            .map_err(|e| ActorError::RagError(format!("Failed to open table: {}", e)))?;
+
+        // Delete where metadata = 'file:{file_id}'
+        let predicate = format!("metadata = 'file:{}'", file_id);
+
+        table
+            .delete(&predicate)
+            .await
+            .map_err(|e| ActorError::RagError(format!("Failed to delete vectors: {}", e)))?;
+
+        info!("Deleted vectors for file: {}", file_id);
+        Ok(())
     }
 }
 

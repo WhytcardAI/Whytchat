@@ -8,6 +8,7 @@ import { useAppStore } from './store/appStore';
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { X } from 'lucide-react';
+import { logger } from './lib/logger';
 
 function App() {
   const {
@@ -16,38 +17,42 @@ function App() {
     currentSessionId,
     setIsConfigured,
     isDiagnosticsOpen,
-    setDiagnosticsOpen
+    setDiagnosticsOpen,
+    setIsCreatingSession
   } = useAppStore();
-  const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [preflightState, setPreflightState] = useState('checking'); // 'checking' | 'passed' | 'failed' | 'onboarding'
   const [preflightReport, setPreflightReport] = useState(null);
 
   useEffect(() => {
     const runPreflight = async () => {
       try {
-        console.log('Running preflight check...');
+        logger.system.preflight('checking');
         // Use quick check first for fast feedback
         const report = await invoke('run_quick_preflight_check');
-        console.log('Preflight report:', report);
+        logger.system.preflight('complete', {
+          ready: report.ready_to_start,
+          needsOnboarding: report.needs_onboarding
+        });
         setPreflightReport(report);
 
         if (report.needs_onboarding) {
           // Need to download model/server
-          console.log('Needs onboarding');
+          logger.system.preflight('needs_onboarding');
           setIsConfigured(false);
           setPreflightState('onboarding');
         } else if (report.ready_to_start) {
           // All good, initialize app
-          console.log('Ready to start, initializing...');
+          logger.system.init('initializing');
           await initializeApp();
+          logger.system.ready();
           setPreflightState('passed');
         } else {
           // Some checks failed
-          console.log('Preflight failed');
+          logger.system.preflight('failed', report.summary);
           setPreflightState('failed');
         }
       } catch (error) {
-        console.error('Preflight error:', error);
+        logger.system.error('preflight', error);
         setPreflightReport({
           all_passed: false,
           checks: [{ name: 'preflight', passed: false, message: error.toString() }],
@@ -83,12 +88,13 @@ function App() {
   }
 
   const handleNewChat = () => {
+    logger.ui.click('Dashboard:NewChat');
     setIsCreatingSession(true);
   };
 
   return (
     <>
-      <MainLayout isCreatingSession={isCreatingSession} setIsCreatingSession={setIsCreatingSession}>
+      <MainLayout>
         {currentSessionId ? <ChatInterface /> : <Dashboard onNewChat={handleNewChat} />}
       </MainLayout>
 
@@ -97,10 +103,13 @@ function App() {
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-8 animate-in fade-in duration-200">
           <div className="w-full max-w-4xl h-[600px] bg-surface rounded-xl shadow-2xl border border-border flex flex-col relative animate-in zoom-in-95 duration-200">
             <button
-              onClick={() => setDiagnosticsOpen(false)}
-              className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition-colors z-10"
+              onClick={() => {
+                logger.navigation.closeModal('Diagnostics');
+                setDiagnosticsOpen(false);
+              }}
+              className="absolute top-4 right-4 p-2 hover:bg-muted rounded-lg transition-colors z-10"
             >
-              <X className="text-gray-400 hover:text-white" size={20} />
+              <X className="text-muted-foreground hover:text-foreground" size={20} />
             </button>
             <TestConsole
               className="h-full rounded-xl"

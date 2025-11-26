@@ -18,6 +18,7 @@ import {
   HardDrive,
   Search,
   Link,
+  Bug,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -29,7 +30,13 @@ const categoryIcons = {
   llm: Cpu,
   filesystem: HardDrive,
   integration: Link,
+  debug: Bug,
 };
+
+// Component that throws an error for testing ErrorBoundary
+function BuggyComponent() {
+  throw new Error("This is a simulated crash for testing the Error Boundary.");
+}
 
 // Test status component
 function TestStatus({ status, size = 16 }) {
@@ -177,6 +184,7 @@ export function TestConsole({ onComplete, autoStart = false, className }) {
   const [results, setResults] = useState([]);
   const [currentCategory, setCurrentCategory] = useState(null);
   const [summary, setSummary] = useState(null);
+  const [simulateCrash, setSimulateCrash] = useState(false);
   const consoleRef = useRef(null);
 
   // Group results by category
@@ -356,6 +364,23 @@ export function TestConsole({ onComplete, autoStart = false, className }) {
           </div>
         )}
       </div>
+
+      {/* Debug / Error Simulation */}
+      <div className="px-4 py-3 bg-gray-800/30 border-t border-gray-700 flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs text-gray-400">
+          <Bug size={14} />
+          <span>Debug Tools</span>
+        </div>
+        <button
+          onClick={() => setSimulateCrash(true)}
+          className="px-3 py-1.5 bg-destructive/20 text-destructive hover:bg-destructive/30 border border-destructive/30 rounded-lg text-xs font-medium transition-colors flex items-center gap-2"
+        >
+          <AlertTriangle size={12} />
+          Simulate Crash
+        </button>
+      </div>
+
+      {simulateCrash && <BuggyComponent />}
 
       {/* Footer with summary */}
       {status === 'complete' && summary && (

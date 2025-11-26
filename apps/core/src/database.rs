@@ -303,6 +303,7 @@ pub async fn delete_session(
 }
 
 /// Clear all messages from a session without deleting the session.
+#[allow(dead_code)]
 pub async fn clear_session_messages(
     pool: &SqlitePool,
     session_id: &str,
@@ -352,21 +353,24 @@ pub async fn create_folder(
     pool: &SqlitePool,
     name: String,
     color: Option<String>,
+    folder_type: Option<String>,
 ) -> Result<Folder, sqlx::Error> {
     let id = Uuid::new_v4().to_string();
     let created_at = Utc::now().timestamp();
     let folder_color = color.unwrap_or_else(|| "#6366f1".to_string());
+    let f_type = folder_type.unwrap_or_else(|| "session".to_string());
 
     sqlx::query(
         r#"
-        INSERT INTO folders (id, name, color, sort_order, created_at)
-        VALUES (?, ?, ?, 0, ?)
+        INSERT INTO folders (id, name, color, sort_order, created_at, type)
+        VALUES (?, ?, ?, 0, ?, ?)
         "#,
     )
     .bind(&id)
     .bind(&name)
     .bind(&folder_color)
     .bind(created_at)
+    .bind(&f_type)
     .execute(pool)
     .await?;
 
@@ -376,6 +380,7 @@ pub async fn create_folder(
         color: folder_color,
         sort_order: 0,
         created_at,
+        folder_type: f_type,
     })
 }
 
@@ -383,7 +388,7 @@ pub async fn create_folder(
 pub async fn list_folders(pool: &SqlitePool) -> Result<Vec<Folder>, sqlx::Error> {
     sqlx::query_as::<_, Folder>(
         r#"
-        SELECT id, name, color, sort_order, created_at
+        SELECT id, name, color, sort_order, created_at, type as folder_type
         FROM folders
         ORDER BY sort_order ASC, created_at ASC
         "#,
@@ -392,12 +397,22 @@ pub async fn list_folders(pool: &SqlitePool) -> Result<Vec<Folder>, sqlx::Error>
     .await
 }
 
-/// Delete a folder (sessions in it become unfiled).
+/// Delete a folder (sessions and files in it become unfiled).
 pub async fn delete_folder(pool: &SqlitePool, id: &str) -> Result<(), sqlx::Error> {
     // First, unfile all sessions in this folder
     sqlx::query(
         r#"
         UPDATE sessions SET folder_id = NULL WHERE folder_id = ?
+        "#,
+    )
+    .bind(id)
+    .execute(pool)
+    .await?;
+
+    // Unfile all library files in this folder
+    sqlx::query(
+        r#"
+        UPDATE library_files SET folder_id = NULL WHERE folder_id = ?
         "#,
     )
     .bind(id)
@@ -461,6 +476,22 @@ pub async fn get_session_messages(
 
 // --- Library Files CRUD ---
 
+pub async fn get_library_file(
+    pool: &SqlitePool,
+    file_id: &str,
+) -> Result<LibraryFile, sqlx::Error> {
+    sqlx::query_as::<_, LibraryFile>(
+        r#"
+        SELECT id, name, path, file_type, size, created_at, folder_id
+        FROM library_files
+        WHERE id = ?
+        "#,
+    )
+    .bind(file_id)
+    .fetch_one(pool)
+    .await
+}
+
 pub async fn add_library_file(
     pool: &SqlitePool,
     id: &str,
@@ -473,9 +504,9 @@ pub async fn add_library_file(
 
     sqlx::query_as::<_, LibraryFile>(
         r#"
-        INSERT INTO library_files (id, name, path, file_type, size, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-        RETURNING id, name, path, file_type, size, created_at
+        INSERT INTO library_files (id, name, path, file_type, size, created_at, folder_id)
+        VALUES (?, ?, ?, ?, ?, ?, NULL)
+        RETURNING id, name, path, file_type, size, created_at, folder_id
         "#,
     )
     .bind(id)
@@ -533,14 +564,69 @@ pub async fn get_session_files(
     .await
 }
 
+#[allow(dead_code)]
 pub async fn list_library_files(pool: &SqlitePool) -> Result<Vec<LibraryFile>, sqlx::Error> {
     sqlx::query_as::<_, LibraryFile>(
         r#"
-        SELECT id, name, path, file_type, size, created_at
+        SELECT id, name, path, file_type, size, created_at, folder_id
         FROM library_files
         ORDER BY created_at DESC
         "#,
     )
     .fetch_all(pool)
     .await
+}
+
+/// Move a file to a folder.
+pub async fn move_file_to_folder(
+    pool: &SqlitePool,
+    file_id: &str,
+    folder_id: Option<&str>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        UPDATE library_files
+        SET folder_id = ?
+        WHERE id = ?
+        "#,
+    )
+    .bind(folder_id)
+    .bind(file_id)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+/// Delete a library file and its session links.
+/// Returns the path of the file so it can be deleted from disk.
+pub async fn delete_library_file(
+    pool: &SqlitePool,
+    file_id: &str,
+) -> Result<String, sqlx::Error> {
+    // Get file path first
+    let file = sqlx::query_as::<_, LibraryFile>(
+        r#"
+        SELECT id, name, path, file_type, size, created_at, folder_id
+        FROM library_files
+        WHERE id = ?
+        "#,
+    )
+    .bind(file_id)
+    .fetch_one(pool)
+    .await?;
+
+    // Delete links
+    sqlx::query("DELETE FROM session_files_link WHERE file_id = ?")
+        .bind(file_id)
+        .execute(pool)
+        .await?;
+
+    // Delete file record
+    sqlx::query("DELETE FROM library_files WHERE id = ?")
+        .bind(file_id)
+        .execute(pool)
+        .await?;
+
+    Ok(file.path)
 }

@@ -3,6 +3,9 @@
     {
       "path": ".",
     },
+    {
+      "path": "../whytcard",
+    },
   ],
   "settings": {
     "mcp": {

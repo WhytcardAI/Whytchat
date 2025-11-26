@@ -341,13 +341,13 @@ impl LlmActorRunner {
         match msg {
             LlmMessage::Generate { prompt, system_prompt, temperature, responder } => {
                 let result = self.generate_completion(prompt, system_prompt, temperature).await;
-                if let Err(_) = responder.send(result) {
+                if responder.send(result).is_err() {
                     warn!("Failed to send generate response (channel closed)");
                 }
             }
             LlmMessage::GenerateWithParams { prompt, system_prompt, temperature, responder } => {
                 let result = self.generate_completion(prompt, system_prompt, temperature).await;
-                if let Err(_) = responder.send(result) {
+                if responder.send(result).is_err() {
                     warn!("Failed to send generate_with_params response (channel closed)");
                 }
             }
@@ -359,7 +359,7 @@ impl LlmActorRunner {
                 responder,
             } => {
                 let result = self.stream_completion(prompt, system_prompt, temperature, chunk_sender).await;
-                if let Err(_) = responder.send(result) {
+                if responder.send(result).is_err() {
                     warn!("Failed to send stream_generate response (channel closed)");
                 }
             }
@@ -371,7 +371,7 @@ impl LlmActorRunner {
                 responder,
             } => {
                 let result = self.stream_completion(prompt, system_prompt, temperature, chunk_sender).await;
-                if let Err(_) = responder.send(result) {
+                if responder.send(result).is_err() {
                     warn!("Failed to send stream_generate_with_params response (channel closed)");
                 }
             }
@@ -382,13 +382,13 @@ impl LlmActorRunner {
         match msg {
             LlmMessage::Generate { responder, .. } |
             LlmMessage::GenerateWithParams { responder, .. } => {
-                if let Err(_) = responder.send(Err(error)) {
+                if responder.send(Err(error)).is_err() {
                     warn!("Failed to send error response to supervisor (channel closed)");
                 }
             }
             LlmMessage::StreamGenerate { responder, .. } |
             LlmMessage::StreamGenerateWithParams { responder, .. } => {
-                 if let Err(_) = responder.send(Err(error)) {
+                 if responder.send(Err(error)).is_err() {
                      warn!("Failed to send error response to supervisor (channel closed)");
                  }
             }

@@ -29,28 +29,47 @@ Contrairement à beaucoup de systèmes RAG qui mélangent toutes les données da
 
 ### A. Ingestion (Upload)
 
-1.  **Upload UI** : L'utilisateur upload un fichier via la `DataSidebar`.
-2.  **Stockage Fichier** : Le fichier original est sauvegardé dans `data/library/{file_id}_{filename}`.
-3.  **Enregistrement DB** : Une entrée est créée dans la table `library_files` (SQLite).
-4.  **Liaison** : Le fichier est lié à la session courante via `session_files_link`.
-5.  **Traitement (RagActor)** :
-    - **Lecture** : Le contenu est lu en mémoire.
-    - **Chunking** : Découpage par sauts de ligne (`\n`) avec filtrage des lignes trop courtes (< 20 chars).
+1.  **Upload UI** : L'utilisateur upload un ou plusieurs fichiers via la **KnowledgeView** (seule entrée pour les fichiers externes).
+2.  **Extraction de Texte** : Le module `text_extract.rs` extrait le contenu selon le format :
+    - **TXT/MD/CSV/JSON** : Conversion UTF-8 directe
+    - **PDF** : Extraction via `pdf-extract` crate
+    - **DOCX** : Extraction via `docx-rs` crate (lecture des paragraphes)
+3.  **Stockage Fichier** : Le fichier original est sauvegardé dans `data/files/{uuid}.{extension}`.
+4.  **Enregistrement DB** : Une entrée est créée dans la table `library_files` (SQLite).
+5.  **Liaison** : Le fichier est lié à la session courante via `session_files_link`.
+6.  **Traitement (RagActor)** :
+    - **Chunking** : Découpage avec overlap (512 chars/chunk, 50 chars overlap).
     - **Embedding** : Conversion des chunks en vecteurs (Float32Array[384]).
-    - **Indexation** : Écriture dans la table `knowledge_base` de LanceDB avec le tag `file:{id}`.
+    - **Indexation** : Écriture dans la table `knowledge_base` de LanceDB avec le tag `file:{uuid}`.
 
-### B. Récupération (Retrieval)
+### Formats Supportés
+
+| Extension                      | Crate         | Méthode d'extraction          |
+| ------------------------------ | ------------- | ----------------------------- |
+| `.txt`, `.md`, `.csv`, `.json` | N/A           | UTF-8 direct                  |
+| `.pdf`                         | `pdf-extract` | `extract_text_from_mem()`     |
+| `.docx`, `.doc`                | `docx-rs`     | Itération sur les paragraphes |
+
+### B. Association (Linking)
+
+Lors de la création d'une session via le **SessionWizard**, l'utilisateur peut sélectionner des fichiers existants de la bibliothèque :
+
+1.  **Sélection** : Les fichiers de la bibliothèque sont affichés dans le wizard.
+2.  **Liaison** : Pour chaque fichier sélectionné, `link_library_file_to_session` est appelé.
+3.  **Pas de ré-ingestion** : Les vecteurs existent déjà dans LanceDB, seule la table de liaison est mise à jour.
+
+### C. Récupération (Retrieval)
 
 1.  **Message Utilisateur** : L'utilisateur envoie un message.
 2.  **Analyse (Brain)** : Le système détermine si le RAG est nécessaire (`should_use_rag`).
-3.  **Récupération des IDs** : Le Supervisor récupère la liste des `file_ids` liés à la session.
+3.  **Récupération des IDs** : Le Supervisor récupère la liste des `file_ids` liés à la session via `get_session_files()`.
 4.  **Recherche (RagActor)** :
     - La requête utilisateur est vectorisée.
     - Recherche ANN (Approximate Nearest Neighbor) dans LanceDB.
-    - **Filtre** : `metadata IN (file:id1, file:id2...)`.
+    - **Filtre** : `metadata = 'file:id1' OR metadata = 'file:id2' ...`.
     - **Limit** : Top 3 résultats les plus proches.
 5.  **Construction du Prompt** :
-    - Les chunks trouvés sont concaténés.
+    - Les chunks trouvés sont concaténés avec leur source.
     - Ils sont injectés dans le prompt système sous la section `Context:`.
 
 ## 💾 Schéma de Données (LanceDB)

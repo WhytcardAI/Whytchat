@@ -67,10 +67,17 @@ pub struct Folder {
     pub sort_order: i32,
     /// Unix timestamp of when the folder was created.
     pub created_at: i64,
+    /// The type of folder ("session" or "document").
+    #[serde(default = "default_folder_type", rename = "type")]
+    pub folder_type: String,
 }
 
 fn default_folder_color() -> String {
     "#6366f1".to_string()
+}
+
+fn default_folder_type() -> String {
+    "session".to_string()
 }
 
 /// Represents a single message within a chat session.
@@ -104,6 +111,9 @@ pub struct LibraryFile {
     pub size: i64,
     /// Unix timestamp of creation.
     pub created_at: i64,
+    /// Optional folder ID for organization.
+    #[serde(default)]
+    pub folder_id: Option<String>,
 }
 
 /// Represents a file associated with a chat session (Joined View).

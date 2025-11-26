@@ -3,6 +3,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useAppStore } from '../store/appStore';
 import { useTranslation } from 'react-i18next';
+import toast from 'react-hot-toast';
+import { logger } from '../lib/logger';
 
 // Global listener state - prevents duplicate listeners in React Strict Mode
 let globalListenersSetup = false;
@@ -50,10 +52,12 @@ export function useChatStream(sessionId) {
               role: msg.role,
               content: msg.content
             }));
+            logger.chat.loadMessages(sessionId, formattedMessages.length);
             setMessages(formattedMessages);
           }
         } catch (error) {
-          console.error('Failed to load messages:', error);
+          logger.chat.error(error);
+          toast.error(t('chat.error_loading', 'Failed to load messages'));
         }
       }
     };
@@ -63,24 +67,44 @@ export function useChatStream(sessionId) {
     return () => {
       isActive = false;
     };
-  }, [sessionId]);
+  }, [sessionId, t]);
 
   // Register handlers that will be called by global listeners
   useEffect(() => {
+    // Token counter for logging
+    let tokenCount = 0;
+
     // Update the global handlers to point to current state setters
     messageHandler = (token) => {
+      tokenCount++;
+
       if (isMountedRef.current) {
         setMessages(prev => {
           const lastMsg = prev[prev.length - 1];
+          // Ensure token is a string to prevent concatenation errors
+          const safeToken = String(token || '');
+
           if (lastMsg && lastMsg.role === 'assistant') {
             // Append to existing assistant message
+            const newContent = (lastMsg.content || '') + safeToken;
+
+            // Log every 50 tokens to avoid spam
+            if (tokenCount % 50 === 0) {
+              logger.chat.receiveToken(tokenCount);
+            }
+
             return [
               ...prev.slice(0, -1),
-              { ...lastMsg, content: lastMsg.content + token }
+              { ...lastMsg, content: newContent }
             ];
           } else {
-            // Create new assistant message
-            return [...prev, { role: 'assistant', content: token }];
+            // Create new assistant message, but only if token is not empty
+             // This prevents ghost bubbles if the first token is empty
+             if (safeToken && safeToken.length > 0) {
+                logger.chat.streamStart(sessionId);
+                return [...prev, { role: 'assistant', content: safeToken }];
+             }
+             return prev;
           }
         });
       }
@@ -91,18 +115,17 @@ export function useChatStream(sessionId) {
         addThinkingStep(step);
       }
     };
-  }, [addThinkingStep]);
+  }, [addThinkingStep, sessionId]);
 
   // Setup global listeners ONCE
   useEffect(() => {
     async function setupGlobalListeners() {
       if (globalListenersSetup) {
-        console.log('[DEBUG] Global listeners already setup, skipping');
         return;
       }
 
-      console.log('[DEBUG] Setting up global listeners (first time)');
       globalListenersSetup = true;
+      logger.system.init('Setting up chat event listeners');
 
       try {
         // Setup thinking listener
@@ -119,10 +142,9 @@ export function useChatStream(sessionId) {
           }
         });
 
-        console.log('[DEBUG] Global listeners set up successfully');
-
+        logger.system.init('Chat event listeners ready');
       } catch (error) {
-        console.error('Error setting up listeners:', error);
+        logger.system.error('setupListeners', error);
         globalListenersSetup = false;
       }
     }
@@ -132,18 +154,20 @@ export function useChatStream(sessionId) {
     // No cleanup here - listeners are truly global and persist across component mounts
   }, []);
 
-  const sendMessage = useCallback(async (text, activeSessionId) => {
+  const sendMessage = useCallback(async (text, activeSessionId, isHidden = false) => {
       // Use provided activeSessionId (in case it was just created) or prop sessionId
       const targetSessionId = activeSessionId || sessionId;
 
       if (!targetSessionId) {
-          console.error("Cannot send message: No session ID provided.");
+          logger.chat.error('No session ID provided');
           return;
       }
 
-      // 1. Add User Message Locally
-      const userMsg = { role: 'user', content: text };
-      setMessages(prev => [...prev, userMsg]);
+      // 1. Add User Message Locally (unless hidden)
+      if (!isHidden) {
+        const userMsg = { role: 'user', content: text };
+        setMessages(prev => [...prev, userMsg]);
+      }
 
       // 2. Set Thinking State (Global)
       setThinking(true);
@@ -157,10 +181,11 @@ export function useChatStream(sessionId) {
           message: text
         });
 
+        logger.chat.streamEnd(targetSessionId, null);
         setThinking(false);
 
       } catch (error) {
-        console.error("Backend Error:", error);
+        logger.chat.error(error);
         setMessages(prev => [...prev, { role: 'assistant', content: `${t('chat.error')}: ${error}` }]);
         setThinking(false);
       }
@@ -178,16 +203,23 @@ export function useChatStream(sessionId) {
               role: msg.role,
               content: msg.content
             }));
+            logger.chat.loadMessages(sessionId, formattedMessages.length);
             setMessages(formattedMessages);
           } catch (error) {
-            console.error('Failed to refresh messages:', error);
+            logger.chat.error(error);
+            toast.error(t('chat.error_refreshing', 'Failed to refresh messages'));
           }
       }
-  }, [sessionId]);
+  }, [sessionId, t]);
+
+  const addSystemMessage = useCallback((text) => {
+    setMessages(prev => [...prev, { role: 'system', content: text }]);
+  }, []);
 
   return {
     messages,
     sendMessage,
-    refreshMessages
+    refreshMessages,
+    addSystemMessage
   };
 }

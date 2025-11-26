@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAppStore } from '../../store/appStore';
 import { cn } from '../../lib/utils';
 import i18n from '../../i18n';
+import { logger } from '../../lib/logger';
 
 const getDefaultPrompt = (lang) => {
   return lang === 'fr'
@@ -37,6 +38,7 @@ export function SettingsDropdown({ onClose }) {
 
   const handleSave = async () => {
     if (!currentSessionId) return;
+    logger.ui.click('SettingsDropdown:Save', { sessionId: currentSessionId });
     try {
       // Build full model_config for backend
       const fullConfig = {
@@ -45,13 +47,15 @@ export function SettingsDropdown({ onClose }) {
         system_prompt: config.system_prompt
       };
       await updateSession(currentSessionId, currentSession?.title, fullConfig);
+      logger.store.action('updateSession', { sessionId: currentSessionId, temperature: config.temperature });
       onClose();
     } catch (error) {
-      console.error('Failed to save settings:', error);
+      logger.system.error('SettingsDropdown:Save', error);
     }
   };
 
   const handleReset = () => {
+    logger.ui.click('SettingsDropdown:Reset');
     setConfig({
       ...DEFAULT_CONFIG,
       system_prompt: getDefaultPrompt(i18n.language)
@@ -142,7 +146,7 @@ export function SettingsDropdown({ onClose }) {
           className={cn(
             'flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium transition-colors',
             hasChanges && currentSessionId
-              ? 'bg-primary text-white hover:bg-primary/90'
+              ? 'bg-primary text-primary-foreground hover:opacity-90'
               : 'bg-background text-muted cursor-not-allowed'
           )}
         >

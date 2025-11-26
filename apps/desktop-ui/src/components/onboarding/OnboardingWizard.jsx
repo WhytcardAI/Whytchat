@@ -248,7 +248,7 @@ export function OnboardingWizard() {
 function StepItem({ label, done }) {
   return (
     <div className="flex items-center gap-3 text-sm">
-      <div className={cn("w-5 h-5 rounded-full flex items-center justify-center border", done ? "bg-green-500 border-green-500 text-white" : "border-border text-transparent")}>
+      <div className={cn("w-5 h-5 rounded-full flex items-center justify-center border", done ? "bg-green-500 border-green-500 text-primary-foreground" : "border-border text-transparent")}>
         <CheckCircle size={12} />
       </div>
       <span className={cn(done ? "text-text" : "text-muted")}>{label}</span>

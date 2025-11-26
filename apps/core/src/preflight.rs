@@ -3,6 +3,8 @@
 //! This module performs comprehensive health checks on all system components
 //! before the application starts. No assumptions - everything is verified.
 
+#![allow(dead_code)]
+
 use crate::fs_manager::PortablePathManager;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -570,13 +572,13 @@ async fn check_embeddings_load() -> CheckResult {
 
 /// Quick check - just verifies files exist, no startup tests
 pub fn quick_preflight_check() -> PreflightReport {
-    let mut checks = Vec::new();
-
-    checks.push(check_directories());
-    checks.push(check_model_file());
-    checks.push(check_llama_server_binary());
-    checks.push(check_embeddings());
-    checks.push(check_vectors_dir());
+    let checks = vec![
+        check_directories(),
+        check_model_file(),
+        check_llama_server_binary(),
+        check_embeddings(),
+        check_vectors_dir(),
+    ];
 
     let model_ok = checks.iter().find(|c| c.name == "model_file").map(|c| c.passed).unwrap_or(false);
     let server_ok = checks.iter().find(|c| c.name == "llama_server_binary").map(|c| c.passed).unwrap_or(false);

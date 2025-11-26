@@ -26,8 +26,24 @@ See [Doc/README.md](Doc/README.md) for comprehensive documentation.
 - **Brain**: Intent routing logic is hybrid (Regex + Semantic) in `apps/core/src/brain/`.
 - **IA**: Uses external `llama-server` binary. Do NOT modify `apps/core/tools/` binaries.
 
+## File Upload Architecture
+
+- **Single Entry Point**: External files ONLY enter through `KnowledgeView` (Import Data button).
+- **SessionWizard**: Links EXISTING library files to sessions (no upload, no re-ingestion).
+- **ChatInput**: Text-only, NO file attachments.
+- **Supported Formats**: `.txt`, `.md`, `.csv`, `.json`, `.pdf`, `.docx`, `.doc`
+- **Text Extraction**: `apps/core/src/text_extract.rs` handles PDF (`pdf-extract`) and DOCX (`docx-rs`).
+
+## Key Tauri Commands
+
+- `upload_file_for_session`: Upload + extract text + ingest into RAG
+- `link_library_file_to_session`: Link existing library file to session (no re-ingestion)
+- `get_session_files`: Get files linked to a session
+- `reindex_library`: Re-process all library files
+
 ## Gotchas
 
 - **File System**: Debug uses workspace root, Release uses executable dir. `PortablePathManager` handles this.
 - **Windows**: `PROTOC` env var must point to `apps/core/tools/protoc/bin/protoc.exe`.
 - **Tauri Config**: Frontend port 1420 is hardcoded in `vite.config.js` and `tauri.conf.json`. Keep in sync.
+- **RAG Filtering**: Each file's vectors are tagged with `metadata: "file:{uuid}"` for session-based filtering.

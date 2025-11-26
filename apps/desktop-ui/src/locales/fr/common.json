@@ -35,7 +35,12 @@
       "placeholder": "Tapez votre message...",
       "send": "Envoyer"
     },
-    "attach": "Joindre un fichier"
+    "attach": "Joindre un fichier",
+    "attach_file": "Joindre un fichier",
+    "message": {
+      "save_to_library": "Enregistrer dans la bibliothèque",
+      "save_as_doc": "Enregistrer comme document"
+    }
   },
   "rag": {
     "analyze": "Analyser",
@@ -44,7 +49,10 @@
     "summarize_prompt": "Fais-moi un résumé concis de {{fileName}}."
   },
   "nav": {
-    "new_chat": "Nouvelle"
+    "new_chat": "Nouvelle",
+    "knowledge": "Connaissances",
+    "chat": "Discussion",
+    "settings": "Paramètres"
   },
   "panel": {
     "orchestration": "Orchestration",
@@ -83,7 +91,10 @@
     "cancel": "Annuler",
     "delete": "Supprimer",
     "confirm": "Confirmer",
-    "save": "Enregistrer"
+    "save": "Enregistrer",
+    "saved": "Enregistré",
+    "error": "Erreur",
+    "save_as_doc": "Enregistrer comme document"
   },
   "folders": {
     "title": "Dossiers",
@@ -200,7 +211,11 @@
   "dashboard": {
     "welcome": "Bienvenue sur WhytChat",
     "subtitle": "Votre assistant IA personnel, sécurisé et local. Commencez une nouvelle conversation pour débuter.",
-    "new_chat": "Nouvelle conversation"
+    "new_chat": "Nouvelle conversation",
+    "analysis_started": "Analyse démarrée",
+    "add_files": "Ajouter des fichiers",
+    "add_more": "Ajouter plus",
+    "start_analysis": "Lancer l'analyse"
   },
   "preflight": {
     "title": "Vérification du système échouée",

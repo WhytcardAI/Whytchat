@@ -2,30 +2,33 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'react-hot-toast';
+import { logger } from '../lib/logger';
 
 // Global app state store
 export const useAppStore = create(
   persist(
     (set, get) => ({
     // UI State
+    currentView: 'knowledge', // 'knowledge' | 'chat'
+    setView: function(view) {
+      logger.navigation.viewChange(get().currentView, view);
+      return set({ currentView: view });
+    },
     isSidebarOpen: true,
     toggleSidebar: function() {
       return set(function(state) {
+        logger.navigation.toggleSidebar(!state.isSidebarOpen);
         return { isSidebarOpen: !state.isSidebarOpen };
       });
     },
-    isRightSidebarOpen: false,
-    toggleRightSidebar: function() {
-      return set(function(state) {
-        return { isRightSidebarOpen: !state.isRightSidebarOpen };
-      });
-    },
+    // isRightSidebarOpen removed in favor of Knowledge View
 
     // Theme State
     theme: 'light', // 'light' | 'dark'
     toggleTheme: function() {
       return set(function(state) {
         const newTheme = state.theme === 'light' ? 'dark' : 'light';
+        logger.system.themeChange(newTheme);
         if (newTheme === 'dark') {
           document.documentElement.classList.add('dark');
         } else {
@@ -35,6 +38,7 @@ export const useAppStore = create(
       });
     },
     setTheme: function(theme) {
+      logger.system.themeChange(theme);
       if (theme === 'dark') {
         document.documentElement.classList.add('dark');
       } else {
@@ -43,11 +47,23 @@ export const useAppStore = create(
       return set({ theme: theme });
     },
 
+    // Session Creation Wizard State
+    isCreatingSession: false,
+    setIsCreatingSession: function(isOpen) {
+      if (isOpen) {
+        logger.navigation.openModal('SessionWizard');
+      } else {
+        logger.navigation.closeModal('SessionWizard');
+      }
+      return set({ isCreatingSession: isOpen });
+    },
+
     // Session State
     sessions: [],
     sessionFiles: [],
     currentSessionId: null,
     setCurrentSessionId: function(id) {
+      logger.session.select(id);
       // When changing session, ensure we reset thinking state and load files
       if (id) {
         get().loadSessionFiles(id);
@@ -68,10 +84,11 @@ export const useAppStore = create(
     loadSessions: function() {
       return new Promise(function(resolve, reject) {
         invoke('list_sessions').then(function(sessions) {
+          logger.session.load(sessions.length);
           set({ sessions: sessions });
           resolve();
         }).catch(function(error) {
-          console.error('Failed to load sessions:', error);
+          logger.store.error('loadSessions', error);
           get().showError('Failed to load sessions.');
           reject(error);
         });
@@ -81,16 +98,32 @@ export const useAppStore = create(
     loadSessionFiles: function(sessionId) {
       return new Promise(function(resolve, reject) {
         invoke('get_session_files', { session_id: sessionId, sessionId: sessionId }).then(function(files) {
+          logger.store.action('loadSessionFiles', { sessionId, count: files.length });
           set({ sessionFiles: files });
           resolve(files);
         }).catch(function(error) {
-          console.error('Failed to load session files:', error);
+          logger.store.error('loadSessionFiles', error);
+          reject(error);
+        });
+      });
+    },
+
+    libraryFiles: [],
+    loadLibraryFiles: function() {
+      return new Promise(function(resolve, reject) {
+        invoke('list_library_files').then(function(files) {
+          logger.store.action('loadLibraryFiles', { count: files.length });
+          set({ libraryFiles: files });
+          resolve(files);
+        }).catch(function(error) {
+          logger.store.error('loadLibraryFiles', error);
           reject(error);
         });
       });
     },
 
     uploadFile: function(sessionId, file) {
+      logger.file.upload(file.name, sessionId);
       return new Promise(function(resolve, reject) {
         const reader = new FileReader();
         reader.onload = async function(e) {
@@ -108,24 +141,62 @@ export const useAppStore = create(
               fileData: fileData
             });
 
+            logger.file.uploadSuccess(file.name);
             // Reload files
             await get().loadSessionFiles(sessionId);
             resolve();
           } catch (error) {
-            console.error('Failed to upload file:', error);
+            logger.file.uploadError(file.name, error);
             get().showError('Failed to upload file: ' + (error.message || error));
             reject(error);
           }
         };
         reader.onerror = function(error) {
+          logger.file.uploadError(file.name, error);
           reject(error);
         };
         reader.readAsArrayBuffer(file);
       });
     },
 
+    deleteFile: function(fileId) {
+      logger.file.delete(fileId);
+      return new Promise(function(resolve, reject) {
+        invoke('delete_file', { file_id: fileId, fileId: fileId }).then(function() {
+          set(function(state) {
+            return { libraryFiles: state.libraryFiles.filter(function(f) { return f.id !== fileId; }) };
+          });
+          // Also reload session files if we have a current session
+          if (get().currentSessionId) {
+            get().loadSessionFiles(get().currentSessionId).catch(function(err) { logger.store.error('loadSessionFiles', err); });
+          }
+          resolve();
+        }).catch(function(error) {
+          logger.store.error('deleteFile', error);
+          get().showError('Failed to delete file.');
+          reject(error);
+        });
+      });
+    },
+
+    reindexLibrary: function() {
+      logger.file.reindex();
+      return new Promise(function(resolve, reject) {
+        invoke('reindex_library').then(function(result) {
+          logger.file.reindexComplete(result);
+          get().loadLibraryFiles().catch(function(err) { logger.store.error('loadLibraryFiles', err); });
+          resolve(result);
+        }).catch(function(error) {
+          logger.store.error('reindexLibrary', error);
+          get().showError('Failed to reindex library.');
+          reject(error);
+        });
+      });
+    },
+
     // Create new session
     createSession: function(title, language, systemPrompt, temperature) {
+      logger.session.create(title);
       return new Promise(function(resolve, reject) {
         invoke('create_session', {
           title: title,
@@ -134,13 +205,14 @@ export const useAppStore = create(
           systemPrompt: systemPrompt,
           temperature: temperature
         }).then(function(sessionId) {
+          logger.session.createSuccess(sessionId);
           // Reload sessions to get the new one
           get().loadSessions().then(function() {
             set({ currentSessionId: sessionId });
             resolve(sessionId);
           }).catch(reject);
         }).catch(function(error) {
-          console.error('Failed to create session:', error);
+          logger.store.error('createSession', error);
           get().showError('Failed to create session.');
           reject(error);
         });
@@ -148,6 +220,7 @@ export const useAppStore = create(
     },
 
     updateSession: function(sessionId, title, modelConfig) {
+      logger.store.action('updateSession', { sessionId, title });
       return new Promise(function(resolve, reject) {
         invoke('update_session', {
           session_id: sessionId,
@@ -159,7 +232,7 @@ export const useAppStore = create(
           // Reload sessions to get updated data
           get().loadSessions().then(resolve).catch(reject);
         }).catch(function(error) {
-          console.error('Failed to update session:', error);
+          logger.store.error('updateSession', error);
           get().showError('Failed to update session.');
           reject(error);
         });
@@ -171,6 +244,7 @@ export const useAppStore = create(
       return new Promise(function(resolve, reject) {
         // Send both snake_case and camelCase to satisfy Tauri bindings
         invoke('toggle_session_favorite', { session_id: sessionId, sessionId: sessionId }).then(function(isFavorite) {
+          logger.session.favorite(sessionId, isFavorite);
           // Update local state
           set(function(state) {
             return {
@@ -185,7 +259,7 @@ export const useAppStore = create(
           });
           resolve(isFavorite);
         }).catch(function(error) {
-          console.error('Failed to toggle favorite:', error);
+          logger.store.error('toggleFavorite', error);
           get().showError('Failed to update favorite.');
           reject(error);
         });
@@ -194,9 +268,9 @@ export const useAppStore = create(
 
     // Delete a session
     deleteSession: function(sessionId) {
-      console.log('[AppStore] Requesting delete for session:', sessionId);
+      logger.session.delete(sessionId);
       if (!sessionId) {
-        console.error('[AppStore] Invalid session ID for delete');
+        logger.store.error('deleteSession', 'Invalid session ID');
         return Promise.reject('Invalid session ID');
       }
 
@@ -217,7 +291,7 @@ export const useAppStore = create(
           });
           resolve();
         }).catch(function(error) {
-          console.error('Failed to delete session:', error);
+          logger.store.error('deleteSession', error);
           var errorMsg = typeof error === 'string' ? error : (error.message || 'Unknown error');
           get().showError('Failed to delete session: ' + errorMsg);
           reject(error);
@@ -230,24 +304,26 @@ export const useAppStore = create(
     loadFolders: function() {
       return new Promise(function(resolve, reject) {
         invoke('list_folders').then(function(folders) {
+          logger.store.action('loadFolders', { count: folders.length });
           set({ folders: folders });
           resolve();
         }).catch(function(error) {
-          console.error('Failed to load folders:', error);
+          logger.store.error('loadFolders', error);
           reject(error);
         });
       });
     },
 
-    createFolder: function(name, color) {
+    createFolder: function(name, color, folderType) {
+      logger.store.action('createFolder', { name, folderType });
       return new Promise(function(resolve, reject) {
-        invoke('create_folder', { name: name, color: color }).then(function(folder) {
+        invoke('create_folder', { name: name, color: color, folder_type: folderType, folderType: folderType }).then(function(folder) {
           set(function(state) {
             return { folders: state.folders.concat([folder]) };
           });
           resolve(folder);
         }).catch(function(error) {
-          console.error('Failed to create folder:', error);
+          logger.store.error('createFolder', error);
           get().showError('Failed to create folder.');
           reject(error);
         });
@@ -255,6 +331,7 @@ export const useAppStore = create(
     },
 
     deleteFolder: function(folderId) {
+      logger.store.action('deleteFolder', { folderId });
       return new Promise(function(resolve, reject) {
         // Send both snake_case and camelCase to satisfy Tauri bindings
         invoke('delete_folder', { folder_id: folderId, folderId: folderId }).then(function() {
@@ -263,8 +340,10 @@ export const useAppStore = create(
           });
           // Reload sessions as their folder_id may have changed
           get().loadSessions().then(resolve).catch(reject);
+          // Reload library files as their folder_id may have changed
+          get().loadLibraryFiles().catch(function(err) { logger.store.error('loadLibraryFiles', err); });
         }).catch(function(error) {
-          console.error('Failed to delete folder:', error);
+          logger.store.error('deleteFolder', error);
           get().showError('Failed to delete folder.');
           reject(error);
         });
@@ -272,6 +351,7 @@ export const useAppStore = create(
     },
 
     moveSessionToFolder: function(sessionId, folderId) {
+      logger.session.moveToFolder(sessionId, folderId);
       return new Promise(function(resolve, reject) {
         // Send both snake_case and camelCase to satisfy Tauri bindings
         invoke('move_session_to_folder', {
@@ -290,8 +370,34 @@ export const useAppStore = create(
           });
           resolve();
         }).catch(function(error) {
-          console.error('Failed to move session:', error);
+          logger.store.error('moveSessionToFolder', error);
           get().showError('Failed to move session.');
+          reject(error);
+        });
+      });
+    },
+
+    moveFileToFolder: function(fileId, folderId) {
+      logger.store.action('moveFileToFolder', { fileId, folderId });
+      return new Promise(function(resolve, reject) {
+        invoke('move_file_to_folder', {
+          file_id: fileId,
+          fileId: fileId,
+          folder_id: folderId,
+          folderId: folderId
+        }).then(function() {
+          // Update local state
+          set(function(state) {
+            return {
+              libraryFiles: state.libraryFiles.map(function(f) {
+                return f.id === fileId ? { ...f, folder_id: folderId } : f;
+              })
+            };
+          });
+          resolve();
+        }).catch(function(error) {
+          logger.store.error('moveFileToFolder', error);
+          get().showError('Failed to move file.');
           reject(error);
         });
       });
@@ -324,21 +430,33 @@ export const useAppStore = create(
     // Backend initialization state
     isBackendInitialized: false,
     isBackendInitializing: true, // Assume initializing at start
+    initializationError: null,
     initializeApp: async function() {
       try {
-        set({ isBackendInitializing: true });
+        logger.system.init('backend');
+        set({ isBackendInitializing: true, initializationError: null });
         await invoke('initialize_app');
+        logger.system.ready();
         set({ isBackendInitialized: true, isBackendInitializing: false });
       } catch (error) {
-        console.error('Failed to initialize backend:', error);
-        set({ isBackendInitializing: false }); // Stop loading on error
-        get().showError('Failed to initialize backend. Please restart the application.');
+        logger.system.error('initializeApp', error);
+        const errorMessage = typeof error === 'string' ? error : (error.message || JSON.stringify(error));
+        set({
+          isBackendInitializing: false,
+          initializationError: errorMessage
+        });
+        get().showError('Failed to initialize backend: ' + errorMessage);
       }
     },
 
     // Diagnostics
     isDiagnosticsOpen: false,
     setDiagnosticsOpen: function(isOpen) {
+      if (isOpen) {
+        logger.navigation.openModal('Diagnostics');
+      } else {
+        logger.navigation.closeModal('Diagnostics');
+      }
       return set({ isDiagnosticsOpen: isOpen });
     },
 
@@ -366,7 +484,7 @@ export const useAppStore = create(
     partialize: (state) => ({
       isConfigured: state.isConfigured,
       isSidebarOpen: state.isSidebarOpen,
-      isRightSidebarOpen: state.isRightSidebarOpen,
+      currentView: state.currentView,
       currentSessionId: state.currentSessionId,
       theme: state.theme
     }),

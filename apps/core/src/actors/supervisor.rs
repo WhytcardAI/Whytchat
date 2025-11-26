@@ -140,6 +140,26 @@ impl SupervisorHandle {
             .await?
             .map_err(|e| AppError::Actor(crate::actors::messages::ActorError::Internal(e.to_string())))?
     }
+
+    pub async fn reindex_file(
+        &self,
+        file_id: String,
+        content: String,
+    ) -> Result<String, AppError> {
+        let (send, recv) = oneshot::channel();
+        let msg = SupervisorMessage::ReindexFile {
+            file_id,
+            content,
+            responder: send,
+        };
+        self.sender
+            .send(msg)
+            .await
+            .map_err(|e| AppError::Actor(crate::actors::messages::ActorError::Internal(e.to_string())))?;
+        timeout(Duration::from_secs(120), recv) // Reindex can be longer
+            .await?
+            .map_err(|e| AppError::Actor(crate::actors::messages::ActorError::Internal(e.to_string())))?
+    }
 }
 
 // --- Actor Runner ---
@@ -221,7 +241,7 @@ where
                         if let Err(e) = &result {
                             error!("Error processing user message: {:?}", e);
                         }
-                        if let Err(_) = responder.send(result) {
+                        if responder.send(result).is_err() {
                             warn!("Failed to send process_message response (channel closed)");
                         }
                     });
@@ -237,8 +257,34 @@ where
                         if let Err(e) = &result {
                             error!("Error ingesting content: {:?}", e);
                         }
-                        if let Err(_) = responder.send(result) {
+                        if responder.send(result).is_err() {
                              warn!("Failed to send ingest_content response (channel closed)");
+                        }
+                    });
+                }
+                SupervisorMessage::ReindexFile {
+                    file_id,
+                    content,
+                    responder,
+                } => {
+                    tokio::spawn(async move {
+                        info!("Supervisor orchestrating reindexing for file {}...", file_id);
+                        // 1. Delete existing vectors
+                        if let Err(e) = rag_actor.delete_for_file(file_id.clone()).await {
+                            error!("Error deleting vectors for file {}: {:?}", file_id, e);
+                            // Continue anyway to try ingest? Or fail?
+                            // If delete fails, we might duplicate data, but better than nothing.
+                        }
+
+                        // 2. Ingest new content
+                        let metadata = Some(format!("file:{}", file_id));
+                        let result = rag_actor.ingest(content, metadata).await;
+
+                        if let Err(e) = &result {
+                            error!("Error reindexing file {}: {:?}", file_id, e);
+                        }
+                        if responder.send(result).is_err() {
+                             warn!("Failed to send reindex_file response (channel closed)");
                         }
                     });
                 }
@@ -315,7 +361,14 @@ where
                     &format!("thinking.documents_found|{}", search_results.len()),
                 )
                 .await;
-                context_str = search_results.join("\n\n");
+
+                // Format context with source metadata
+                context_str = search_results.iter().map(|result| {
+                    let source = result.metadata.as_deref().unwrap_or("unknown");
+                    // Clean up source ID (remove "file:" prefix if present)
+                    let clean_source = source.strip_prefix("file:").unwrap_or(source);
+                    format!("[Source: {}]\n{}", clean_source, result.content)
+                }).collect::<Vec<_>>().join("\n\n");
             } else {
                 Self::emit_thinking(&window, "thinking.no_documents").await;
             }
@@ -342,24 +395,29 @@ where
             .await?;
 
         let mut full_response = String::new();
-while let Some(result) = chunk_rx.recv().await {
-    match result {
-        Ok(token) => {
-            full_response.push_str(&token);
-            if let Some(win) = &window {
-                if let Err(e) = win.emit("chat-token", &token) {
-                    warn!("Failed to emit chat-token event: {}", e);
+        while let Some(result) = chunk_rx.recv().await {
+            match result {
+                Ok(token) => {
+                    full_response.push_str(&token);
+                    if let Some(win) = &window {
+                        if let Err(e) = win.emit("chat-token", &token) {
+                            warn!("Failed to emit chat-token event: {}", e);
+                        }
+                    }
                 }
-            }
-        }
-        Err(e) => {
+                Err(e) => {
                     error!("Streaming error: {}", e);
                     // Decide if we should continue or abort
                 }
             }
         }
 
-        database::add_message(pool, &session_id, "assistant", &full_response).await?;
+        if !full_response.trim().is_empty() {
+             database::add_message(pool, &session_id, "assistant", &full_response).await?;
+        } else {
+             warn!("Generated response was empty, skipping database save.");
+        }
+        
         Ok(full_response)
     }
 

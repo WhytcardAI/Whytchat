@@ -4,7 +4,7 @@ version = "1.0.0"
 description = "WhytChat V1 Backend Brain"
 authors = ["Whytcard"]
 edition = "2021"
-rust-version = "1.77.2"
+rust-version = "1.80.0"
 
 [build-dependencies]
 tauri-build = { version = "2.0.0-rc", features = [] }
@@ -37,6 +37,10 @@ validator = { version = "0.18", features = ["derive"] }
 lru = "0.12.3"
 dotenv = "0.15"
 regex = "1"
+
+# PDF and DOCX text extraction
+pdf-extract = "0.7"
+docx-rs = "0.4"
 
 aes-gcm = "0.10.3"
 rand = "0.8"

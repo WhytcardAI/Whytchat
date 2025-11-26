@@ -11,6 +11,7 @@ export default {
         background: 'rgb(var(--background) / <alpha-value>)',
         surface: 'rgb(var(--surface) / <alpha-value>)',
         primary: 'rgb(var(--primary) / <alpha-value>)',
+        'primary-foreground': 'rgb(var(--primary-foreground) / <alpha-value>)',
         accent: 'rgb(var(--accent) / <alpha-value>)',
         secondary: 'rgb(var(--secondary) / <alpha-value>)',
         text: 'rgb(var(--text) / <alpha-value>)',

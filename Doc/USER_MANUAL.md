@@ -9,33 +9,68 @@ Bienvenue dans WhytChat, votre assistant IA local et sécurisé.
 1.  Cliquez sur le bouton **"+ Nouvelle"** dans la barre latérale gauche.
 2.  L'assistant de création s'ouvre.
 3.  **Titre** : Donnez un nom à votre conversation.
-4.  **Langue** : Choisissez la langue de réponse de l'IA.
+4.  **Fichiers de contexte** (Optionnel) : Sélectionnez des documents déjà présents dans votre bibliothèque pour les associer à cette session.
 5.  **Options Avancées** (Optionnel) :
     - **System Prompt** : Définissez la personnalité de l'IA (ex: "Tu es un expert en Python").
-    - **Température** : Ajustez la créativité (0.0 = précis, 1.0 = créatif).
+    - **Température** : Ajustez la créativité (0.0 = précis, 2.0 = très créatif).
 
-## 📂 Gestion des Données (RAG)
+## 📂 Base de Connaissances (Knowledge Base)
 
-WhytChat vous permet de discuter avec vos propres documents.
+WhytChat vous permet de discuter avec vos propres documents grâce au système RAG (Retrieval-Augmented Generation).
 
 ### Importer des Fichiers
 
-1.  Ouvrez la **Barre de Données** en cliquant sur l'icône **Base de Données** (cylindre) en haut à droite.
-2.  Cliquez sur **"Import"**.
-3.  Sélectionnez vos fichiers (`.txt`, `.md`, `.csv`, `.json`).
-4.  Les fichiers sont automatiquement analysés et ajoutés à la "mémoire" de la session actuelle.
+1.  Cliquez sur l'icône **Base de Données** dans la barre de navigation pour ouvrir la vue **Knowledge Base**.
+2.  Cliquez sur le bouton **"Import Data"**.
+3.  Sélectionnez un ou plusieurs fichiers (upload multiple supporté).
 
-### Utilisation
+#### Formats Supportés
 
-Une fois les fichiers importés, posez simplement vos questions dans le chat.
+| Format     | Extension       | Description                                     |
+| ---------- | --------------- | ----------------------------------------------- |
+| Texte brut | `.txt`          | Fichiers texte simples                          |
+| Markdown   | `.md`           | Documentation formatée                          |
+| CSV        | `.csv`          | Données tabulaires                              |
+| JSON       | `.json`         | Données structurées                             |
+| PDF        | `.pdf`          | Documents PDF (extraction automatique du texte) |
+| Word       | `.docx`, `.doc` | Documents Microsoft Word                        |
 
-- _Exemple_ : "Résume le document que je viens d'envoyer" ou "Quelles sont les conclusions du rapport ?"
-- L'IA utilisera automatiquement les informations pertinentes trouvées dans vos fichiers.
+> **Taille maximale** : 10 MB par fichier.
+
+### Organiser vos Documents
+
+- **Créer un dossier** : Cliquez sur "New Folder" pour organiser vos documents par catégorie.
+- **Déplacer un fichier** : Survolez un fichier et cliquez sur l'icône dossier pour le déplacer.
+- **Supprimer un fichier** : Cliquez sur l'icône corbeille (supprime aussi les vecteurs associés).
+- **Réindexer** : Cliquez sur "Re-index" pour recalculer tous les embeddings de la bibliothèque.
+
+### Associer des Documents à une Session
+
+Lors de la création d'une nouvelle session, vous pouvez sélectionner des documents existants de votre bibliothèque. L'IA n'aura accès qu'aux documents explicitement liés à la session active.
+
+### Analyser un Document
+
+Survolez un fichier dans la Knowledge Base et cliquez sur l'icône 🧠 (cerveau) pour lancer une analyse automatique. Vous serez redirigé vers le chat avec un prompt pré-rempli.
+
+## 💬 Utilisation du Chat
+
+Une fois vos fichiers importés et associés à une session :
+
+- Posez simplement vos questions dans la zone de texte.
+- L'IA recherchera automatiquement les informations pertinentes dans vos documents.
+- Les sources utilisées sont indiquées dans le contexte de la réponse.
+
+**Exemples de questions** :
+
+- "Résume le document que j'ai importé"
+- "Quelles sont les conclusions principales ?"
+- "Trouve les informations sur [sujet] dans mes fichiers"
 
 ## ⚙️ Paramètres
 
-- **Thème** : Cliquez sur la Lune/Soleil en haut à droite pour changer le thème.
-- **Dossiers** : Organisez vos chats par dossiers via la barre latérale gauche (Clic droit ou bouton "Nouveau dossier").
+- **Thème** : Cliquez sur l'icône Lune/Soleil en haut à droite pour basculer entre thème clair et sombre.
+- **Dossiers de sessions** : Organisez vos conversations par dossiers via la barre latérale gauche.
+- **Favoris** : Cliquez sur l'étoile à côté d'une session pour la marquer comme favorite.
 
 ---
 

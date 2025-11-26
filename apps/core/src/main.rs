@@ -11,6 +11,7 @@ mod fs_manager;
 mod models;
 mod preflight;
 mod rate_limiter;
+mod text_extract;
 
 use actors::supervisor::SupervisorHandle;
 use fs_manager::PortablePathManager;
@@ -376,6 +377,7 @@ async fn delete_session(
 async fn create_folder(
     name: String,
     color: Option<String>,
+    folder_type: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<models::Folder, String> {
     if !state.is_initialized.load(Ordering::SeqCst) {
@@ -388,7 +390,7 @@ async fn create_folder(
         initialized_state.pool.clone()
     };
 
-    database::create_folder(&pool, name, color)
+    database::create_folder(&pool, name, color, folder_type)
         .await
         .map_err(|e| e.to_string())
 }
@@ -456,6 +458,222 @@ async fn move_session_to_folder(
         .map_err(|e| e.to_string())
 }
 
+#[tracing::instrument(skip(state))]
+#[tauri::command]
+async fn move_file_to_folder(
+    file_id: String,
+    folder_id: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    if !state.is_initialized.load(Ordering::SeqCst) {
+        return Err("Application is not initialized yet.".to_string());
+    }
+
+    let pool = {
+        let handle = state.app_handle.lock().unwrap();
+        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
+        initialized_state.pool.clone()
+    };
+
+    database::move_file_to_folder(&pool, &file_id, folder_id.as_deref())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tracing::instrument(skip(state))]
+#[tauri::command]
+async fn delete_file(
+    file_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    if !state.is_initialized.load(Ordering::SeqCst) {
+        return Err("Application is not initialized yet.".to_string());
+    }
+
+    let pool = {
+        let handle = state.app_handle.lock().unwrap();
+        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
+        initialized_state.pool.clone()
+    };
+
+    // 1. Remove from DB and get path
+    let file_path_str = database::delete_library_file(&pool, &file_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // 2. Remove from disk
+    let path = std::path::Path::new(&file_path_str);
+    if path.exists() {
+        std::fs::remove_file(path).map_err(|e| format!("Failed to delete file from disk: {}", e))?;
+        info!("Deleted file from disk: {:?}", path);
+    } else {
+        warn!("File not found on disk, skipping deletion: {:?}", path);
+    }
+
+    Ok(())
+}
+
+#[tracing::instrument(skip(state))]
+#[tauri::command]
+async fn reindex_library(state: State<'_, AppState>) -> Result<String, String> {
+    if !state.is_initialized.load(Ordering::SeqCst) {
+        return Err("Application is not initialized yet.".to_string());
+    }
+
+    info!("Starting library reindexing...");
+
+    let (pool, supervisor) = {
+        let handle = state.app_handle.lock().unwrap();
+        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
+        (initialized_state.pool.clone(), initialized_state.supervisor.clone())
+    };
+
+    let files = database::list_library_files(&pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let total_files = files.len();
+    let mut success_count = 0;
+    let mut error_count = 0;
+
+    for file in files {
+        let path = std::path::Path::new(&file.path);
+        if !path.exists() {
+            warn!("File not found during reindex: {:?}", path);
+            error_count += 1;
+            continue;
+        }
+
+        match tokio::fs::read_to_string(path).await {
+            Ok(content) => {
+                match supervisor.reindex_file(file.id.clone(), content).await {
+                    Ok(_) => {
+                        info!("Reindexed file: {}", file.name);
+                        success_count += 1;
+                    }
+                    Err(e) => {
+                        error!("Failed to reindex file {}: {}", file.name, e);
+                        error_count += 1;
+                    }
+                }
+            }
+            Err(e) => {
+                error!("Failed to read file {}: {}", file.name, e);
+                error_count += 1;
+            }
+        }
+    }
+
+    let result_msg = format!(
+        "Reindexing complete. Processed {} files. Success: {}, Errors: {}",
+        total_files, success_count, error_count
+    );
+    info!("{}", result_msg);
+    Ok(result_msg)
+}
+
+#[tracing::instrument(skip(state))]
+#[tauri::command]
+async fn list_library_files(
+    state: State<'_, AppState>,
+) -> Result<Vec<crate::models::LibraryFile>, String> {
+    if !state.is_initialized.load(Ordering::SeqCst) {
+        return Err("Application is not initialized yet.".to_string());
+    }
+
+    let pool = {
+        let handle = state.app_handle.lock().unwrap();
+        let initialized_state = handle.as_ref().ok_or("Application state not found")?;
+        initialized_state.pool.clone()
+    };
+
+    database::list_library_files(&pool)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tracing::instrument(skip(state))]
+#[tauri::command]
+async fn save_generated_file(
+    session_id: String,
+    file_name: String,
+    content: String,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    if !state.is_initialized.load(Ordering::SeqCst) {
+        return Err("Application is not initialized yet.".to_string());
+    }
+
+    info!("\n┌─────────────────────────────────────────────────────┐");
+    info!("│ 💾 SAVE GENERATED FILE                              │");
+    info!("├─────────────────────────────────────────────────────┤");
+    info!("│ Session: {}", session_id);
+    info!("│ File: {}", file_name);
+    info!("└─────────────────────────────────────────────────────┘");
+
+    // Get pool and supervisor
+    let (pool, supervisor) = {
+        let handle = state.app_handle.lock().unwrap();
+        if let Some(s) = handle.as_ref() {
+            (s.pool.clone(), s.supervisor.clone())
+        } else {
+            return Err("Application state not found".to_string());
+        }
+    };
+
+    // 1. Save file to disk
+    let file_uuid = uuid::Uuid::new_v4().to_string();
+    let files_dir = PortablePathManager::data_dir().join("files");
+    std::fs::create_dir_all(&files_dir).map_err(|e| format!("Failed to create files directory: {}", e))?;
+
+    // Basic sanitization
+    let safe_name = file_name.replace(|c: char| !c.is_alphanumeric() && c != '.' && c != '-' && c != '_', "_");
+    let extension = std::path::Path::new(&safe_name)
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or("txt");
+
+    let stored_filename = format!("{}.{}", file_uuid, extension);
+    let file_path = files_dir.join(&stored_filename);
+
+    std::fs::write(&file_path, &content).map_err(|e| format!("Failed to save file: {}", e))?;
+
+    // 2. Add to DB
+    let file_type = match extension {
+        "md" => "text/markdown",
+        "csv" => "text/csv",
+        "json" => "application/json",
+        "js" | "jsx" | "ts" | "tsx" => "application/javascript",
+        "py" => "text/x-python",
+        "rs" => "text/rust",
+        "html" => "text/html",
+        "css" => "text/css",
+        _ => "text/plain",
+    };
+
+    let _library_file = database::add_library_file(
+        &pool,
+        &file_uuid,
+        &safe_name,
+        &file_path.to_string_lossy(),
+        file_type,
+        content.len() as i64
+    ).await.map_err(|e| format!("Failed to add file to library: {}", e))?;
+
+    // 3. Link to session
+    database::link_file_to_session(&pool, &session_id, &file_uuid)
+        .await
+        .map_err(|e| format!("Failed to link file to session: {}", e))?;
+
+    // 4. Ingest
+    supervisor
+        .ingest_content(content, Some(format!("file:{}", file_uuid)))
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(file_uuid)
+}
+
 #[tracing::instrument(skip(file_data, state))]
 #[tauri::command]
 async fn upload_file_for_session(
@@ -482,28 +700,34 @@ async fn upload_file_for_session(
         return Err("File size exceeds 10MB limit".to_string());
     }
 
-    if file_data.contains(&0u8) {
-        return Err("Binary files are not supported".to_string());
-    }
-
-    let allowed_types = ["text/plain", "text/markdown", "text/csv", "application/json"];
-    if let Some(kind) = infer::get(&file_data) {
-        if !allowed_types.contains(&kind.mime_type()) {
-            return Err(format!("File type '{}' is not supported.", kind.mime_type()));
-        }
-    }
-
-    let allowed_extensions = ["txt", "md", "csv", "json"];
+    // Check file extension
     let extension = std::path::Path::new(&file_name)
         .extension()
         .and_then(|ext| ext.to_str())
-        .unwrap_or("");
+        .map(|s| s.to_lowercase())
+        .unwrap_or_default();
 
-    if !allowed_extensions.contains(&extension) {
+    let allowed_extensions = ["txt", "md", "csv", "json", "pdf", "docx", "doc"];
+    if !allowed_extensions.contains(&extension.as_str()) {
         return Err(format!("File extension '.{}' is not supported.", extension));
     }
 
-    let content = String::from_utf8(file_data.clone()).map_err(|e| format!("Invalid UTF-8 content: {}", e))?;
+    // Binary file check (PDF and DOCX are binary but allowed)
+    let binary_extensions = ["pdf", "docx", "doc"];
+    let is_binary_allowed = binary_extensions.contains(&extension.as_str());
+
+    if file_data.contains(&0u8) && !is_binary_allowed {
+        return Err("Binary files are not supported".to_string());
+    }
+
+    // Extract text content using our text extraction module
+    let content = text_extract::extract_text_from_file(&file_name, &file_data)?;
+
+    if content.trim().is_empty() {
+        return Err("No text content could be extracted from the file".to_string());
+    }
+
+    info!("   ✓ Extracted {} characters from file", content.len());
 
     // Get pool and supervisor from state
     let (pool, supervisor) = {
@@ -578,6 +802,47 @@ async fn upload_file_for_session(
         .map_err(|e| e.to_string())
 }
 
+/// Links an existing library file to a session (without re-uploading)
+#[tauri::command]
+async fn link_library_file_to_session(
+    session_id: String,
+    file_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    if !state.is_initialized.load(Ordering::SeqCst) {
+        return Err("Application is not initialized yet.".to_string());
+    }
+
+    info!("\n┌─────────────────────────────────────────────────────┐");
+    info!("│ 🔗 LINK FILE TO SESSION                             │");
+    info!("├─────────────────────────────────────────────────────┤");
+    info!("│ Session: {}", session_id);
+    info!("│ File ID: {}", file_id);
+    info!("└─────────────────────────────────────────────────────┘");
+
+    let pool = {
+        let handle = state.app_handle.lock().unwrap();
+        if let Some(s) = handle.as_ref() {
+            s.pool.clone()
+        } else {
+            return Err("Application state not found".to_string());
+        }
+    };
+
+    // Verify file exists in library
+    let _file = database::get_library_file(&pool, &file_id)
+        .await
+        .map_err(|e| format!("File not found in library: {}", e))?;
+
+    // Link file to session
+    database::link_file_to_session(&pool, &session_id, &file_id)
+        .await
+        .map_err(|e| format!("Failed to link file to session: {}", e))?;
+
+    info!("   ✓ File linked to session successfully");
+    Ok(())
+}
+
 /// Downloads a file with resume support.
 /// If the file already exists partially, it will resume from where it left off.
 async fn download_file<P: AsRef<std::path::Path>>(
@@ -631,7 +896,7 @@ async fn download_file<P: AsRef<std::path::Path>>(
         if let Some(content_range) = range_res.headers().get("content-range") {
             if let Ok(range_str) = content_range.to_str() {
                 // Parse "bytes 0-0/12345678" to extract 12345678
-                if let Some(total_str) = range_str.split('/').last() {
+                if let Some(total_str) = range_str.split('/').next_back() {
                     total_str.parse::<u64>().unwrap_or(0)
                 } else {
                     0
@@ -864,70 +1129,12 @@ fn check_model_exists() -> bool {
     }
 }
 
-/// Tauri command to get all application paths.
-/// Useful for debugging and for settings UI.
-#[tauri::command]
-fn get_app_paths() -> std::collections::HashMap<String, String> {
-    use std::collections::HashMap;
-
-    let mut paths = HashMap::new();
-    paths.insert("root".to_string(), PortablePathManager::root_dir().to_string_lossy().to_string());
-    paths.insert("data".to_string(), PortablePathManager::data_dir().to_string_lossy().to_string());
-    paths.insert("models".to_string(), PortablePathManager::models_dir().to_string_lossy().to_string());
-    paths.insert("db".to_string(), PortablePathManager::db_dir().to_string_lossy().to_string());
-    paths.insert("vectors".to_string(), PortablePathManager::vectors_dir().to_string_lossy().to_string());
-    paths.insert("tools".to_string(), PortablePathManager::tools_dir().to_string_lossy().to_string());
-
-    // Add mode info
-    #[cfg(debug_assertions)]
-    paths.insert("mode".to_string(), "development".to_string());
-    #[cfg(not(debug_assertions))]
-    {
-        let marker_path = std::env::current_exe()
-            .ok()
-            .and_then(|p| p.parent().map(|p| p.join("portable.marker")));
-        let is_portable = marker_path.map(|m| m.exists()).unwrap_or(false);
-        paths.insert("mode".to_string(), if is_portable { "portable".to_string() } else { "installed".to_string() });
-    }
-
-    paths
-}
-
-/// Tauri command to run a full preflight check.
-/// This performs comprehensive validation of all system components.
-#[tauri::command]
-async fn run_preflight_check() -> Result<preflight::PreflightReport, String> {
-    info!("Running full preflight check...");
-    Ok(preflight::run_preflight_checks().await)
-}
-
 /// Tauri command to run a quick preflight check (no startup tests).
 /// This is faster and just checks file existence.
 #[tauri::command]
 fn run_quick_preflight_check() -> preflight::PreflightReport {
     info!("Running quick preflight check...");
     preflight::quick_preflight_check()
-}
-
-/// Tauri command to run all diagnostic tests.
-/// Returns a comprehensive report of all system components.
-#[tauri::command]
-async fn run_diagnostic_tests(window: tauri::Window) -> Result<diagnostics::DiagnosticReport, String> {
-    info!("Running diagnostic tests...");
-
-    // Create a callback to emit progress events
-    let window_clone = window.clone();
-    let emit_progress: Option<Box<dyn Fn(&str, &diagnostics::TestResult) + Send + Sync>> = Some(Box::new(move |name: &str, result: &diagnostics::TestResult| {
-        let _ = window_clone.emit("diagnostic-test-result", result);
-        info!("Test {}: {}", name, if result.passed { "PASS" } else { "FAIL" });
-    }));
-
-    let report = diagnostics::run_all_tests(emit_progress).await;
-
-    // Emit final report
-    let _ = window.emit("diagnostic-complete", &report);
-
-    Ok(report)
 }
 
 /// Tauri command to run diagnostic tests for a specific category.
@@ -1132,6 +1339,7 @@ fn main() {
             initialize_app,
             debug_chat,
             upload_file_for_session,
+            link_library_file_to_session,
             create_session,
             list_sessions,
             get_session_messages,
@@ -1143,12 +1351,14 @@ fn main() {
             list_folders,
             delete_folder,
             move_session_to_folder,
+            move_file_to_folder,
+            delete_file,
+            reindex_library,
+            list_library_files,
+            save_generated_file,
             download_model,
             check_model_exists,
-            get_app_paths,
-            run_preflight_check,
             run_quick_preflight_check,
-            run_diagnostic_tests,
             run_diagnostic_category
         ])
         .build(tauri::generate_context!())

@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { Database, Settings, Moon, Sun } from 'lucide-react';
+import { Settings, Moon, Sun } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAppStore } from '../../store/appStore';
 import { cn } from '../../lib/utils';
 import { SettingsDropdown } from './SettingsDropdown';
+import { logger } from '../../lib/logger';
 
 export function HeaderActions() {
   const { t } = useTranslation('common');
-  const { theme, toggleTheme, isRightSidebarOpen, toggleRightSidebar } = useAppStore();
+  const { theme, toggleTheme } = useAppStore();
   const [activeDropdown, setActiveDropdown] = useState(null);
   const containerRef = useRef(null);
 
@@ -23,25 +24,12 @@ export function HeaderActions() {
   }, []);
 
   const toggleDropdown = (name) => {
+    logger.ui.toggle('SettingsDropdown', activeDropdown === name ? 'close' : 'open');
     setActiveDropdown(activeDropdown === name ? null : name);
   };
 
   return (
     <div ref={containerRef} className="flex items-center gap-1 relative z-50">
-      {/* Data Sidebar Toggle */}
-      <button
-        onClick={toggleRightSidebar}
-        className={cn(
-          'p-2 rounded-xl transition-all',
-          isRightSidebarOpen
-            ? 'text-primary bg-primary/10'
-            : 'text-muted hover:text-text hover:bg-surface/80'
-        )}
-        title={t('header.data', 'Data & Knowledge')}
-      >
-        <Database size={18} />
-      </button>
-
       {/* Settings Button */}
       <div className="relative">
         <button
@@ -63,7 +51,10 @@ export function HeaderActions() {
 
       {/* Theme Toggle */}
       <button
-        onClick={toggleTheme}
+        onClick={() => {
+          logger.ui.click('HeaderActions:ThemeToggle');
+          toggleTheme();
+        }}
         className="p-2 rounded-xl text-muted hover:text-text hover:bg-surface/80 transition-all"
         title={theme === 'light' ? t('theme.dark') : t('theme.light')}
       >

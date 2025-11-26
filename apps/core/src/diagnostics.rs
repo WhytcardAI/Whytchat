@@ -3,6 +3,8 @@
 //! Provides comprehensive tests for all system components.
 //! Used during onboarding and for troubleshooting.
 
+#![allow(dead_code)]
+
 use crate::brain::BrainAnalyzer;
 use crate::database;
 use crate::fs_manager::PortablePathManager;
@@ -13,6 +15,8 @@ use std::time::{Duration, Instant};
 use tracing::{error, info};
 
 // --- Test Result Types ---
+
+pub type ProgressCallback = Box<dyn Fn(&str, &TestResult) + Send + Sync>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestResult {
@@ -70,7 +74,7 @@ pub struct CategorySummary {
 /// Runs all diagnostic tests and returns a comprehensive report.
 /// Tests are run sequentially to avoid resource conflicts.
 pub async fn run_all_tests(
-    emit_progress: Option<Box<dyn Fn(&str, &TestResult) + Send + Sync>>,
+    emit_progress: Option<ProgressCallback>,
 ) -> DiagnosticReport {
     info!("╔══════════════════════════════════════════════════════╗");
     info!("║  🧪 RUNNING DIAGNOSTIC TESTS                         ║");
@@ -773,8 +777,8 @@ async fn test_llm_streaming() -> TestResult {
                     // Parse SSE data
                     let text = String::from_utf8_lossy(&bytes);
                     for line in text.lines() {
-                        if line.starts_with("data: ") {
-                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&line[6..]) {
+                        if let Some(data) = line.strip_prefix("data: ") {
+                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(data) {
                                 if let Some(content) = json.get("content").and_then(|c| c.as_str()) {
                                     total_content.push_str(content);
                                 }
@@ -995,9 +999,9 @@ async fn test_rag_context_retrieval() -> TestResult {
     match rag.search_with_filters("What is WhytChat?".to_string(), vec![]).await {
         Ok(results) => {
             let relevant = results.iter().any(|r|
-                r.to_lowercase().contains("whytchat") ||
-                r.to_lowercase().contains("private") ||
-                r.to_lowercase().contains("local")
+                r.content.to_lowercase().contains("whytchat") ||
+                r.content.to_lowercase().contains("private") ||
+                r.content.to_lowercase().contains("local")
             );
             if relevant {
                 TestResult::pass(name, category, start.elapsed(), "Retrieved relevant context")

@@ -90,9 +90,21 @@ pub enum RagMessage {
         file_ids: Vec<String>,
         /// The maximum number of results to return.
         limit: usize,
-        /// A channel to send the search results (a list of text chunks) back.
-        responder: oneshot::Sender<Result<Vec<String>, AppError>>,
+        /// A channel to send the search results back.
+        responder: oneshot::Sender<Result<Vec<SearchResult>, AppError>>,
     },
+    /// A request to delete all vectors associated with a specific file.
+    DeleteForFile {
+        file_id: String,
+        responder: oneshot::Sender<Result<(), AppError>>,
+    },
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SearchResult {
+    pub content: String,
+    pub metadata: Option<String>,
+    pub score: f32,
 }
 
 /// Messages that can be sent to the `SupervisorActor`.
@@ -112,6 +124,12 @@ pub enum SupervisorMessage {
     IngestContent {
         content: String,
         metadata: Option<String>,
+        responder: oneshot::Sender<Result<String, AppError>>,
+    },
+    /// A request to reindex a specific file (delete vectors + ingest).
+    ReindexFile {
+        file_id: String,
+        content: String,
         responder: oneshot::Sender<Result<String, AppError>>,
     },
     /// A command to shut down the supervisor and its child actors.
