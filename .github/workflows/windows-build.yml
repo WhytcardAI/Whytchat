@@ -35,8 +35,14 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
 
+      - name: Install Protoc (Windows)
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Install Dependencies
         run: |
+          protoc --version
           npm install
           cargo fetch
 
