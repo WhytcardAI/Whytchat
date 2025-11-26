@@ -80,6 +80,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Build frontend
+        run: npm run build --workspace=apps/desktop-ui
+
       - name: Build Tauri
         run: npm run tauri build -- --target ${{ matrix.target }}
         env:
