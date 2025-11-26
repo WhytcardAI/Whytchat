@@ -100,7 +100,8 @@ async fn initialize_app(state: State<'_, AppState>) -> Result<(), String> {
     let supervisor = SupervisorHandle::new_with_pool_and_model(Some(db_pool.clone()), model_path);
 
     // Store the initialized state
-    let mut app_handle = state.app_handle.lock().unwrap();
+    let mut app_handle = state.app_handle.lock()
+        .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
     *app_handle = Some(InitializedState {
         supervisor,
         pool: db_pool,
@@ -152,10 +153,12 @@ async fn debug_chat(
     info!("└─────────────────────────────────────────────────────┘");
 
     let (pool, supervisor) = {
-        let handle = state.app_handle.lock().unwrap();
+        let handle = state.app_handle.lock()
+            .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
         let initialized_state = handle.as_ref().ok_or("Application state not found")?;
 
-        let mut limiter = initialized_state.rate_limiter.lock().unwrap();
+        let mut limiter = initialized_state.rate_limiter.lock()
+            .map_err(|e| format!("Failed to acquire rate_limiter lock: {}", e))?;
         if !limiter.check(&current_session) {
             error!("Rate limit exceeded for session: {}", current_session);
             return Err(error::AppError::RateLimited.to_string());
@@ -208,7 +211,8 @@ async fn create_session(
     }
 
     let pool = {
-        let handle = state.app_handle.lock().unwrap();
+        let handle = state.app_handle.lock()
+            .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
         let initialized_state = handle.as_ref().ok_or("Application state not found")?;
         initialized_state.pool.clone()
     };
@@ -251,7 +255,8 @@ async fn list_sessions(state: State<'_, AppState>) -> Result<Vec<crate::models::
     }
 
     let pool = {
-        let handle = state.app_handle.lock().unwrap();
+        let handle = state.app_handle.lock()
+            .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
         let initialized_state = handle.as_ref().ok_or("Application state not found")?;
         initialized_state.pool.clone()
     };
@@ -273,7 +278,8 @@ async fn get_session_messages(
     }
 
     let pool = {
-        let handle = state.app_handle.lock().unwrap();
+        let handle = state.app_handle.lock()
+            .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
         let initialized_state = handle.as_ref().ok_or("Application state not found")?;
         initialized_state.pool.clone()
     };
@@ -295,7 +301,8 @@ async fn get_session_files(
     }
 
     let pool = {
-        let handle = state.app_handle.lock().unwrap();
+        let handle = state.app_handle.lock()
+            .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
         let initialized_state = handle.as_ref().ok_or("Application state not found")?;
         initialized_state.pool.clone()
     };
@@ -319,7 +326,8 @@ async fn update_session(
     }
 
     let pool = {
-        let handle = state.app_handle.lock().unwrap();
+        let handle = state.app_handle.lock()
+            .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
         let initialized_state = handle.as_ref().ok_or("Application state not found")?;
         initialized_state.pool.clone()
     };
@@ -341,7 +349,8 @@ async fn toggle_session_favorite(
     }
 
     let pool = {
-        let handle = state.app_handle.lock().unwrap();
+        let handle = state.app_handle.lock()
+            .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
         let initialized_state = handle.as_ref().ok_or("Application state not found")?;
         initialized_state.pool.clone()
     };
@@ -362,7 +371,8 @@ async fn delete_session(
     }
 
     let pool = {
-        let handle = state.app_handle.lock().unwrap();
+        let handle = state.app_handle.lock()
+            .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
         let initialized_state = handle.as_ref().ok_or("Application state not found")?;
         initialized_state.pool.clone()
     };
@@ -385,7 +395,8 @@ async fn create_folder(
     }
 
     let pool = {
-        let handle = state.app_handle.lock().unwrap();
+        let handle = state.app_handle.lock()
+            .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
         let initialized_state = handle.as_ref().ok_or("Application state not found")?;
         initialized_state.pool.clone()
     };
@@ -405,7 +416,8 @@ async fn list_folders(
     }
 
     let pool = {
-        let handle = state.app_handle.lock().unwrap();
+        let handle = state.app_handle.lock()
+            .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
         let initialized_state = handle.as_ref().ok_or("Application state not found")?;
         initialized_state.pool.clone()
     };
@@ -426,7 +438,8 @@ async fn delete_folder(
     }
 
     let pool = {
-        let handle = state.app_handle.lock().unwrap();
+        let handle = state.app_handle.lock()
+            .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
         let initialized_state = handle.as_ref().ok_or("Application state not found")?;
         initialized_state.pool.clone()
     };
@@ -448,7 +461,8 @@ async fn move_session_to_folder(
     }
 
     let pool = {
-        let handle = state.app_handle.lock().unwrap();
+        let handle = state.app_handle.lock()
+            .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
         let initialized_state = handle.as_ref().ok_or("Application state not found")?;
         initialized_state.pool.clone()
     };
@@ -470,7 +484,8 @@ async fn move_file_to_folder(
     }
 
     let pool = {
-        let handle = state.app_handle.lock().unwrap();
+        let handle = state.app_handle.lock()
+            .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
         let initialized_state = handle.as_ref().ok_or("Application state not found")?;
         initialized_state.pool.clone()
     };
@@ -491,7 +506,8 @@ async fn delete_file(
     }
 
     let pool = {
-        let handle = state.app_handle.lock().unwrap();
+        let handle = state.app_handle.lock()
+            .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
         let initialized_state = handle.as_ref().ok_or("Application state not found")?;
         initialized_state.pool.clone()
     };
@@ -523,7 +539,8 @@ async fn reindex_library(state: State<'_, AppState>) -> Result<String, String> {
     info!("Starting library reindexing...");
 
     let (pool, supervisor) = {
-        let handle = state.app_handle.lock().unwrap();
+        let handle = state.app_handle.lock()
+            .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
         let initialized_state = handle.as_ref().ok_or("Application state not found")?;
         (initialized_state.pool.clone(), initialized_state.supervisor.clone())
     };
@@ -582,7 +599,8 @@ async fn list_library_files(
     }
 
     let pool = {
-        let handle = state.app_handle.lock().unwrap();
+        let handle = state.app_handle.lock()
+            .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
         let initialized_state = handle.as_ref().ok_or("Application state not found")?;
         initialized_state.pool.clone()
     };
@@ -613,7 +631,8 @@ async fn save_generated_file(
 
     // Get pool and supervisor
     let (pool, supervisor) = {
-        let handle = state.app_handle.lock().unwrap();
+        let handle = state.app_handle.lock()
+            .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
         if let Some(s) = handle.as_ref() {
             (s.pool.clone(), s.supervisor.clone())
         } else {
@@ -731,7 +750,8 @@ async fn upload_file_for_session(
 
     // Get pool and supervisor from state
     let (pool, supervisor) = {
-        let handle = state.app_handle.lock().unwrap();
+        let handle = state.app_handle.lock()
+            .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
         if let Some(s) = handle.as_ref() {
             (s.pool.clone(), s.supervisor.clone())
         } else {
@@ -821,7 +841,8 @@ async fn link_library_file_to_session(
     info!("└─────────────────────────────────────────────────────┘");
 
     let pool = {
-        let handle = state.app_handle.lock().unwrap();
+        let handle = state.app_handle.lock()
+            .map_err(|e| format!("Failed to acquire app_handle lock: {}", e))?;
         if let Some(s) = handle.as_ref() {
             s.pool.clone()
         } else {

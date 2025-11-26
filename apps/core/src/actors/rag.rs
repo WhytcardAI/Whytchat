@@ -124,6 +124,13 @@ struct RagActorRunner {
 }
 
 impl RagActorRunner {
+    // NOTE: NonZeroUsize::new(1000) is guaranteed to return Some since 1000 > 0.
+    // Using expect() here per STANDARDS.md: "lazy_static peut paniquer si l'état est irrécupérable"
+    const CACHE_SIZE: NonZeroUsize = match NonZeroUsize::new(1000) {
+        Some(size) => size,
+        None => panic!("Cache size must be non-zero"),
+    };
+
     fn new(
         receiver: mpsc::Receiver<RagMessage>,
         db_path_override: Option<PathBuf>,
@@ -132,7 +139,7 @@ impl RagActorRunner {
         Self {
             receiver,
             embedding_model: None,
-            embedding_cache: LruCache::new(NonZeroUsize::new(1000).unwrap()),
+            embedding_cache: LruCache::new(Self::CACHE_SIZE),
             db_connection: None,
             table_name: "knowledge_base".to_string(),
             db_path_override,
@@ -172,7 +179,15 @@ impl RagActorRunner {
             }
         }
 
-        match connect(db_path.to_str().unwrap()).execute().await {
+        let db_path_str = match db_path.to_str() {
+            Some(s) => s,
+            None => {
+                error!("Failed to convert database path to string: {:?}", db_path);
+                return;
+            }
+        };
+
+        match connect(db_path_str).execute().await {
             Ok(conn) => {
                 info!("Connected to LanceDB at {:?}", db_path);
                 self.db_connection = Some(conn);
