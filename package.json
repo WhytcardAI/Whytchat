@@ -16,9 +16,11 @@
     "format:js": "prettier --write \"apps/**/*.{js,jsx,ts,tsx,json,md}\"",
     "format:rs": "cargo fmt",
     "prepare": "husky install",
+    "test:e2e": "playwright test",
     "tauri": "tauri"
   },
   "devDependencies": {
+    "@playwright/test": "^1.45.0",
     "@tauri-apps/cli": "^2.0.0",
     "husky": "^9.0.0",
     "prettier": "^3.3.0",

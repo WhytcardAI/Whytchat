@@ -3,30 +3,52 @@
     "title": "Interface WhytChat V1.0.0 Chargée",
     "status": {
       "waiting": "En attente de connexion au Cerveau Backend..."
-    }
+    },
+    "initializing": "Initialisation du Backend...",
+    "init_failed": "Échec de l'initialisation",
+    "init_failed_desc": "Impossible de se connecter au backend. Veuillez redémarrer l'application."
   },
   "chat": {
     "empty": {
-      "message": "Commencez une nouvelle conversation."
+      "title": "Bienvenue sur WhytChat",
+      "message": "Commencez une nouvelle conversation.",
+      "session_ready": "Session prête !",
+      "start_hint": "Tapez votre message ci-dessous pour commencer"
     },
     "upload": {
       "uploading": "Téléchargement en cours...",
       "success": "Fichier téléchargé avec succès",
-      "error": "Erreur de téléchargement"
+      "error": "Échec du téléchargement",
+      "title": "Télécharger un fichier"
     },
     "header": {
       "new_chat": "Nouvelle session",
       "new_session": "Nouvelle session"
     },
-    "error": "Erreur"
+    "placeholder": "Envoyer un message à WhytChat...",
+    "characters": "caractères",
+    "hint": "Entrée pour envoyer, Maj+Entrée pour nouvelle ligne",
+    "error": "Erreur",
+    "thinking": "Traitement en cours...",
+    "thinking_process": "Processus de raisonnement",
+    "input": {
+      "placeholder": "Tapez votre message...",
+      "send": "Envoyer"
+    }
   },
   "nav": {
     "new_chat": "Nouvelle"
   },
   "panel": {
     "orchestration": "Orchestration",
-    "knowledge": "Connaissances",
-    "waiting": "En attente de raisonnement..."
+    "context": "Contexte",
+    "parameters": "Paramètres",
+    "files": "Fichiers contextuels",
+    "no_files": "Aucun fichier attaché",
+    "upload_hint": "Déposez des fichiers pour ajouter du contexte",
+    "session_info": "Infos Session",
+    "waiting": "En attente de raisonnement...",
+    "thinking_hint": "Le raisonnement IA apparaîtra ici"
   },
   "thinking": {
     "analyzing": "Analyse de la demande...",
@@ -36,11 +58,33 @@
     "documents_found": "{{count}} documents pertinents trouvés.",
     "no_documents": "Aucun document pertinent trouvé.",
     "search_error": "Erreur lors de la recherche documentaire.",
-    "generating_response": "Formulation de la réponse..."
+    "generating_response": "Formulation de la réponse...",
+    "steps": "étapes"
   },
   "sessions": {
     "group": "SESSIONS",
-    "empty": "Aucune session"
+    "empty": "Pas encore de sessions",
+    "favorites": "FAVORIS",
+    "favorite": "Ajouter aux favoris",
+    "unfavorite": "Retirer des favoris",
+    "move_to_folder": "Déplacer vers un dossier",
+    "no_folder": "Aucun dossier",
+    "delete": "Supprimer",
+    "delete_confirm": "Supprimer cette session ?"
+  },
+  "common": {
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "confirm": "Confirmer",
+    "save": "Enregistrer"
+  },
+  "folders": {
+    "title": "Dossiers",
+    "create": "Nouveau dossier",
+    "name_placeholder": "Nom du dossier...",
+    "empty": "Aucune session",
+    "delete": "Supprimer le dossier",
+    "delete_confirm": "Supprimer ce dossier ?"
   },
   "onboarding": {
     "welcome": {
@@ -61,15 +105,31 @@
     "model": {
       "title": "Le Cerveau",
       "subtitle": "Nous téléchargeons et configurons votre modèle localement. Cela peut prendre quelques minutes.",
-      "downloading": "Téléchargement de Qwen...",
+      "downloading": "Téléchargement du modèle...",
+      "wild_ai": "Une IA sauvage apparaît !",
+      "capture": "Capturer",
       "complete": "Installation terminée !",
       "error": "Erreur lors du téléchargement. Vérifiez votre connexion.",
+      "education": {
+        "local_vs_cloud": "Local vs Cloud : WhytChat tourne entièrement sur votre appareil via le format GGUF, garantissant qu'aucune donnée ne sort.",
+        "privacy": "Vos Données : Comme le modèle est local, vos conversations et documents sont traités hors ligne.",
+        "performance": "Performance : La vitesse dépend de votre matériel (CPU/RAM), pas de votre connexion internet."
+      },
       "steps": {
         "init": "Initialisation du moteur",
         "download": "Téléchargement des poids (GGUF)",
         "verify": "Vérification de l'intégrité",
+        "embeddings": "Installation du modèle de compréhension",
         "load": "Chargement en mémoire"
       }
+    },
+    "diagnostics": {
+      "title": "Vérification du Système",
+      "subtitle": "Vérification que tous les composants fonctionnent correctement...",
+      "sideTitle": "Vérification",
+      "sideSubtitle": "Exécution des diagnostics système pour s'assurer que tout est prêt.",
+      "finish": "Commencer à utiliser WhytChat",
+      "continueAnyway": "Continuer quand même"
     }
   },
   "session": {
@@ -78,21 +138,23 @@
       "default": "Nouvelle session"
     }
   },
-  "thinking": {
-    "analyzing": "Analyse de la demande...",
-    "intent": "Intention : {{analysis}}",
-    "searching": "Vérification des connaissances locales (RAG)...",
-    "documentsFound": "{{count}} documents pertinents trouvés.",
-    "noDocuments": "Aucun document pertinent trouvé.",
-    "searchError": "Erreur lors de la recherche documentaire.",
-    "generating": "Formulation de la réponse..."
+  "theme": {
+    "dark": "Mode Sombre",
+    "light": "Mode Clair"
   },
-  "onboarding": {
-    "welcome": "Bienvenue sur WhytChat",
-    "downloadModel": "Télécharger le modèle IA",
-    "modelRequired": "Un modèle de langage est requis pour utiliser WhytChat",
-    "downloading": "Téléchargement du modèle...",
-    "complete": "Configuration terminée !"
+  "sidebar": {
+    "hide": "Masquer la barre latérale",
+    "show": "Afficher la barre latérale"
+  },
+  "header": {
+    "files": "Fichiers contextuels",
+    "settings": "Paramètres",
+    "upload_file": "Ajouter un fichier"
+  },
+  "upload": {
+    "uploading": "Téléchargement...",
+    "success": "Fichier ajouté !",
+    "error": "Échec du téléchargement"
   },
   "settings": {
     "title": "Paramètres de session",
@@ -106,9 +168,66 @@
     },
     "systemPrompt": {
       "label": "Prompt système",
-      "description": "Instructions pour l'assistant IA"
+      "description": "Définissez comment l'IA doit se comporter et répondre",
+      "placeholder": "Entrez des instructions pour l'IA..."
     },
     "save": "Enregistrer",
-    "cancel": "Annuler"
+    "cancel": "Annuler",
+    "reset": "Réinitialiser",
+    "diagnostics": "Lancer les diagnostics",
+    "maxTokens": {
+      "label": "Tokens max",
+      "description": "Longueur maximale de la réponse"
+    }
+  },
+  "session_wizard": {
+    "title": "Nouvelle Conversation",
+    "subtitle": "Donnez un nom à votre conversation",
+    "label": "Titre de la conversation",
+    "placeholder": "ex: Discussion IA",
+    "hint": "Entrée pour créer, Échap pour annuler",
+    "cancel": "Annuler",
+    "create": "Créer",
+    "creating": "Création..."
+  },
+  "dashboard": {
+    "welcome": "Bienvenue sur WhytChat",
+    "subtitle": "Votre assistant IA personnel, sécurisé et local. Commencez une nouvelle conversation pour débuter.",
+    "new_chat": "Nouvelle conversation"
+  },
+  "preflight": {
+    "title": "Vérification du système échouée",
+    "passed": "OK",
+    "failed": "ÉCHEC",
+    "hint": "Corrigez les problèmes ci-dessus et réessayez.",
+    "retry": "Réessayer",
+    "checks": {
+      "directories": "Répertoires système",
+      "model_file": "Modèle IA (GGUF)",
+      "llama_server": "Serveur d'inférence",
+      "embeddings": "Modèle d'embeddings",
+      "database": "Base de données",
+      "vectors": "Stockage vectoriel",
+      "llama_startup": "Test démarrage serveur",
+      "embeddings_load": "Test chargement embeddings"
+    }
+  },
+  "diagnostics": {
+    "title": "Diagnostics Système",
+    "running": "En cours...",
+    "rerun": "Relancer",
+    "runAll": "Lancer tous les tests",
+    "notStarted": "Cliquez sur \"Lancer tous les tests\" pour démarrer",
+    "allPassed": "Tous les tests sont passés !",
+    "someFailures": "{{count}} test(s) échoué(s)",
+    "summary": "{{passed}}/{{total}} tests réussis",
+    "categories": {
+      "database": "Base de Données",
+      "rag": "RAG (Recherche)",
+      "brain": "Analyseur",
+      "llm": "Modèle IA",
+      "filesystem": "Système de fichiers",
+      "integration": "Intégration"
+    }
   }
 }

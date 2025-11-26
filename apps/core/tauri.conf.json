@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "whytchat-v1",
+  "productName": "WhytChat_v1",
   "version": "1.0.0",
   "identifier": "com.whytcard.whytchat-v1",
   "build": {

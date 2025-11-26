@@ -37,15 +37,24 @@ pub enum AppError {
     RateLimited,
 }
 
-impl From<tokio::time::error::Elapsed> for AppError {
-    fn from(err: tokio::time::error::Elapsed) -> Self {
-        AppError::Timeout(format!("Operation timed out: {}", err))
+impl Clone for AppError {
+    fn clone(&self) -> Self {
+        match self {
+            AppError::Database(e) => AppError::Database(sqlx::Error::Protocol(e.to_string())),
+            AppError::Io(e) => AppError::Io(io::Error::new(e.kind(), e.to_string())),
+            AppError::Actor(e) => AppError::Actor(e.clone()),
+            AppError::Validation(s) => AppError::Validation(s.clone()),
+            AppError::Config(s) => AppError::Config(s.clone()),
+            AppError::Internal(s) => AppError::Internal(s.clone()),
+            AppError::Timeout(s) => AppError::Timeout(s.clone()),
+            AppError::RateLimited => AppError::RateLimited,
+        }
     }
 }
 
-impl From<anyhow::Error> for AppError {
-    fn from(err: anyhow::Error) -> Self {
-        AppError::Internal(err.to_string())
+impl From<tokio::time::error::Elapsed> for AppError {
+    fn from(err: tokio::time::error::Elapsed) -> Self {
+        AppError::Timeout(format!("Operation timed out: {}", err))
     }
 }
 
@@ -79,12 +88,6 @@ impl From<chrono::ParseError> for AppError {
     }
 }
 
-impl From<infer::InferError> for AppError {
-    fn from(err: infer::InferError) -> Self {
-        AppError::Validation(format!("File type inference error: {}", err))
-    }
-}
-
 impl From<which::Error> for AppError {
     fn from(err: which::Error) -> Self {
         AppError::Config(format!("Command not found: {}", err))
@@ -93,7 +96,7 @@ impl From<which::Error> for AppError {
 
 impl From<reqwest::Error> for AppError {
     fn from(err: reqwest::Error) -> Self {
-        AppError::Io(io::Error::new(io::ErrorKind::Other, format!("HTTP error: {}", err)))
+        AppError::Io(io::Error::other(format!("HTTP error: {}", err)))
     }
 }
 
@@ -105,21 +108,12 @@ impl From<fastembed::Error> for AppError {
 
 impl From<lancedb::Error> for AppError {
     fn from(err: lancedb::Error) -> Self {
-        AppError::Database(sqlx::Error::Protocol(format!("LanceDB error: {}", err).into()))
+        AppError::Database(sqlx::Error::Protocol(format!("LanceDB error: {}", err)))
     }
 }
 
 impl From<arrow::error::ArrowError> for AppError {
     fn from(err: arrow::error::ArrowError) -> Self {
         AppError::Internal(format!("Arrow error: {}", err))
-    }
-}
-
-impl ToString for AppError {
-    fn to_string(&self) -> String {
-        match self {
-            AppError::RateLimited => "Rate limit exceeded".to_string(),
-            _ => format!("{}", self),
-        }
     }
 }

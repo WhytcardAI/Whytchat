@@ -1,10 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Shield, CheckCircle, ArrowRight } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { cn } from '../../lib/utils';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useTranslation } from 'react-i18next';
+import { TestConsole } from '../diagnostics/TestConsole';
+
+const TIPS = [
+  'onboarding.model.education.local_vs_cloud',
+  'onboarding.model.education.privacy',
+  'onboarding.model.education.performance'
+];
 
 export function OnboardingWizard() {
   const { t, i18n } = useTranslation('common');
@@ -12,7 +19,20 @@ export function OnboardingWizard() {
   const [selectedLanguage, setSelectedLanguage] = useState(i18n.language || 'en');
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [downloadStatus, setDownloadStatus] = useState('waiting'); // waiting, downloading, complete, error
+  const [diagnosticsComplete, setDiagnosticsComplete] = useState(false);
+  const [diagnosticsPassed, setDiagnosticsPassed] = useState(false);
   const { completeOnboarding } = useAppStore();
+
+  const [tipIndex, setTipIndex] = useState(0);
+
+  useEffect(() => {
+    if (step === 3 && downloadStatus === 'downloading') {
+      const interval = setInterval(() => {
+        setTipIndex((prev) => (prev + 1) % TIPS.length);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [step, downloadStatus]);
 
   const handleLanguageSelect = (lang) => {
     setSelectedLanguage(lang);
@@ -36,20 +56,36 @@ export function OnboardingWizard() {
       setDownloadProgress(event.payload);
       if (event.payload >= 100) {
         setDownloadStatus('complete');
-        setTimeout(() => {
-          completeOnboarding();
-          unlisten();
-        }, 1500);
       }
     });
 
     try {
       await invoke('download_model');
+      // Only mark as complete AFTER download_model returns successfully
+      // This ensures the file is fully written to disk
+      const modelExists = await invoke('check_model_exists');
+      if (modelExists) {
+        // Move to diagnostics step instead of completing onboarding
+        setStep(4);
+      } else {
+        console.error('Download completed but model check failed');
+        setDownloadStatus('error');
+      }
     } catch (error) {
       console.error("Download failed:", error);
       setDownloadStatus('error');
+    } finally {
       unlisten();
     }
+  };
+
+  const handleDiagnosticsComplete = (results) => {
+    setDiagnosticsComplete(true);
+    setDiagnosticsPassed(results.failed === 0);
+  };
+
+  const handleFinishOnboarding = () => {
+    completeOnboarding();
   };
 
   return (
@@ -59,24 +95,24 @@ export function OnboardingWizard() {
         {/* Left Side: Visual / Context */}
         <div className="w-1/3 bg-primary/5 p-8 flex flex-col justify-between border-r border-border">
           <div>
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white font-bold mb-6">
-              W
-            </div>
+            <img src="/logo.png" alt="WhytChat Logo" className="w-10 h-10 rounded-xl mb-6 object-contain" />
             <h2 className="text-2xl font-bold text-text mb-2">
               {step === 1 && t('onboarding.language.title')}
               {step === 2 && t('onboarding.welcome.title')}
               {step === 3 && t('onboarding.model.title')}
+              {step === 4 && t('onboarding.diagnostics.sideTitle', 'Verification')}
             </h2>
             <p className="text-muted text-sm leading-relaxed">
               {step === 1 && t('onboarding.language.subtitle')}
               {step === 2 && t('onboarding.welcome.subtitle')}
               {step === 3 && t('onboarding.model.subtitle')}
+              {step === 4 && t('onboarding.diagnostics.sideSubtitle', 'Running system diagnostics to ensure everything is ready.')}
             </p>
           </div>
 
           {/* Steps Indicator */}
           <div className="flex gap-2">
-            {[1, 2, 3].map(i => (
+            {[1, 2, 3, 4].map(i => (
               <div key={i} className={cn("h-1.5 rounded-full transition-all duration-500", step >= i ? "w-8 bg-primary" : "w-2 bg-border")} />
             ))}
           </div>
@@ -145,6 +181,12 @@ export function OnboardingWizard() {
                   />
                 </div>
 
+                <div className="mt-6 min-h-[80px] flex items-center justify-center p-4 bg-primary/5 rounded-lg border border-primary/10">
+                  <p key={tipIndex} className="text-sm text-center text-muted animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    {t(TIPS[tipIndex])}
+                  </p>
+                </div>
+
                 <p className="text-center text-xs text-muted">
                   {downloadStatus === 'downloading' && t('onboarding.model.downloading')}
                   {downloadStatus === 'complete' && t('onboarding.model.complete')}
@@ -153,11 +195,47 @@ export function OnboardingWizard() {
 
                 <div className="bg-surface border border-border p-4 rounded-lg mt-8 space-y-3">
                   <StepItem label={t('onboarding.model.steps.init')} done={downloadProgress > 0} />
-                  <StepItem label={t('onboarding.model.steps.download')} done={downloadProgress > 10} />
-                  <StepItem label={t('onboarding.model.steps.verify')} done={downloadProgress > 90} />
+                  <StepItem label={t('onboarding.model.steps.download')} done={downloadProgress >= 20} />
+                  <StepItem label={t('onboarding.model.steps.verify')} done={downloadProgress >= 80} />
+                  <StepItem label={t('onboarding.model.steps.embeddings')} done={downloadProgress >= 95} />
                   <StepItem label={t('onboarding.model.steps.load')} done={downloadProgress === 100} />
                 </div>
               </div>
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-4 duration-500">
+              <div className="mb-4">
+                <h3 className="text-xl font-semibold text-text">{t('onboarding.diagnostics.title', 'System Diagnostics')}</h3>
+                <p className="text-muted text-sm mt-1">
+                  {t('onboarding.diagnostics.subtitle', 'Verifying all components are working correctly...')}
+                </p>
+              </div>
+
+              <TestConsole
+                autoStart={true}
+                onComplete={handleDiagnosticsComplete}
+                className="flex-1"
+              />
+
+              {diagnosticsComplete && (
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={handleFinishOnboarding}
+                    className={cn(
+                      "btn-primary",
+                      !diagnosticsPassed && "bg-yellow-600 hover:bg-yellow-500"
+                    )}
+                  >
+                    {diagnosticsPassed
+                      ? t('onboarding.diagnostics.finish', 'Start Using WhytChat')
+                      : t('onboarding.diagnostics.continueAnyway', 'Continue Anyway')
+                    }
+                    <ArrowRight size={18} className="ml-2" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

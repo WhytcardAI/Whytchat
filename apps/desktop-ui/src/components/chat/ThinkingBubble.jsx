@@ -1,69 +1,109 @@
-import React, { useState, useCallback } from 'react';
-import { ChevronDown, ChevronRight, BrainCircuit } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { ChevronDown, Brain, Loader2, CheckCircle2, Search, Lightbulb, MessageSquare } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { cn } from '../../lib/utils';
 
-export const ThinkingBubble = React.memo(function ThinkingBubble({ steps = [] }) {
-  const [isOpen, setIsOpen] = useState(true);
+const stepIcons = {
+  'thinking.analyzing': Search,
+  'thinking.searching_context': Search,
+  'thinking.documents_found': CheckCircle2,
+  'thinking.no_documents': Search,
+  'thinking.intent': Lightbulb,
+  'thinking.generating_response': MessageSquare,
+};
+
+// Minimal inline thinking indicator
+export const ThinkingIndicator = ({ isActive }) => {
   const { t } = useTranslation('common');
 
-  // Helper to translate step text from backend
+  if (!isActive) return null;
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-primary animate-pulse">
+      <div className="relative">
+        <Brain size={14} />
+        <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-primary rounded-full animate-ping" />
+      </div>
+      <span>{t('chat.thinking', 'Processing...')}</span>
+    </div>
+  );
+};
+
+// Detailed thinking bubble (expandable, shown below messages when needed)
+export const ThinkingBubble = ({ steps = [], isExpanded = false, isThinking = false }) => {
+  const [isOpen, setIsOpen] = useState(isExpanded);
+  const { t } = useTranslation('common');
+
   const translateStep = useCallback((step) => {
-    // Handle translation keys with parameters (e.g., "thinking.intent|Some intent")
     if (step.includes('|')) {
       const parts = step.split('|');
       const key = parts[0];
-      const value = parts.slice(1).join('|'); // Rejoin in case value contains pipes
+      const value = parts.slice(1).join('|');
       if (key === 'thinking.intent') {
-        return t('thinking.intent', { intent: value });
+        return { text: t('thinking.intent', { intent: value }), key };
       } else if (key === 'thinking.documents_found') {
-        return t('thinking.documents_found', { count: value });
+        return { text: t('thinking.documents_found', { count: value }), key };
       }
     }
-
-    // Check if step is a translation key
     if (step.startsWith('thinking.')) {
-      return t(step);
+      return { text: t(step), key: step };
     }
-
-    // Return as-is if not a translation key
-    return step;
+    return { text: step, key: 'default' };
   }, [t]);
 
   if (!steps || steps.length === 0) return null;
 
+  // Compact mode: just show a small expandable badge
   return (
-    <div className="mb-4 max-w-3xl mx-auto w-full">
-      <div className="bg-surface/50 border border-slate-700 rounded-lg overflow-hidden">
-        <button
-          onClick={function() { return setIsOpen(!isOpen); }}
-          className="w-full flex items-center justify-between p-3 text-xs font-medium text-muted hover:bg-slate-700/50 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <BrainCircuit size={14} className="text-accent animate-pulse" />
-            <span>{t('chat.thinking_process', 'Thought Process')}</span>
-          </div>
-          {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        </button>
-
-        {isOpen && (
-          <div className="p-3 pt-0 border-t border-slate-700/50 bg-slate-900/30">
-            <ul className="space-y-2">
-              {steps.map(function(step, index) {
-                return (
-                  <li key={index} className="flex gap-3 text-xs text-slate-300 animate-in fade-in slide-in-from-left-2 duration-300">
-                    <span className="text-slate-600 font-mono">{index + 1}.</span>
-                    <span>{translateStep(step)}</span>
-                  </li>
-                );
-              })}
-              <li className="flex gap-3 text-xs text-accent animate-pulse">
-                <span className="text-slate-600 font-mono">...</span>
-                <span>{t('chat.thinking', 'Reasoning...')}</span>
-              </li>
-            </ul>
-          </div>
+    <div className="mb-3 max-w-3xl mx-auto w-full">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all",
+          "bg-surface/60 border border-border/50 hover:bg-surface/80",
+          isOpen && "rounded-b-none border-b-0"
         )}
-      </div>
+      >
+        <Brain size={12} className="text-accent" />
+        <span className="text-muted">
+          {steps.length} {t('thinking.steps', 'steps')}
+        </span>
+        <ChevronDown
+          size={12}
+          className={cn("text-muted transition-transform", isOpen && "rotate-180")}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="bg-surface/60 border border-border/50 border-t-0 rounded-b-lg p-2 space-y-1 animate-fade-in">
+          {steps.map((step, index) => {
+            const { text, key } = translateStep(step);
+            const IconComponent = stepIcons[key] || Lightbulb;
+            const isLast = index === steps.length - 1;
+
+            return (
+              <div
+                key={index}
+                className={cn(
+                  "flex items-center gap-2 px-2 py-1 rounded text-xs",
+                  isLast ? "text-primary" : "text-muted"
+                )}
+              >
+                <IconComponent size={10} />
+                <span className="flex-1 truncate">{text}</span>
+              </div>
+            );
+          })}
+
+          {/* Loading dot - Only show if actively thinking */}
+          {isThinking && (
+            <div className="flex items-center gap-2 px-2 py-1 text-primary">
+              <Loader2 size={10} className="animate-spin" />
+              <span className="text-xs">{t('chat.thinking', 'Processing...')}</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
-});
+};

@@ -10,7 +10,7 @@ use tokio::sync::mpsc;
 pub trait LlmActor: Send + Sync + 'static {
     /// Generates a complete text response based on a prompt and optional parameters.
     async fn generate_with_params(&self, prompt: String, system_prompt: Option<String>, temperature: Option<f32>) -> Result<String, AppError>;
-    
+
     /// Generates a streaming response, sending chunks of text as they are produced.
     async fn stream_generate_with_params(
         &self,
@@ -30,5 +30,5 @@ pub trait RagActor: Send + Sync + 'static {
     async fn ingest(&self, content: String, metadata: Option<String>) -> Result<String, AppError>;
 
     /// Searches the knowledge base for content relevant to a query.
-    async fn search_with_session(&self, query: String, session_id: Option<String>) -> Result<Vec<String>, AppError>;
+    async fn search_with_filters(&self, query: String, file_ids: Vec<String>) -> Result<Vec<String>, AppError>;
 }

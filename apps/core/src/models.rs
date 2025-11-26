@@ -17,6 +17,16 @@ pub struct ModelConfig {
     pub system_prompt: String,
 }
 
+impl Default for ModelConfig {
+    fn default() -> Self {
+        Self {
+            model_id: "default-model.gguf".to_string(),
+            temperature: 0.7,
+            system_prompt: "You are a helpful assistant.".to_string(),
+        }
+    }
+}
+
 /// Represents a chat session.
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct Session {
@@ -28,6 +38,39 @@ pub struct Session {
     pub created_at: i64,
     /// The model configuration associated with this session.
     pub model_config: Json<ModelConfig>,
+    /// Whether this session is marked as favorite (pinned).
+    #[serde(default)]
+    pub is_favorite: bool,
+    /// Optional folder ID for organization.
+    #[serde(default)]
+    pub folder_id: Option<String>,
+    /// Sort order within folder (lower = higher priority).
+    #[serde(default)]
+    pub sort_order: i32,
+    /// Unix timestamp of when the session was last updated.
+    #[serde(default)]
+    pub updated_at: i64,
+}
+
+/// Represents a folder for organizing sessions.
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct Folder {
+    /// The unique identifier for the folder (UUID).
+    pub id: String,
+    /// The user-defined name of the folder.
+    pub name: String,
+    /// The color for the folder (hex format).
+    #[serde(default = "default_folder_color")]
+    pub color: String,
+    /// Sort order for folders.
+    #[serde(default)]
+    pub sort_order: i32,
+    /// Unix timestamp of when the folder was created.
+    pub created_at: i64,
+}
+
+fn default_folder_color() -> String {
+    "#6366f1".to_string()
 }
 
 /// Represents a single message within a chat session.
@@ -45,17 +88,39 @@ pub struct Message {
     pub created_at: i64,
 }
 
-/// Represents a file associated with a chat session.
+/// Represents a file in the global library.
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct LibraryFile {
+    /// The unique identifier for the file.
+    pub id: String,
+    /// The original name of the file.
+    pub name: String,
+    /// The relative path to the file in storage.
+    pub path: String,
+    /// The MIME type or extension.
+    pub file_type: String,
+    /// File size in bytes.
+    #[serde(default)]
+    pub size: i64,
+    /// Unix timestamp of creation.
+    pub created_at: i64,
+}
+
+/// Represents a file associated with a chat session (Joined View).
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct SessionFile {
-    /// The unique identifier for the file association record.
+    /// The unique identifier for the file (from library).
     pub id: String,
-    /// The ID of the session this file is associated with.
+    /// The ID of the session.
     pub session_id: String,
-    /// The path to the file on the filesystem.
-    pub file_path: String,
-    /// The type of the file (e.g., MIME type).
+    /// The name of the file.
+    pub name: String,
+    /// The path to the file.
+    pub path: String,
+    /// The type of the file.
     pub file_type: String,
-    /// Unix timestamp of when the file was associated with the session.
-    pub added_at: i64,
+    /// File size.
+    pub size: i64,
+    /// Unix timestamp of when the file was attached to this session.
+    pub attached_at: i64,
 }

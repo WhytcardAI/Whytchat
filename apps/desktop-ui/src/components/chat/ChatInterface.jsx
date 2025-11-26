@@ -1,17 +1,22 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { MessageBubble } from './MessageBubble';
 import { ThinkingBubble } from './ThinkingBubble';
 import { ChatInput } from './ChatInput';
 import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
+import { MessageSquare, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
+import { useChatStream } from '../../hooks/useChatStream';
+import { cn } from '../../lib/utils';
 
 export function ChatInterface() {
   const { t } = useTranslation();
-  const [messages, setMessages] = useState([]);
   const [uploadStatus, setUploadStatus] = useState(null); // null, 'uploading', 'success', 'error'
-  const { setThinking, addThinkingStep, clearThinkingSteps, isThinking, thinkingSteps, currentSessionId, setCurrentSessionId, loadSessions, createSession } = useAppStore();
+  const { isThinking, thinkingSteps, currentSessionId, setCurrentSessionId, loadSessions, createSession } = useAppStore();
+
+  const { messages, sendMessage } = useChatStream(currentSessionId);
+
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = useCallback(() => {
@@ -22,106 +27,45 @@ export function ChatInterface() {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // Load sessions and create default session if needed
+  // Load sessions on mount
   useEffect(() => {
-    const initSession = async () => {
-      await loadSessions();
-      if (!currentSessionId) {
-        try {
-          const sessionId = await createSession();
-          setCurrentSessionId(sessionId);
-        } catch (error) {
-          console.error('Failed to create initial session:', error);
-        }
-      }
-    };
-    initSession();
+    loadSessions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
-  // Load messages for current session
-  useEffect(() => {
-    const loadMessages = async () => {
-      if (currentSessionId) {
-        try {
-          const sessionMessages = await invoke('get_session_messages', { sessionId: currentSessionId });
-          const formattedMessages = sessionMessages.map(msg => ({
-            role: msg.role,
-            content: msg.content
-          }));
-          setMessages(formattedMessages);
-        } catch (error) {
-          console.error('Failed to load messages:', error);
-        }
-      }
-    };
-    loadMessages();
-  }, [currentSessionId]);
-
-  // Listen for backend thinking events and streaming tokens
-  useEffect(() => {
-    let unlistenThinking;
-    let unlistenToken;
-
-    async function setupListeners() {
-      unlistenThinking = await listen('thinking-step', (event) => {
-        addThinkingStep(event.payload);
-      });
-
-      unlistenToken = await listen('chat-token', (event) => {
-        const token = event.payload;
-        setMessages(prev => {
-          const lastMsg = prev[prev.length - 1];
-          if (lastMsg && lastMsg.role === 'assistant') {
-            // Append to existing assistant message
-            return [
-              ...prev.slice(0, -1),
-              { ...lastMsg, content: lastMsg.content + token }
-            ];
-          } else {
-            // Create new assistant message if none exists (or last was user)
-            return [...prev, { role: 'assistant', content: token }];
-          }
-        });
-      });
-    }
-
-    setupListeners();
-
-    return () => {
-      if (unlistenThinking) unlistenThinking();
-      if (unlistenToken) unlistenToken();
-    };
-  }, [addThinkingStep]);
-
   const handleSend = useCallback(async (text, _isWebEnabled) => {
-    // 1. Add User Message
-    const userMsg = { role: 'user', content: text };
-    setMessages(prev => [...prev, userMsg]);
+    let activeSessionId = currentSessionId;
 
-    // 2. Set Thinking State (Global)
-    setThinking(true);
-    clearThinkingSteps();
-
-    try {
-      // 3. Call Backend (Real Thinking Mode)
-      // The backend will emit 'chat-token' events for the response
-      // We await the final result just to ensure completion, but the UI updates via events
-      await invoke('debug_chat', {
-        session_id: currentSessionId || "default-session",
-        message: text
-      });
-
-      setThinking(false);
-
-    } catch (error) {
-      console.error("Backend Error:", error);
-      setMessages(prev => [...prev, { role: 'assistant', content: `${t('chat.error')}: ${error}` }]);
-      setThinking(false);
+    if (!activeSessionId) {
+      console.log("No active session, creating one...");
+      try {
+        activeSessionId = await createSession(t('session.title.default'), i18n.language);
+        setCurrentSessionId(activeSessionId);
+      } catch (error) {
+        console.error("Failed to auto-create session:", error);
+        // We can't use the stream's setMessages, so maybe we show an alert here in the future
+        return;
+      }
     }
-  }, [currentSessionId, setThinking, clearThinkingSteps, t]);
+
+    // The useChatStream hook will handle the rest
+    await sendMessage(text, activeSessionId);
+
+  }, [currentSessionId, createSession, setCurrentSessionId, sendMessage, t]);
 
   const handleFileUpload = useCallback(async (file) => {
+    let activeSessionId = currentSessionId;
+    if (!activeSessionId) {
+         try {
+            activeSessionId = await createSession(t('session.title.default'), i18n.language);
+            setCurrentSessionId(activeSessionId);
+        } catch (error) {
+            console.error("Failed to auto-create session for upload:", error);
+            setUploadStatus('error');
+            return;
+        }
+    }
+
     setUploadStatus('uploading');
     try {
       const reader = new FileReader();
@@ -129,7 +73,7 @@ export function ChatInterface() {
         const arrayBuffer = e.target.result;
         const fileData = Array.from(new Uint8Array(arrayBuffer));
         await invoke('upload_file_for_session', {
-          session_id: currentSessionId || "default-session",
+          session_id: activeSessionId,
           file_name: file.name,
           file_data: fileData
         });
@@ -146,7 +90,7 @@ export function ChatInterface() {
       setUploadStatus('error');
       setTimeout(() => setUploadStatus(null), 3000);
     }
-  }, [currentSessionId]);
+  }, [currentSessionId, createSession, setCurrentSessionId, t]);
 
   const renderedMessages = useMemo(() => {
     return messages.map((msg, idx) => (
@@ -157,10 +101,32 @@ export function ChatInterface() {
   return (
     <div className="flex flex-col h-full w-full relative">
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent pb-32">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar pb-40">
         {messages.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center text-muted opacity-50">
-            <p>{t('chat.empty.message')}</p>
+          <div className="h-full flex flex-col items-center justify-center text-muted">
+            {!currentSessionId ? (
+              <div className="text-center animate-fade-in">
+                <div className="w-20 h-20 rounded-2xl bg-surface/80 border border-border flex items-center justify-center mx-auto mb-4">
+                  <MessageSquare className="w-10 h-10 text-muted/40" />
+                </div>
+                <h2 className="text-lg font-medium text-text mb-2">{t('chat.empty.title', 'Welcome to WhytChat')}</h2>
+                <p className="text-sm text-muted mb-6 max-w-xs">{t('chat.empty.message')}</p>
+                <button
+                    onClick={() => createSession(t('session.title.default'), i18n.language).then(id => setCurrentSessionId(id))}
+                    className="px-6 py-3 bg-primary text-white rounded-xl font-medium shadow-lg shadow-primary/20 hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                >
+                    {t('chat.header.new_session')}
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center animate-fade-in">
+                <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
+                  <MessageSquare className="w-10 h-10 text-primary" />
+                </div>
+                <h2 className="text-lg font-medium text-text mb-2">{t('chat.empty.session_ready')}</h2>
+                <p className="text-sm text-muted max-w-xs text-center">{t('chat.empty.start_hint', 'Type your message below to start chatting')}</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -168,17 +134,29 @@ export function ChatInterface() {
 
         {/* Thinking Bubble - Shows during generation or if steps exist */}
         {(isThinking || thinkingSteps.length > 0) && (
-          <ThinkingBubble steps={thinkingSteps} />
+          <ThinkingBubble steps={thinkingSteps} isThinking={isThinking} />
         )}
 
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input Area (Floating) */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background to-transparent pt-10 z-10">
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background/95 to-transparent pt-8 z-10">
         {uploadStatus && (
-          <div className={`mb-2 text-center text-sm ${uploadStatus === 'success' ? 'text-green-500' : uploadStatus === 'error' ? 'text-red-500' : 'text-blue-500'}`}>
-            {uploadStatus === 'uploading' ? t('chat.upload.uploading') : uploadStatus === 'success' ? t('chat.upload.success') : t('chat.upload.error')}
+          <div className="max-w-3xl mx-auto px-4 mb-3">
+            <div className={cn(
+              "flex items-center gap-2 p-3 rounded-xl text-sm border animate-fade-in",
+              uploadStatus === 'success' && "bg-success/10 border-success/20 text-success",
+              uploadStatus === 'error' && "bg-destructive/10 border-destructive/20 text-destructive",
+              uploadStatus === 'uploading' && "bg-primary/10 border-primary/20 text-primary"
+            )}>
+              {uploadStatus === 'uploading' && <Loader2 size={16} className="animate-spin" />}
+              {uploadStatus === 'success' && <CheckCircle size={16} />}
+              {uploadStatus === 'error' && <AlertCircle size={16} />}
+              <span>
+                {uploadStatus === 'uploading' ? t('chat.upload.uploading') : uploadStatus === 'success' ? t('chat.upload.success') : t('chat.upload.error')}
+              </span>
+            </div>
           </div>
         )}
         <ChatInput onSend={handleSend} onFileUpload={handleFileUpload} disabled={isThinking} />

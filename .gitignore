@@ -1,34 +1,117 @@
-# Node / NPM
+# ============================================
+# WhytChat .gitignore
+# ============================================
+
+# === Node / NPM ===
 node_modules/
 dist/
-npm-debug.log
+npm-debug.log*
 yarn-error.log
+yarn.lock
+package-lock.json
 pnpm-lock.yaml
+.npm/
+.yarn/
 
-# Rust / Cargo
+# === Rust / Cargo ===
 target/
 **/*.rs.bk
 Cargo.lock
 apps/core/gen/
+*.rlib
+*.rmeta
 
-# OS
+# === Tauri Build Artifacts ===
+apps/core/WixTools/
+apps/core/bundle/
+*.msi
+*.exe
+*.nsis
+
+# === OS Files ===
 .DS_Store
+.DS_Store?
+._*
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Environment
-.env
-.env.local
-
-# Data (models, database)
-data/
-
-# AI Model Cache (downloaded at runtime)
-.fastembed_cache/
-
-# IDE
+# === IDE / Editor ===
 .vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
 .idea/
 *.swp
+*.swo
+*.swn
+*~
+.project
+.classpath
+.settings/
 
-#Ignore insiders AI rules
-.github\instructions\codacy.instructions.md
+# === Environment & Secrets ===
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# === Runtime Data (downloaded at runtime) ===
+data/
+!data/db/
+!data/models/
+!data/vectors/
+!data/library/
+tools/llama/*.exe
+tools/llama/*.dll
+tools/llama/*.zip
+tools/llama/*.so
+tools/llama/*.dylib
+!tools/llama/llama.cpp.txt
+
+# === AI Model Cache ===
+.fastembed_cache/
+*.gguf
+*.onnx
+*.safetensors
+*.bin
+
+# === Logs & Debug ===
+logs/
+*.log
+*.log.*
+.turbo/
+
+# === Test Artifacts ===
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+test-results.xml
+
+# === Temporary Files ===
+*.tmp
+*.temp
+*.bak
+*.backup
+.cache/
+
+# === Database Files ===
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# === Vector Storage ===
+data/vectors/
+*.lance/
+
+# === Documentation Build ===
+docs/_build/
+site/
+
+# === GitHub Copilot Instructions (dev only) ===
+.github/instructions/codacy.instructions.md

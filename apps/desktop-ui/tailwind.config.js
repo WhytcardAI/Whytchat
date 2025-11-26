@@ -4,21 +4,55 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        // WhytChat Light Theme (Based on User Image)
-        background: '#f3f4f6', // Light Gray background
-        surface: '#ffffff',    // White surface
-        primary: '#ea580c',    // Orange 600 (Action color)
-        secondary: '#8b5cf6',  // Violet 500 (Agent/Persona)
-        text: '#1f2937',       // Gray 800
-        muted: '#9ca3af',      // Gray 400
-        border: '#e5e7eb',     // Gray 200
+        background: 'rgb(var(--background) / <alpha-value>)',
+        surface: 'rgb(var(--surface) / <alpha-value>)',
+        primary: 'rgb(var(--primary) / <alpha-value>)',
+        accent: 'rgb(var(--accent) / <alpha-value>)',
+        secondary: 'rgb(var(--secondary) / <alpha-value>)',
+        text: 'rgb(var(--text) / <alpha-value>)',
+        foreground: 'rgb(var(--foreground) / <alpha-value>)',
+        muted: 'rgb(var(--muted) / <alpha-value>)',
+        border: 'rgb(var(--border) / <alpha-value>)',
+        destructive: 'rgb(var(--destructive) / <alpha-value>)',
+        success: 'rgb(var(--success) / <alpha-value>)',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+      },
+      boxShadow: {
+        'glow': '0 0 20px rgb(var(--primary) / 0.3)',
+        'glow-lg': '0 0 40px rgb(var(--primary) / 0.4)',
+        'inner-glow': 'inset 0 0 20px rgb(var(--primary) / 0.1)',
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.3s ease-out',
+        'slide-up': 'slideUp 0.3s ease-out',
+        'slide-down': 'slideDown 0.3s ease-out',
+        'scale-in': 'scaleIn 0.2s ease-out',
+        'spin-slow': 'spin 3s linear infinite',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideUp: {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        slideDown: {
+          '0%': { opacity: '0', transform: 'translateY(-10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        scaleIn: {
+          '0%': { opacity: '0', transform: 'scale(0.95)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
       },
     },
   },

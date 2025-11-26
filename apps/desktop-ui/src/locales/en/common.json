@@ -3,22 +3,38 @@
     "title": "WhytChat V1.0.0 UI Loaded",
     "status": {
       "waiting": "Waiting for Backend Brain connection..."
-    }
+    },
+    "initializing": "Initializing Backend...",
+    "init_failed": "Backend Initialization Failed",
+    "init_failed_desc": "Could not connect to the backend. Please restart the application."
   },
   "chat": {
     "empty": {
-      "message": "Start a new conversation."
+      "title": "Welcome to WhytChat",
+      "message": "Start a new conversation.",
+      "session_ready": "Session ready!",
+      "start_hint": "Type your message below to start chatting"
     },
     "upload": {
-      "uploading": "Uploading...",
+      "uploading": "Uploading file...",
       "success": "File uploaded successfully",
-      "error": "Upload error"
+      "error": "Upload failed",
+      "title": "Upload file"
     },
     "header": {
       "new_chat": "New Chat",
       "new_session": "New session"
     },
-    "error": "Error"
+    "error": "Error",
+    "thinking": "Processing...",
+    "thinking_process": "Reasoning Process",
+    "placeholder": "Send a message to WhytChat...",
+    "characters": "chars",
+    "hint": "Press Enter to send, Shift+Enter for new line",
+    "input": {
+      "placeholder": "Type your message...",
+      "send": "Send"
+    }
   },
   "nav": {
     "new_chat": "New Chat"
@@ -26,7 +42,14 @@
   "panel": {
     "orchestration": "Orchestration",
     "knowledge": "Knowledge",
-    "waiting": "Waiting for reasoning..."
+    "waiting": "Waiting for reasoning...",
+    "context": "Context",
+    "parameters": "Parameters",
+    "files": "Context Files",
+    "no_files": "No files attached",
+    "upload_hint": "Drop files to add context",
+    "session_info": "Session Info",
+    "thinking_hint": "AI reasoning will appear here"
   },
   "thinking": {
     "analyzing": "Analyzing request...",
@@ -36,11 +59,33 @@
     "documents_found": "{{count}} relevant documents found.",
     "no_documents": "No relevant documents found.",
     "search_error": "Error during document search.",
-    "generating_response": "Formulating response..."
+    "generating_response": "Formulating response...",
+    "steps": "steps"
   },
   "sessions": {
     "group": "SESSIONS",
-    "empty": "No sessions"
+    "empty": "No sessions yet",
+    "favorites": "FAVORITES",
+    "favorite": "Add to favorites",
+    "unfavorite": "Remove from favorites",
+    "move_to_folder": "Move to folder",
+    "no_folder": "No folder",
+    "delete": "Delete",
+    "delete_confirm": "Delete this session?"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "save": "Save"
+  },
+  "folders": {
+    "title": "Folders",
+    "create": "New folder",
+    "name_placeholder": "Folder name...",
+    "empty": "No sessions",
+    "delete": "Delete folder",
+    "delete_confirm": "Delete this folder?"
   },
   "onboarding": {
     "welcome": {
@@ -61,15 +106,31 @@
     "model": {
       "title": "The Brain",
       "subtitle": "We are downloading and configuring your local model. This may take a few minutes.",
-      "downloading": "Downloading Qwen...",
+      "downloading": "Downloading the model...",
+      "wild_ai": "A wild AI appears!",
+      "capture": "Capture",
       "complete": "Installation completed!",
       "error": "Error during download. Check your connection.",
+      "education": {
+        "local_vs_cloud": "Local vs Cloud: WhytChat runs entirely on your device using GGUF format, ensuring zero data leaves your machine.",
+        "privacy": "Your Data: Since the model is local, your conversations and documents are processed offline.",
+        "performance": "Performance: The speed depends on your hardware (CPU/RAM), not your internet connection."
+      },
       "steps": {
         "init": "Engine initialization",
         "download": "Downloading weights (GGUF)",
         "verify": "Integrity check",
+        "embeddings": "Installing comprehension model",
         "load": "Loading into memory"
       }
+    },
+    "diagnostics": {
+      "title": "System Verification",
+      "subtitle": "Verifying all components are working correctly...",
+      "sideTitle": "Verification",
+      "sideSubtitle": "Running system diagnostics to ensure everything is ready.",
+      "finish": "Start Using WhytChat",
+      "continueAnyway": "Continue Anyway"
     }
   },
   "session": {
@@ -78,21 +139,23 @@
       "default": "New session"
     }
   },
-  "thinking": {
-    "analyzing": "Analyzing request...",
-    "intent": "Intent: {{analysis}}",
-    "searching": "Checking local knowledge (RAG)...",
-    "documentsFound": "{{count}} relevant documents found.",
-    "noDocuments": "No relevant documents found.",
-    "searchError": "Error during document search.",
-    "generating": "Formulating response..."
+  "theme": {
+    "dark": "Dark Mode",
+    "light": "Light Mode"
   },
-  "onboarding": {
-    "welcome": "Welcome to WhytChat",
-    "downloadModel": "Download AI Model",
-    "modelRequired": "A language model is required to use WhytChat",
-    "downloading": "Downloading model...",
-    "complete": "Setup complete!"
+  "sidebar": {
+    "hide": "Hide sidebar",
+    "show": "Show sidebar"
+  },
+  "header": {
+    "files": "Context Files",
+    "settings": "Settings",
+    "upload_file": "Add File"
+  },
+  "upload": {
+    "uploading": "Uploading...",
+    "success": "File uploaded!",
+    "error": "Upload failed"
   },
   "settings": {
     "title": "Session Settings",
@@ -106,9 +169,66 @@
     },
     "systemPrompt": {
       "label": "System Prompt",
-      "description": "Instructions for the AI assistant"
+      "description": "Define how the AI should behave and respond",
+      "placeholder": "Enter instructions for the AI..."
     },
     "save": "Save",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "reset": "Reset",
+    "diagnostics": "Run Diagnostics",
+    "maxTokens": {
+      "label": "Max Tokens",
+      "description": "Maximum response length"
+    }
+  },
+  "session_wizard": {
+    "title": "New Conversation",
+    "subtitle": "Give your conversation a name",
+    "label": "Conversation Title",
+    "placeholder": "e.g., AI Discussion",
+    "hint": "Press Enter to create, Escape to cancel",
+    "cancel": "Cancel",
+    "create": "Create",
+    "creating": "Creating..."
+  },
+  "dashboard": {
+    "welcome": "Welcome to WhytChat",
+    "subtitle": "Your personal, secure and local AI assistant. Start a new conversation to begin.",
+    "new_chat": "New conversation"
+  },
+  "preflight": {
+    "title": "System Check Failed",
+    "passed": "OK",
+    "failed": "FAILED",
+    "hint": "Fix the issues above and try again.",
+    "retry": "Retry",
+    "checks": {
+      "directories": "System Directories",
+      "model_file": "AI Model (GGUF)",
+      "llama_server": "Inference Server",
+      "embeddings": "Embedding Model",
+      "database": "Database",
+      "vectors": "Vector Storage",
+      "llama_startup": "Server Startup Test",
+      "embeddings_load": "Embeddings Load Test"
+    }
+  },
+  "diagnostics": {
+    "title": "System Diagnostics",
+    "running": "Running...",
+    "rerun": "Re-run",
+    "runAll": "Run All Tests",
+    "notStarted": "Click \"Run All Tests\" to start diagnostics",
+    "allPassed": "All tests passed!",
+    "someFailures": "{{count}} test(s) failed",
+    "summary": "{{passed}}/{{total}} tests passed",
+    "categories": {
+      "database": "Database",
+      "rag": "RAG (Search)",
+      "brain": "Analyzer",
+      "llm": "AI Model",
+      "filesystem": "File System",
+      "integration": "Integration"
+    }
   }
 }

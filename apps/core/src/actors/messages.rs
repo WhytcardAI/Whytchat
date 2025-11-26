@@ -3,7 +3,7 @@ use tauri::Window;
 use tokio::sync::oneshot;
 
 /// Defines errors that can occur within the actor system.
-#[derive(Debug, thiserror::Error, Serialize)]
+#[derive(Debug, thiserror::Error, Serialize, Clone)]
 pub enum ActorError {
     /// An error originating from the LLM actor.
     #[error("LLM request failed: {0}")]
@@ -39,7 +39,7 @@ pub enum LlmMessage {
         system_prompt: Option<String>,
         temperature: Option<f32>,
         /// A channel to send the final `String` result back.
-        responder: oneshot::Sender<Result<String, ActorError>>,
+        responder: oneshot::Sender<Result<String, AppError>>,
     },
     /// A request to generate a complete text response with specific parameters.
     GenerateWithParams {
@@ -47,7 +47,7 @@ pub enum LlmMessage {
         system_prompt: Option<String>,
         temperature: Option<f32>,
         /// A channel to send the final `String` result back.
-        responder: oneshot::Sender<Result<String, ActorError>>,
+        responder: oneshot::Sender<Result<String, AppError>>,
     },
     /// A request to generate a streaming text response.
     #[allow(dead_code)]
@@ -56,9 +56,9 @@ pub enum LlmMessage {
         system_prompt: Option<String>,
         temperature: Option<f32>,
         /// A channel to send each generated token (chunk) back.
-        chunk_sender: tokio::sync::mpsc::Sender<Result<String, ActorError>>,
+        chunk_sender: tokio::sync::mpsc::Sender<Result<String, AppError>>,
         /// A channel to signal completion or an error for the whole stream.
-        responder: oneshot::Sender<Result<(), ActorError>>,
+        responder: oneshot::Sender<Result<(), AppError>>,
     },
     /// A request to generate a streaming text response with specific parameters.
     StreamGenerateWithParams {
@@ -66,9 +66,9 @@ pub enum LlmMessage {
         system_prompt: Option<String>,
         temperature: Option<f32>,
         /// A channel to send each generated token (chunk) back.
-        chunk_sender: tokio::sync::mpsc::Sender<Result<String, ActorError>>,
+        chunk_sender: tokio::sync::mpsc::Sender<Result<String, AppError>>,
         /// A channel to signal completion or an error for the whole stream.
-        responder: oneshot::Sender<Result<(), ActorError>>,
+        responder: oneshot::Sender<Result<(), AppError>>,
     },
 }
 
@@ -81,17 +81,17 @@ pub enum RagMessage {
         /// Optional metadata (as a JSON string) to associate with the content.
         metadata: Option<String>,
         /// A channel to send the result (e.g., a confirmation message) back.
-        responder: oneshot::Sender<Result<String, ActorError>>,
+        responder: oneshot::Sender<Result<String, AppError>>,
     },
     /// A request to search the knowledge base.
     Search {
         query: String,
-        /// An optional session ID to scope the search.
-        session_id: Option<String>,
+        /// A list of file IDs to filter the search.
+        file_ids: Vec<String>,
         /// The maximum number of results to return.
         limit: usize,
         /// A channel to send the search results (a list of text chunks) back.
-        responder: oneshot::Sender<Result<Vec<String>, ActorError>>,
+        responder: oneshot::Sender<Result<Vec<String>, AppError>>,
     },
 }
 
@@ -106,13 +106,13 @@ pub enum SupervisorMessage {
         /// The Tauri window, used for emitting events back to the frontend.
         window: Option<Window>,
         /// A channel to send the final assistant response back.
-        responder: oneshot::Sender<Result<String, ActorError>>,
+        responder: oneshot::Sender<Result<String, AppError>>,
     },
     /// A request to ingest content, which the supervisor will delegate to the RAG actor.
     IngestContent {
         content: String,
         metadata: Option<String>,
-        responder: oneshot::Sender<Result<String, ActorError>>,
+        responder: oneshot::Sender<Result<String, AppError>>,
     },
     /// A command to shut down the supervisor and its child actors.
     #[allow(dead_code)]

@@ -1,78 +1,108 @@
-import { useState } from 'react';
-import { Send, Paperclip, Bot, Swords } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Send, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
 
-export function ChatInput({ onSend, onFileUpload, disabled }) {
+export function ChatInput({ onSend, disabled }) {
   const [input, setInput] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  const textareaRef = useRef(null);
   const { t } = useTranslation('common');
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 150) + 'px';
+    }
+  }, [input]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!input.trim() || disabled) return;
-    onSend(input, false); // Web toggle temporarily removed for visual match
+    onSend(input, false);
     setInput('');
+    // Reset textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
   };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
       handleSubmit(e);
     }
   };
 
-  const handleFileClick = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (file && onFileUpload) {
-        onFileUpload(file);
-      }
-    };
-    input.click();
-  };
+  const canSend = input.trim().length > 0 && !disabled;
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4 pb-6">
       <form
         onSubmit={handleSubmit}
-        className="relative bg-surface rounded-[2rem] shadow-xl shadow-black/5 border border-border flex items-end p-2 transition-all focus-within:ring-2 focus-within:ring-primary/20"
+        className={cn(
+          "relative rounded-2xl transition-all duration-200",
+          "bg-surface/90 backdrop-blur-xl",
+          "border shadow-lg",
+          isFocused
+            ? "border-primary/50 shadow-glow ring-2 ring-primary/20"
+            : "border-border shadow-black/5",
+        )}
       >
-        {/* Left Actions */}
-        <div className="flex items-center gap-1 pb-2 pl-2">
-          <button type="button" onClick={handleFileClick} className="p-2 text-muted hover:text-text hover:bg-background rounded-full transition-colors">
-            <Paperclip size={20} />
-          </button>
-          <button type="button" className="p-2 bg-secondary text-white rounded-xl hover:opacity-90 transition-opacity shadow-sm shadow-secondary/30">
-            <Bot size={20} />
-          </button>
-          <button type="button" className="p-2 text-muted hover:text-text hover:bg-background rounded-full transition-colors">
-            <Swords size={20} />
-          </button>
-        </div>
+        <div className="flex items-end p-2 gap-2">
+          {/* Input Area */}
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            placeholder={t('chat.placeholder', 'Send a message to WhytChat...')}
+            className={cn(
+              "flex-1 bg-transparent text-text py-3 px-3",
+              "min-h-[48px] max-h-[150px] resize-none",
+              "focus:outline-none text-sm leading-relaxed",
+              "placeholder:text-muted/60",
+              "scrollbar-hide"
+            )}
+            disabled={disabled}
+            rows={1}
+          />
 
-        {/* Input */}
-        <textarea
-          value={input}
-          onChange={function(e) { return setInput(e.target.value) }}
-          onKeyDown={handleKeyDown}
-          placeholder={t('chat.placeholder', 'Envoyer un message à WhytChat...')}
-          className="flex-1 bg-transparent text-text p-3 min-h-[50px] max-h-[150px] resize-none focus:outline-none text-sm scrollbar-hide mb-1"
-          disabled={disabled}
-          rows={1}
-        />
-
-        {/* Send Button */}
-        <div className="pb-1 pr-1">
+          {/* Send Button */}
           <button
             type="submit"
-            disabled={!input.trim() || disabled}
-            className="p-3 bg-primary text-white rounded-full hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/30"
+            disabled={!canSend}
+            className={cn(
+              "p-3 rounded-xl transition-all duration-200",
+              "focus:outline-none focus:ring-2 focus:ring-primary/30",
+              canSend
+                ? "bg-primary text-white shadow-lg shadow-primary/30 hover:bg-primary/90 hover:shadow-glow active:scale-95"
+                : "bg-muted/20 text-muted cursor-not-allowed"
+            )}
           >
-            <Send size={20} className={cn(input.trim() && "ml-0.5")} />
+            {disabled ? (
+              <Loader2 size={20} className="animate-spin" />
+            ) : (
+              <Send size={20} className={cn(canSend && "translate-x-0.5")} />
+            )}
           </button>
         </div>
+
+        {/* Character hint */}
+        {input.length > 0 && (
+          <div className="absolute -bottom-5 right-4 text-[10px] text-muted/60">
+            {input.length} {t('chat.characters', 'chars')}
+          </div>
+        )}
       </form>
+
+      {/* Keyboard hint */}
+      <p className="text-center text-[10px] text-muted/50 mt-3">
+        {t('chat.hint', 'Press Enter to send, Shift+Enter for new line')}
+      </p>
     </div>
   );
 }

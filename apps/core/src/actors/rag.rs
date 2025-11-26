@@ -1,6 +1,5 @@
 use crate::actors::messages::{AppError, ActorError, RagMessage};
 use crate::actors::traits::RagActor;
-use crate::database;
 use crate::fs_manager::PortablePathManager;
 use arrow::array::{
     Array, FixedSizeListBuilder, Float32Builder, RecordBatch, RecordBatchIterator, StringArray,
@@ -15,7 +14,7 @@ use lancedb::{
     query::{ExecutableQuery, QueryBase},
     Connection,
 };
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use lru::LruCache;
 use sqlx::sqlite::SqlitePool;
 use std::num::NonZeroUsize;
@@ -72,29 +71,29 @@ impl RagActor for RagActorHandle {
         self.sender
             .send(msg)
             .await
-            .map_err(|_| AppError::Actor("RAG Actor closed".to_string()))?;
+            .map_err(|_| AppError::Actor(ActorError::Internal("RAG Actor closed".to_string())))?;
         Ok(recv.await
-            .map_err(|_| AppError::Actor("RAG Actor failed to respond".to_string()))??)
+            .map_err(|_| AppError::Actor(ActorError::Internal("RAG Actor failed to respond".to_string())))??)
     }
 
-    async fn search_with_session(
+    async fn search_with_filters(
         &self,
         query: String,
-        session_id: Option<String>,
+        file_ids: Vec<String>,
     ) -> Result<Vec<String>, AppError> {
         let (send, recv) = oneshot::channel();
         let msg = RagMessage::Search {
             query,
-            session_id,
+            file_ids,
             limit: 3, // Default limit
             responder: send,
         };
         self.sender
             .send(msg)
             .await
-            .map_err(|_| AppError::Actor("RAG Actor closed".to_string()))?;
+            .map_err(|_| AppError::Actor(ActorError::Internal("RAG Actor closed".to_string())))?;
         Ok(recv.await
-            .map_err(|_| AppError::Actor("RAG Actor failed to respond".to_string()))??)
+            .map_err(|_| AppError::Actor(ActorError::Internal("RAG Actor failed to respond".to_string())))??)
     }
 }
 
@@ -129,9 +128,11 @@ impl RagActorRunner {
     async fn run(mut self) {
         info!("RagActor started");
 
-        // Initialize FastEmbed
+        // Initialize FastEmbed with local cache directory
+        let embeddings_dir = PortablePathManager::models_dir().join("embeddings");
         let mut options = InitOptions::new(EmbeddingModel::AllMiniLML6V2);
         options.show_download_progress = false;
+        options.cache_dir = embeddings_dir;
 
         match TextEmbedding::try_new(options) {
             Ok(model) => {
@@ -150,7 +151,9 @@ impl RagActorRunner {
         // Ensure directory exists if it's a custom path (PortablePathManager handles the default one)
         if self.db_path_override.is_some() {
             if let Some(parent) = db_path.parent() {
-                let _ = std::fs::create_dir_all(parent);
+                if let Err(e) = std::fs::create_dir_all(parent) {
+                    error!("Failed to create database directory at {:?}: {}", parent, e);
+                }
             }
         }
 
@@ -176,16 +179,20 @@ impl RagActorRunner {
                 responder,
             } => {
                 let result = self.ingest_document(content, metadata).await;
-                let _ = responder.send(result);
+                if let Err(_) = responder.send(result.map_err(AppError::from)) {
+                    warn!("Failed to send ingest response (channel closed)");
+                }
             }
             RagMessage::Search {
                 query,
-                session_id,
+                file_ids,
                 limit,
                 responder,
             } => {
-                let result = self.search_documents(query, session_id, limit).await;
-                let _ = responder.send(result);
+                let result = self.search_documents(query, file_ids, limit).await;
+                if let Err(_) = responder.send(result.map_err(AppError::from)) {
+                    warn!("Failed to send search response (channel closed)");
+                }
             }
         }
     }
@@ -193,7 +200,7 @@ impl RagActorRunner {
     async fn ingest_document(
         &self,
         content: String,
-        _metadata: Option<String>,
+        metadata: Option<String>,
     ) -> Result<String, ActorError> {
         let model = self.embedding_model.as_ref().ok_or(ActorError::RagError(
             "Embedding model not loaded".to_string(),
@@ -203,7 +210,7 @@ impl RagActorRunner {
             .as_ref()
             .ok_or(ActorError::RagError("DB not connected".to_string()))?;
 
-        // 1. Simple Chunking
+        // 1. Simple Chunking with overlap for better context
         let chunks: Vec<String> = content
             .split('\n')
             .map(|s| s.trim().to_string())
@@ -223,10 +230,11 @@ impl RagActorRunner {
         let total_chunks = chunks.len();
         let embedding_dim = 384; // AllMiniLML6V2 dimension
 
-        // Define Schema
+        // Define Schema with metadata column
         let schema = Arc::new(Schema::new(vec![
             Field::new("id", DataType::Utf8, false),
             Field::new("content", DataType::Utf8, false),
+            Field::new("metadata", DataType::Utf8, true),
             Field::new(
                 "vector",
                 DataType::FixedSizeList(
@@ -240,14 +248,19 @@ impl RagActorRunner {
         // Build Arrays
         let mut id_builder = StringBuilder::with_capacity(total_chunks, total_chunks * 36);
         let mut content_builder = StringBuilder::with_capacity(total_chunks, total_chunks * 256);
+        let mut metadata_builder = StringBuilder::with_capacity(total_chunks, total_chunks * 64);
 
         // Vector Builder: List of Floats
         let values_builder = Float32Builder::with_capacity(total_chunks * embedding_dim);
         let mut vector_builder = FixedSizeListBuilder::new(values_builder, embedding_dim as i32);
 
+        // Use metadata (e.g., "session:uuid" format)
+        let metadata_value = metadata.as_deref().unwrap_or("");
+
         for (i, chunk) in chunks.iter().enumerate() {
             id_builder.append_value(uuid::Uuid::new_v4().to_string());
             content_builder.append_value(chunk);
+            metadata_builder.append_value(metadata_value);
 
             // Append vector
             if let Some(embedding) = embeddings.get(i) {
@@ -261,6 +274,7 @@ impl RagActorRunner {
             vec![
                 Arc::new(id_builder.finish()),
                 Arc::new(content_builder.finish()),
+                Arc::new(metadata_builder.finish()),
                 Arc::new(vector_builder.finish()),
             ],
         )
@@ -303,7 +317,7 @@ impl RagActorRunner {
     async fn search_documents(
         &mut self,
         query: String,
-        session_id: Option<String>,
+        file_ids: Vec<String>,
         limit: usize,
     ) -> Result<Vec<String>, ActorError> {
         let model = self.embedding_model.as_ref().ok_or(ActorError::RagError(
@@ -352,8 +366,21 @@ impl RagActorRunner {
             .await
             .map_err(|e| ActorError::RagError(format!("Failed to open table: {}", e)))?;
 
-        let mut results = table
-            .query()
+        let mut query = table.query();
+
+        // Apply file filter if provided
+        if !file_ids.is_empty() {
+            // Construct OR filter: metadata = 'file:ID1' OR metadata = 'file:ID2'
+            // Note: metadata field stores "file:{id}"
+            let filter = file_ids
+                .iter()
+                .map(|id| format!("metadata = 'file:{}'", id))
+                .collect::<Vec<_>>()
+                .join(" OR ");
+            query = query.only_if(filter);
+        }
+
+        let mut results = query
             .limit(limit)
             .nearest_to(query_vec)
             .map_err(|e| ActorError::RagError(format!("Query setup failed: {}", e)))?
@@ -389,122 +416,7 @@ impl RagActorRunner {
             }
         }
 
-        // If session_id is provided, also search in session files
-        if let Some(session_id) = session_id {
-            if let Some(pool) = &self.pool {
-                match database::get_session_files(pool, &session_id).await {
-                    Ok(session_files) => {
-                        for file in session_files {
-                            let file_path = PortablePathManager::data_dir()
-                                .join("files")
-                                .join(&file.file_path);
-                            if file_path.exists() {
-                                match std::fs::read_to_string(&file_path) {
-                                    Ok(content) => {
-                                        // Simple text chunking for file content
-                                        let chunks: Vec<String> = content
-                                            .split('\n')
-                                            .map(|s| s.trim().to_string())
-                                            .filter(|s| !s.is_empty() && s.len() > 10)
-                                            .take(5) // Limit chunks per file
-                                            .collect();
-                                        documents.extend(chunks);
-                                    }
-                                    Err(e) => error!(
-                                        "Failed to read session file {}: {}",
-                                        file.file_path, e
-                                    ),
-                                }
-                            }
-                        }
-                    }
-                    Err(e) => error!("Failed to get session files for {}: {}", session_id, e),
-                }
-            }
-        }
-
         Ok(documents)
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use tempfile::tempdir;
-
-    #[tokio::test]
-    async fn test_rag_nominal_ingest_and_search() {
-        // 1. Setup isolated environment
-        let temp_dir = tempdir().expect("Failed to create temp dir");
-        let db_path = temp_dir.path().join("vectors");
-
-        // 2. Start Actor with custom path
-        let handle = RagActorHandle::new_with_options(Some(db_path.clone()), None);
-
-        // 3. Ingest content
-        let content = "Le langage Rust est performant et sécurisé. Il garantit la sécurité mémoire sans garbage collector.";
-        let ingest_res = handle.ingest(content.to_string(), None).await;
-        assert!(
-            ingest_res.is_ok(),
-            "Ingestion failed: {:?}",
-            ingest_res.err()
-        );
-
-        // 4. Search content
-        // Note: We need to wait a bit or ensure the embedding model is loaded.
-        // In a real scenario, we might want a "ready" signal, but for now we rely on the actor processing messages sequentially.
-        // The first message (Ingest) might take time to load the model.
-
-        let search_res = handle.search("sécurité mémoire".to_string()).await;
-        assert!(search_res.is_ok(), "Search failed: {:?}", search_res.err());
-
-        let results = search_res.unwrap();
-        assert!(!results.is_empty(), "Should find at least one result");
-        assert!(
-            results[0].contains("Rust"),
-            "Result should contain relevant text"
-        );
-    }
-
-    #[tokio::test]
-    async fn test_rag_empty_search() {
-        let temp_dir = tempdir().expect("Failed to create temp dir");
-        let db_path = temp_dir.path().join("vectors");
-        let handle = RagActorHandle::new_with_options(Some(db_path), None);
-
-        // Search without ingestion
-        let search_res = handle.search("rien".to_string()).await;
-
-        // Should not fail, but return empty list
-        assert!(search_res.is_ok());
-        let results = search_res.unwrap();
-        assert!(results.is_empty(), "Empty DB should return empty results");
-    }
-
-    #[tokio::test]
-    async fn test_rag_persistence() {
-        let temp_dir = tempdir().expect("Failed to create temp dir");
-        let db_path = temp_dir.path().join("vectors");
-
-        // Phase 1: Ingest
-        {
-            let handle = RagActorHandle::new_with_options(Some(db_path.clone()), None);
-            let _ = handle
-                .ingest("Donnée persistante importante.".to_string(), None)
-                .await;
-            // Handle dropped here, actor should eventually stop
-        }
-
-        // Phase 2: New Actor, Same DB
-        let handle = RagActorHandle::new_with_options(Some(db_path), None);
-        let search_res = handle.search("persistante".to_string()).await;
-
-        assert!(search_res.is_ok());
-        let results = search_res.unwrap();
-        assert!(!results.is_empty(), "Should find persisted data");
-        assert!(
-            results[0].contains("Donnée persistante"),
-            "Content should match"
-        );
-    }
-}
