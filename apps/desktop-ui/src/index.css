@@ -3,8 +3,10 @@
 @tailwind utilities;
 
 /* Tauri window drag region support for touch/pen on Windows */
+/* stylelint-disable-next-line property-no-unknown */
 *[data-tauri-drag-region] {
   -webkit-app-region: drag;
+  /* stylelint-disable-next-line property-no-unknown */
   app-region: drag;
 }
 

@@ -29,7 +29,7 @@ fn generate_secure_key() -> [u8; 32] {
 }
 
 /// Retrieves the 32-byte encryption key.
-/// 
+///
 /// Priority order:
 /// 1. Cached key (if already loaded this session)
 /// 2. ENCRYPTION_KEY environment variable (for testing/CI)
@@ -57,38 +57,41 @@ pub fn get_encryption_key() -> Result<[u8; 32], String> {
 
     // Try to load from file
     let key_path = get_key_file_path();
-    
+
     let key = if key_path.exists() {
         // Load existing key
         let key_b64 = fs::read_to_string(&key_path)
             .map_err(|e| format!("Failed to read encryption key file: {}", e))?;
-        
+
         let key_bytes = general_purpose::STANDARD
             .decode(key_b64.trim())
             .map_err(|e| format!("Failed to decode encryption key: {}", e))?;
-        
+
         if key_bytes.len() != 32 {
-            return Err(format!("Invalid key length: expected 32, got {}", key_bytes.len()));
+            return Err(format!(
+                "Invalid key length: expected 32, got {}",
+                key_bytes.len()
+            ));
         }
-        
+
         let mut key = [0u8; 32];
         key.copy_from_slice(&key_bytes);
         key
     } else {
         // Generate new key and save it
         let key = generate_secure_key();
-        
+
         // Ensure parent directory exists
         if let Some(parent) = key_path.parent() {
             fs::create_dir_all(parent)
                 .map_err(|e| format!("Failed to create data directory: {}", e))?;
         }
-        
+
         // Save key as base64
         let key_b64 = general_purpose::STANDARD.encode(key);
         fs::write(&key_path, &key_b64)
             .map_err(|e| format!("Failed to save encryption key: {}", e))?;
-        
+
         // Set file permissions (Unix only)
         #[cfg(unix)]
         {
@@ -96,7 +99,7 @@ pub fn get_encryption_key() -> Result<[u8; 32], String> {
             let perms = fs::Permissions::from_mode(0o600);
             let _ = fs::set_permissions(&key_path, perms);
         }
-        
+
         key
     };
 
@@ -178,11 +181,15 @@ mod tests {
 
     #[test]
     fn test_encryption_decryption() {
-        temp_env::with_var("ENCRYPTION_KEY", Some("01234567890123456789012345678901"), || {
-            let data = b"Sensitive Data";
-            let encrypted = encrypt(data).expect("Encryption failed");
-            let decrypted = decrypt(&encrypted).expect("Decryption failed");
-            assert_eq!(data, &decrypted[..]);
-        });
+        temp_env::with_var(
+            "ENCRYPTION_KEY",
+            Some("01234567890123456789012345678901"),
+            || {
+                let data = b"Sensitive Data";
+                let encrypted = encrypt(data).expect("Encryption failed");
+                let decrypted = decrypt(&encrypted).expect("Decryption failed");
+                assert_eq!(data, &decrypted[..]);
+            },
+        );
     }
 }
