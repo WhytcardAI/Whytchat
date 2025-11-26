@@ -25,13 +25,19 @@ impl SupervisorHandle {
     /// Creates a new `SupervisorActor` with a default configuration and returns a handle to it.
     #[allow(dead_code)]
     pub fn new() -> Self {
-        Self::new_with_pool_and_model(None, PortablePathManager::models_dir().join("default-model.gguf"))
+        Self::new_with_pool_and_model(
+            None,
+            PortablePathManager::models_dir().join("default-model.gguf"),
+        )
     }
 
     /// Creates a new `SupervisorActor` with a specified database pool and returns a handle.
     #[allow(dead_code)]
     pub fn new_with_pool(db_pool: Option<SqlitePool>) -> Self {
-        Self::new_with_pool_and_model(db_pool, PortablePathManager::models_dir().join("default-model.gguf"))
+        Self::new_with_pool_and_model(
+            db_pool,
+            PortablePathManager::models_dir().join("default-model.gguf"),
+        )
     }
 
     /// Creates a new `SupervisorActor` with a specified database pool and model path.
@@ -42,7 +48,10 @@ impl SupervisorHandle {
     ///
     /// * `db_pool` - An optional `SqlitePool` for database access.
     /// * `model_path` - The path to the GGUF model file to be used by the `LlmActor`.
-    pub fn new_with_pool_and_model(db_pool: Option<SqlitePool>, model_path: std::path::PathBuf) -> Self {
+    pub fn new_with_pool_and_model(
+        db_pool: Option<SqlitePool>,
+        model_path: std::path::PathBuf,
+    ) -> Self {
         let (sender, receiver) = mpsc::channel(32);
         let actor = new_production_runner(receiver, db_pool, model_path);
         tokio::spawn(async move { actor.run().await });
@@ -95,17 +104,18 @@ impl SupervisorHandle {
             window: window.cloned(),
             responder: send,
         };
-        self.sender
-            .send(msg)
-            .await
-            .map_err(|e| AppError::Actor(crate::actors::messages::ActorError::Internal(e.to_string())))?;
+        self.sender.send(msg).await.map_err(|e| {
+            AppError::Actor(crate::actors::messages::ActorError::Internal(e.to_string()))
+        })?;
 
         // We use a very long timeout because the LLM generation can take time,
         // but the connection is kept alive via streaming events.
         // The responder returns the final full response string.
         timeout(Duration::from_secs(3600), recv)
             .await?
-            .map_err(|e| AppError::Actor(crate::actors::messages::ActorError::Internal(e.to_string())))?
+            .map_err(|e| {
+                AppError::Actor(crate::actors::messages::ActorError::Internal(e.to_string()))
+            })?
     }
 
     /// Ingests content into the knowledge base.
@@ -132,33 +142,31 @@ impl SupervisorHandle {
             metadata,
             responder: send,
         };
-        self.sender
-            .send(msg)
-            .await
-            .map_err(|e| AppError::Actor(crate::actors::messages::ActorError::Internal(e.to_string())))?;
+        self.sender.send(msg).await.map_err(|e| {
+            AppError::Actor(crate::actors::messages::ActorError::Internal(e.to_string()))
+        })?;
         timeout(Duration::from_secs(60), recv) // Ingest can be long
             .await?
-            .map_err(|e| AppError::Actor(crate::actors::messages::ActorError::Internal(e.to_string())))?
+            .map_err(|e| {
+                AppError::Actor(crate::actors::messages::ActorError::Internal(e.to_string()))
+            })?
     }
 
-    pub async fn reindex_file(
-        &self,
-        file_id: String,
-        content: String,
-    ) -> Result<String, AppError> {
+    pub async fn reindex_file(&self, file_id: String, content: String) -> Result<String, AppError> {
         let (send, recv) = oneshot::channel();
         let msg = SupervisorMessage::ReindexFile {
             file_id,
             content,
             responder: send,
         };
-        self.sender
-            .send(msg)
-            .await
-            .map_err(|e| AppError::Actor(crate::actors::messages::ActorError::Internal(e.to_string())))?;
+        self.sender.send(msg).await.map_err(|e| {
+            AppError::Actor(crate::actors::messages::ActorError::Internal(e.to_string()))
+        })?;
         timeout(Duration::from_secs(120), recv) // Reindex can be longer
             .await?
-            .map_err(|e| AppError::Actor(crate::actors::messages::ActorError::Internal(e.to_string())))?
+            .map_err(|e| {
+                AppError::Actor(crate::actors::messages::ActorError::Internal(e.to_string()))
+            })?
     }
 }
 
@@ -258,7 +266,7 @@ where
                             error!("Error ingesting content: {:?}", e);
                         }
                         if responder.send(result).is_err() {
-                             warn!("Failed to send ingest_content response (channel closed)");
+                            warn!("Failed to send ingest_content response (channel closed)");
                         }
                     });
                 }
@@ -268,7 +276,10 @@ where
                     responder,
                 } => {
                     tokio::spawn(async move {
-                        info!("Supervisor orchestrating reindexing for file {}...", file_id);
+                        info!(
+                            "Supervisor orchestrating reindexing for file {}...",
+                            file_id
+                        );
                         // 1. Delete existing vectors
                         if let Err(e) = rag_actor.delete_for_file(file_id.clone()).await {
                             error!("Error deleting vectors for file {}: {:?}", file_id, e);
@@ -284,7 +295,7 @@ where
                             error!("Error reindexing file {}: {:?}", file_id, e);
                         }
                         if responder.send(result).is_err() {
-                             warn!("Failed to send reindex_file response (channel closed)");
+                            warn!("Failed to send reindex_file response (channel closed)");
                         }
                     });
                 }
@@ -312,9 +323,9 @@ where
     ) -> Result<String, AppError> {
         info!("Supervisor received: {}", content);
 
-        let pool = db_pool.as_ref().ok_or(AppError::Config(
-            "Database not initialized".to_string(),
-        ))?;
+        let pool = db_pool
+            .as_ref()
+            .ok_or(AppError::Config("Database not initialized".to_string()))?;
 
         // --- Database Operations ---
         let session = database::get_session(pool, &session_id).await?;
@@ -334,12 +345,16 @@ where
 
         // Emit brain-analysis event for frontend visualization
         if let Some(win) = &window {
-             if let Err(e) = win.emit("brain-analysis", &context_packet) {
-                 warn!("Failed to emit brain-analysis event: {}", e);
-             }
+            if let Err(e) = win.emit("brain-analysis", &context_packet) {
+                warn!("Failed to emit brain-analysis event: {}", e);
+            }
         }
 
-        Self::emit_thinking(&window, &format!("thinking.intent|{}", context_packet.intent.intent)).await;
+        Self::emit_thinking(
+            &window,
+            &format!("thinking.intent|{}", context_packet.intent.intent),
+        )
+        .await;
 
         // --- Context Search ---
         let mut context_str = String::new();
@@ -363,23 +378,29 @@ where
                 .await;
 
                 // Format context with source metadata
-                context_str = search_results.iter().map(|result| {
-                    let source = result.metadata.as_deref().unwrap_or("unknown");
-                    // Clean up source ID (remove "file:" prefix if present)
-                    let clean_source = source.strip_prefix("file:").unwrap_or(source);
-                    format!("[Source: {}]\n{}", clean_source, result.content)
-                }).collect::<Vec<_>>().join("\n\n");
+                context_str = search_results
+                    .iter()
+                    .map(|result| {
+                        let source = result.metadata.as_deref().unwrap_or("unknown");
+                        // Clean up source ID (remove "file:" prefix if present)
+                        let clean_source = source.strip_prefix("file:").unwrap_or(source);
+                        format!("[Source: {}]\n{}", clean_source, result.content)
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n\n");
             } else {
                 Self::emit_thinking(&window, "thinking.no_documents").await;
             }
         } else {
-             // Skip RAG if not needed (e.g. greeting)
-             info!("Skipping RAG for intent: {:?}", context_packet.intent.intent);
+            // Skip RAG if not needed (e.g. greeting)
+            info!(
+                "Skipping RAG for intent: {:?}",
+                context_packet.intent.intent
+            );
         }
 
         // --- Generation ---
-        Self::emit_thinking(&window, "thinking.generating_response")
-            .await;
+        Self::emit_thinking(&window, "thinking.generating_response").await;
         let conversation_history = session_messages
             .iter()
             .map(|msg| format!("{}: {}", msg.role, msg.content))
@@ -413,11 +434,11 @@ where
         }
 
         if !full_response.trim().is_empty() {
-             database::add_message(pool, &session_id, "assistant", &full_response).await?;
+            database::add_message(pool, &session_id, "assistant", &full_response).await?;
         } else {
-             warn!("Generated response was empty, skipping database save.");
+            warn!("Generated response was empty, skipping database save.");
         }
-        
+
         Ok(full_response)
     }
 
@@ -441,4 +462,3 @@ fn build_final_prompt(conversation_history: &str, context_str: &str, content: &s
     prompt_parts.push(format!("User Request: {}", content));
     prompt_parts.join("\n\n")
 }
-

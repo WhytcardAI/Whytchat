@@ -79,9 +79,9 @@ mod tests {
         assert!(limiter.check("client2"));
         assert!(limiter.check("client2"));
         assert!(!limiter.check("client2"));
-        
+
         thread::sleep(Duration::from_millis(60));
-        
+
         assert!(limiter.check("client2"));
     }
 }

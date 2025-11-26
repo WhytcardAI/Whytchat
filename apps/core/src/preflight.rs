@@ -12,7 +12,7 @@ use tracing::{info, warn};
 
 // --- Constants ---
 const MIN_MODEL_SIZE_BYTES: u64 = 3 * 1024 * 1024 * 1024; // 3 GB minimum for GGUF
-const MIN_EMBEDDINGS_SIZE_BYTES: u64 = 20 * 1024 * 1024;  // 20 MB minimum for ONNX
+const MIN_EMBEDDINGS_SIZE_BYTES: u64 = 20 * 1024 * 1024; // 20 MB minimum for ONNX
 const LLAMA_SERVER_STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
 const LLAMA_SERVER_HEALTH_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -111,7 +111,8 @@ pub async fn run_preflight_checks() -> PreflightReport {
 
     // Calculate results
     let all_passed = checks.iter().all(|c| c.passed);
-    let critical_passed = checks.iter()
+    let critical_passed = checks
+        .iter()
         .filter(|c| is_critical_check(&c.name))
         .all(|c| c.passed);
 
@@ -152,7 +153,10 @@ pub async fn run_preflight_checks() -> PreflightReport {
 }
 
 fn is_critical_check(name: &str) -> bool {
-    matches!(name, "directories" | "model_file" | "llama_server_binary" | "database")
+    matches!(
+        name,
+        "directories" | "model_file" | "llama_server_binary" | "database"
+    )
 }
 
 // --- Individual Checks ---
@@ -213,7 +217,10 @@ fn check_model_file() -> CheckResult {
             if size >= MIN_MODEL_SIZE_BYTES {
                 CheckResult::pass(
                     "model_file",
-                    &format!("Model OK ({:.2} GB)", size as f64 / 1024.0 / 1024.0 / 1024.0),
+                    &format!(
+                        "Model OK ({:.2} GB)",
+                        size as f64 / 1024.0 / 1024.0 / 1024.0
+                    ),
                 )
             } else {
                 CheckResult::fail(
@@ -226,11 +233,7 @@ fn check_model_file() -> CheckResult {
                 )
             }
         }
-        Err(e) => CheckResult::fail(
-            "model_file",
-            "Cannot read model file",
-            Some(e.to_string()),
-        ),
+        Err(e) => CheckResult::fail("model_file", "Cannot read model file", Some(e.to_string())),
     }
 }
 
@@ -247,10 +250,7 @@ fn check_llama_server_binary() -> CheckResult {
         .join(server_name);
 
     if tools_path.exists() {
-        return CheckResult::pass(
-            "llama_server_binary",
-            &format!("Found at {:?}", tools_path),
-        );
+        return CheckResult::pass("llama_server_binary", &format!("Found at {:?}", tools_path));
     }
 
     // Check in PATH
@@ -261,10 +261,7 @@ fn check_llama_server_binary() -> CheckResult {
     CheckResult::fail(
         "llama_server_binary",
         "llama-server binary not found",
-        Some(format!(
-            "Expected at {:?} or in PATH",
-            tools_path
-        )),
+        Some(format!("Expected at {:?} or in PATH", tools_path)),
     )
 }
 
@@ -287,7 +284,12 @@ fn check_embeddings() -> CheckResult {
         for entry in entries.flatten() {
             if let Ok(meta) = entry.metadata() {
                 total_size += meta.len();
-                if entry.path().extension().map(|e| e == "onnx").unwrap_or(false) {
+                if entry
+                    .path()
+                    .extension()
+                    .map(|e| e == "onnx")
+                    .unwrap_or(false)
+                {
                     onnx_found = true;
                 }
             }
@@ -297,7 +299,12 @@ fn check_embeddings() -> CheckResult {
                     for sub_entry in sub_entries.flatten() {
                         if let Ok(meta) = sub_entry.metadata() {
                             total_size += meta.len();
-                            if sub_entry.path().extension().map(|e| e == "onnx").unwrap_or(false) {
+                            if sub_entry
+                                .path()
+                                .extension()
+                                .map(|e| e == "onnx")
+                                .unwrap_or(false)
+                            {
                                 onnx_found = true;
                             }
                         }
@@ -310,7 +317,10 @@ fn check_embeddings() -> CheckResult {
     if total_size >= MIN_EMBEDDINGS_SIZE_BYTES && onnx_found {
         CheckResult::pass(
             "embeddings",
-            &format!("Embeddings OK ({:.2} MB)", total_size as f64 / 1024.0 / 1024.0),
+            &format!(
+                "Embeddings OK ({:.2} MB)",
+                total_size as f64 / 1024.0 / 1024.0
+            ),
         )
     } else if total_size > 0 {
         CheckResult::fail(
@@ -322,11 +332,7 @@ fn check_embeddings() -> CheckResult {
             )),
         )
     } else {
-        CheckResult::fail(
-            "embeddings",
-            "Embeddings directory empty",
-            None,
-        )
+        CheckResult::fail("embeddings", "Embeddings directory empty", None)
     }
 }
 
@@ -335,10 +341,7 @@ async fn check_database() -> CheckResult {
 
     if !db_path.exists() {
         // Database will be created on first init - this is OK
-        return CheckResult::pass(
-            "database",
-            "Database will be created on first start",
-        );
+        return CheckResult::pass("database", "Database will be created on first start");
     }
 
     // Try to open and query the database
@@ -352,7 +355,7 @@ async fn check_database() -> CheckResult {
         Ok(pool) => {
             // Check tables exist
             let tables_result = sqlx::query_scalar::<_, String>(
-                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name",
             )
             .fetch_all(&pool)
             .await;
@@ -379,11 +382,9 @@ async fn check_database() -> CheckResult {
                         )
                     }
                 }
-                Err(e) => CheckResult::fail(
-                    "database",
-                    "Cannot query database",
-                    Some(e.to_string()),
-                ),
+                Err(e) => {
+                    CheckResult::fail("database", "Cannot query database", Some(e.to_string()))
+                }
             }
         }
         Err(e) => CheckResult::fail(
@@ -408,7 +409,11 @@ fn check_vectors_dir() -> CheckResult {
     let has_lance_files = std::fs::read_dir(&vectors_dir)
         .map(|entries| {
             entries.flatten().any(|e| {
-                e.path().is_dir() || e.path().extension().map(|ext| ext == "lance").unwrap_or(false)
+                e.path().is_dir()
+                    || e.path()
+                        .extension()
+                        .map(|ext| ext == "lance")
+                        .unwrap_or(false)
             })
         })
         .unwrap_or(false);
@@ -416,7 +421,10 @@ fn check_vectors_dir() -> CheckResult {
     if has_lance_files {
         CheckResult::pass("vectors_dir", "LanceDB data found")
     } else {
-        CheckResult::pass("vectors_dir", "Vectors directory empty (OK for new install)")
+        CheckResult::pass(
+            "vectors_dir",
+            "Vectors directory empty (OK for new install)",
+        )
     }
 }
 
@@ -446,9 +454,9 @@ async fn check_llama_server_starts() -> CheckResult {
         .arg("--port")
         .arg(test_port.to_string())
         .arg("-c")
-        .arg("512")  // Small context for quick test
+        .arg("512") // Small context for quick test
         .arg("-ngl")
-        .arg("0")    // CPU only for quick test
+        .arg("0") // CPU only for quick test
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null());
 
@@ -475,11 +483,8 @@ async fn check_llama_server_starts() -> CheckResult {
     while start.elapsed() < LLAMA_SERVER_STARTUP_TIMEOUT {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        match tokio::time::timeout(
-            LLAMA_SERVER_HEALTH_TIMEOUT,
-            client.get(&health_url).send(),
-        )
-        .await
+        match tokio::time::timeout(LLAMA_SERVER_HEALTH_TIMEOUT, client.get(&health_url).send())
+            .await
         {
             Ok(Ok(response)) if response.status().is_success() => {
                 server_ready = true;
@@ -562,11 +567,7 @@ async fn check_embeddings_load() -> CheckResult {
             &format!("FastEmbed loaded in {:?}", duration),
         ),
         Ok(Err(e)) => CheckResult::fail("embeddings_load", "FastEmbed failed", Some(e)),
-        Err(e) => CheckResult::fail(
-            "embeddings_load",
-            "Task panicked",
-            Some(e.to_string()),
-        ),
+        Err(e) => CheckResult::fail("embeddings_load", "Task panicked", Some(e.to_string())),
     }
 }
 
@@ -580,8 +581,16 @@ pub fn quick_preflight_check() -> PreflightReport {
         check_vectors_dir(),
     ];
 
-    let model_ok = checks.iter().find(|c| c.name == "model_file").map(|c| c.passed).unwrap_or(false);
-    let server_ok = checks.iter().find(|c| c.name == "llama_server_binary").map(|c| c.passed).unwrap_or(false);
+    let model_ok = checks
+        .iter()
+        .find(|c| c.name == "model_file")
+        .map(|c| c.passed)
+        .unwrap_or(false);
+    let server_ok = checks
+        .iter()
+        .find(|c| c.name == "llama_server_binary")
+        .map(|c| c.passed)
+        .unwrap_or(false);
 
     let all_passed = checks.iter().all(|c| c.passed);
     let needs_onboarding = !model_ok || !server_ok;
