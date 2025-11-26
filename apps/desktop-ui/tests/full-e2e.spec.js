@@ -629,11 +629,11 @@ test.describe('Error Handling', () => {
     await chatInput.fill('Test message');
     await chatInput.press('Enter');
 
-    // Should show error message or handle gracefully
-    const errorMessage = page.locator('.error, [data-testid="error"], .toast-error');
-
-    // Wait a bit for potential error
+    // Wait a bit for potential error handling
     await page.waitForTimeout(3000);
+
+    // App should still be responsive after network error
+    await expect(chatInput).toBeVisible();
 
     // Restore network
     await page.context().setOffline(false);
