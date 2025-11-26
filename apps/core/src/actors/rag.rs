@@ -126,7 +126,9 @@ struct RagActorRunner {
 impl RagActorRunner {
     /// The cache size for the embedding cache.
     /// NonZeroUsize::new(1000) always succeeds since 1000 > 0.
-    const CACHE_SIZE: NonZeroUsize = NonZeroUsize::new(1000).expect("Cache size must be non-zero");
+    // SAFETY: 1000 is strictly positive, so new_unchecked is safe.
+    // We use new_unchecked because Option::expect is not const-stable in Rust 1.80.0 (requires 1.83.0)
+    const CACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(1000) };
 
     fn new(
         receiver: mpsc::Receiver<RagMessage>,
