@@ -38,7 +38,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           # Uses version from apps/core/rust-toolchain.toml
-          toolchain: "1.87.0"
+          toolchain: "1.88.0"
           components: rustfmt, clippy
 
       - name: Install Linux dependencies
@@ -69,7 +69,7 @@ jobs:
             apps/core/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Pin AWS SDK dependencies to Rust 1.87.0 compatible versions
+      - name: Pin AWS SDK dependencies to Rust 1.88.0 compatible versions
         run: |
           cd apps/core
           cargo update aws-sdk-dynamodb@1.100.0 --precise 1.82.0
@@ -101,7 +101,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           # Uses version from apps/core/rust-toolchain.toml
-          toolchain: "1.87.0"
+          toolchain: "1.88.0"
           components: rustfmt, clippy
 
       - name: Install dependencies
@@ -159,7 +159,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           # Uses version from apps/core/rust-toolchain.toml
-          toolchain: "1.87.0"
+          toolchain: "1.88.0"
           components: rustfmt, clippy
 
       - name: Install system dependencies
