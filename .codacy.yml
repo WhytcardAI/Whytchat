@@ -1,0 +1,139 @@
+# =============================================================================
+# Codacy Configuration - WhytChat
+# =============================================================================
+# Documentation: https://docs.codacy.com/repositories-configure/codacy-configuration-file/
+
+---
+engines:
+  # -------------------------------------------------------------------------
+  # JavaScript/TypeScript Analysis
+  # -------------------------------------------------------------------------
+  eslint:
+    enabled: true
+    # Use project's ESLint config
+    plugins:
+      - react
+      - react-hooks
+
+  # -------------------------------------------------------------------------
+  # Rust Analysis
+  # -------------------------------------------------------------------------
+  clippy:
+    enabled: true
+
+  # -------------------------------------------------------------------------
+  # Security Scanning
+  # -------------------------------------------------------------------------
+  semgrep:
+    enabled: true
+
+  trivy:
+    enabled: true
+
+  # -------------------------------------------------------------------------
+  # Markdown/Documentation
+  # -------------------------------------------------------------------------
+  markdownlint:
+    enabled: true
+
+  # -------------------------------------------------------------------------
+  # Disable overly strict/noisy tools
+  # -------------------------------------------------------------------------
+  jshint:
+    enabled: false # Use ESLint instead
+
+  csslint:
+    enabled: false # Use Stylelint instead
+
+  pylint:
+    enabled: false # No Python in this project
+
+# =============================================================================
+# Exclude Patterns
+# =============================================================================
+exclude_paths:
+  # Build outputs
+  - "target/**"
+  - "dist/**"
+  - "build/**"
+  - "**/node_modules/**"
+
+  # Generated files
+  - "apps/core/gen/**"
+  - "apps/core/tools/**"
+  - "**/*.min.js"
+  - "**/*.bundle.js"
+
+  # Test fixtures and data
+  - "**/__fixtures__/**"
+  - "**/__mocks__/**"
+  - "**/test-results/**"
+  - "data/**"
+
+  # Documentation
+  - "Doc/**"
+  - "**/*.md"
+
+  # Config files
+  - "**/*.config.js"
+  - "**/*.config.cjs"
+  - "**/tailwind.config.js"
+  - "**/vite.config.js"
+
+  # Migrations (SQL)
+  - "apps/core/migrations/**"
+
+  # Lock files
+  - "**/package-lock.json"
+  - "**/Cargo.lock"
+
+# =============================================================================
+# Language-specific Settings
+# =============================================================================
+languages:
+  javascript:
+    extensions:
+      - ".js"
+      - ".jsx"
+      - ".mjs"
+
+  rust:
+    extensions:
+      - ".rs"
+
+# =============================================================================
+# Analysis Settings
+# =============================================================================
+analysis:
+  # Only analyze changed files on PRs (faster)
+  mode: partial
+
+  # Ignore specific issue categories
+  ignore:
+    # Style issues we don't care about
+    - "arrow-body-style" # Arrow functions are fine
+    - "prefer-arrow-callback" # Arrow callbacks are fine
+    - "object-shorthand" # Both styles acceptable
+    - "no-confusing-arrow" # We use arrow functions heavily
+    - "implicit-arrow-linebreak" # Formatting handled by Prettier
+
+# =============================================================================
+# Coverage Settings
+# =============================================================================
+coverage:
+  enabled: true
+  # Minimum coverage threshold (%)
+  threshold: 50
+
+# =============================================================================
+# Duplication Settings
+# =============================================================================
+duplication:
+  enabled: true
+  # Minimum tokens for duplicate detection
+  min_tokens: 50
+  # Ignore test files for duplication
+  ignore:
+    - "**/*.test.js"
+    - "**/*.spec.js"
+    - "**/tests/**"

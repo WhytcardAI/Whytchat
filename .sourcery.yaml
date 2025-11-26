@@ -1,0 +1,80 @@
+# =============================================================================
+# Sourcery Configuration - WhytChat
+# =============================================================================
+# Documentation: https://docs.sourcery.ai/Configuration/
+
+version: "1"
+
+# =============================================================================
+# Ignore Patterns
+# =============================================================================
+ignore:
+  - target/**
+  - node_modules/**
+  - dist/**
+  - build/**
+  - apps/core/tools/**
+  - apps/core/gen/**
+  - "*.min.js"
+  - "**/migrations/**"
+  - data/**
+  - Doc/**
+  - "*.config.js"
+  - "*.config.cjs"
+  - "*.test.js"
+  - "*.spec.js"
+  - "*.d.ts"
+  - apps/desktop-ui/tests/**
+
+# =============================================================================
+# Refactoring Settings
+# =============================================================================
+refactor:
+  # Skip these refactoring suggestions
+  skip: []
+
+# =============================================================================
+# Code Quality Metrics
+# =============================================================================
+metrics:
+  # Quality threshold for reviews (0-100, lower = stricter)
+  quality_threshold: 25.0
+
+# =============================================================================
+# GitHub Integration
+# =============================================================================
+github:
+  # Labels to add based on review
+  labels: []
+
+  # Who to request review from
+  request_review: author
+
+  # Ignore PRs with these labels
+  ignore_labels:
+    - WIP
+    - work-in-progress
+    - draft
+
+# =============================================================================
+# Review Settings
+# =============================================================================
+review:
+  # Focus areas
+  rule_settings:
+    enable_default_rules: true
+
+    rule_types:
+      - refactoring
+      - suggestion
+      - comment
+
+# =============================================================================
+# Clone Detection
+# =============================================================================
+clone_detection:
+  # Minimum lines for duplicate detection
+  min_lines: 10
+
+  # Minimum occurrences
+  min_duplicates: 2
