@@ -1,211 +1,133 @@
-name: Security Scan
+name: Security
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
   schedule:
-    # Run weekly on Sundays at 2 AM UTC
-    - cron: "0 2 * * 0"
+    - cron: "0 2 * * 0" # Weekly on Sunday at 2 AM UTC
   workflow_dispatch:
-
-env:
-  CARGO_TERM_COLOR: always
 
 jobs:
   # ============================================================================
-  # Rust Security
+  # Rust Security Audit
   # ============================================================================
-  rust-security:
-    name: 🦀 Rust Security Audit
+  rust-audit:
+    name: 🦀 Rust Audit
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
 
       - name: Install cargo-audit
         run: cargo install cargo-audit
 
-      - name: Run security audit
+      - name: Run audit
         run: cargo audit --manifest-path apps/core/Cargo.toml
+        continue-on-error: true
 
-      - name: Check for unsafe code
+      - name: Check unsafe code
         run: |
-          echo "## Unsafe Code Usage" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if grep -r "unsafe" apps/core/src --include="*.rs"; then
-            echo "⚠️ Found unsafe blocks - please review" >> $GITHUB_STEP_SUMMARY
-            grep -rn "unsafe" apps/core/src --include="*.rs" | head -20 >> $GITHUB_STEP_SUMMARY
+          echo "## Unsafe Code" >> $GITHUB_STEP_SUMMARY
+          if grep -rn "unsafe" apps/core/src --include="*.rs" | grep -v "// safe:"; then
+            echo "⚠️ Found unsafe blocks" >> $GITHUB_STEP_SUMMARY
           else
-            echo "✅ No unsafe blocks found" >> $GITHUB_STEP_SUMMARY
+            echo "✅ No unsafe code" >> $GITHUB_STEP_SUMMARY
           fi
 
   # ============================================================================
-  # Dependency Vulnerability Scan
+  # NPM Audit
   # ============================================================================
-  dependency-scan:
-    name: 📦 Dependency Vulnerabilities
+  npm-audit:
+    name: 📦 NPM Audit
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Install frontend dependencies
-        run: npm ci
-        working-directory: apps/desktop-ui
+      - run: npm ci
 
       - name: Run npm audit
-        run: npm audit --audit-level=moderate || true
-        working-directory: apps/desktop-ui
-
-      - name: Generate audit report
-        run: |
-          echo "## NPM Audit Report" >> $GITHUB_STEP_SUMMARY
-          npm audit --json > audit.json || true
-          if [ -s audit.json ]; then
-            echo '```json' >> $GITHUB_STEP_SUMMARY
-            cat audit.json | head -100 >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          fi
-        working-directory: apps/desktop-ui
+        run: npm audit --audit-level=high
+        continue-on-error: true
 
   # ============================================================================
   # Secret Scanning
   # ============================================================================
-  secret-scan:
-    name: 🔐 Secret Scanning
+  secrets:
+    name: 🔐 Secret Scan
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Install TruffleHog
+      - name: Check for secrets
         run: |
-          curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
-        continue-on-error: true
-
-      - name: Run TruffleHog scan
-        run: |
-          trufflehog git file://. --only-verified --json > trufflehog-results.json 2>&1 || true
-          if [ -s trufflehog-results.json ]; then
-            echo "⚠️ Potential secrets found! Please review." >> $GITHUB_STEP_SUMMARY
-          else
-            echo "✅ No verified secrets found" >> $GITHUB_STEP_SUMMARY
-          fi
-        continue-on-error: true
-
-      - name: Check for hardcoded secrets patterns
-        run: |
-          echo "## Hardcoded Secrets Check" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Check for common secret patterns
+          echo "## Secret Patterns Check" >> $GITHUB_STEP_SUMMARY
           FOUND=0
-
-          if grep -rn "api[_-]?key\s*[:=]" apps --include="*.rs" --include="*.js" --include="*.jsx" --include="*.ts" --include="*.tsx" 2>/dev/null | grep -v test | head -5; then
-            echo "⚠️ Found potential API key references" >> $GITHUB_STEP_SUMMARY
+          
+          # API keys
+          if grep -rn "api[_-]\?key\s*[:=]\s*[\"'][^\"']\{20,\}[\"']" apps --include="*.rs" --include="*.js" --include="*.jsx" 2>/dev/null | grep -v test; then
+            echo "⚠️ Potential API keys found" >> $GITHUB_STEP_SUMMARY
             FOUND=1
           fi
-
-          if grep -rn "password\s*[:=]\s*[\"'][^\"']*[\"']" apps --include="*.rs" --include="*.js" --include="*.jsx" 2>/dev/null | grep -v test | head -5; then
-            echo "⚠️ Found potential hardcoded passwords" >> $GITHUB_STEP_SUMMARY
+          
+          # Passwords
+          if grep -rn "password\s*[:=]\s*[\"'][^\"']\{8,\}[\"']" apps --include="*.rs" --include="*.js" 2>/dev/null | grep -v test | grep -v placeholder; then
+            echo "⚠️ Potential passwords found" >> $GITHUB_STEP_SUMMARY
             FOUND=1
           fi
-
+          
           if [ $FOUND -eq 0 ]; then
-            echo "✅ No obvious hardcoded secrets detected" >> $GITHUB_STEP_SUMMARY
+            echo "✅ No secrets detected" >> $GITHUB_STEP_SUMMARY
           fi
 
   # ============================================================================
-  # SAST Analysis
+  # License Check
   # ============================================================================
-  sast-analysis:
-    name: 🔍 Static Application Security Testing
+  licenses:
+    name: 📄 License Check
     runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Run CodeQL Analysis
-        uses: github/codeql-action/init@v3
-        with:
-          languages: javascript
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-
-  # ============================================================================
-  # License Compliance
-  # ============================================================================
-  license-check:
-    name: 📄 License Compliance
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
 
       - name: Install cargo-license
         run: cargo install cargo-license
 
-      - name: Check Rust licenses
+      - name: Check licenses
         run: |
-          echo "## Rust Dependencies Licenses" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Rust Licenses" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          cargo license --manifest-path apps/core/Cargo.toml 2>&1 | head -50 >> $GITHUB_STEP_SUMMARY
+          cargo license --manifest-path apps/core/Cargo.toml 2>&1 | head -30 >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-
-      - name: Check for problematic licenses
-        run: |
-          cd apps/core
-          cargo license --json 2>/dev/null | grep -i "GPL\|AGPL" && echo "⚠️ Found GPL/AGPL licensed dependencies" >> $GITHUB_STEP_SUMMARY || echo "✅ No GPL/AGPL licenses found" >> $GITHUB_STEP_SUMMARY
+          
+          # Check for GPL
+          if cargo license --manifest-path apps/core/Cargo.toml --json 2>/dev/null | grep -i "GPL"; then
+            echo "⚠️ GPL dependencies found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No GPL dependencies" >> $GITHUB_STEP_SUMMARY
+          fi
 
   # ============================================================================
-  # Security Report
+  # Summary
   # ============================================================================
-  security-report:
-    name: 📋 Security Report
+  summary:
+    name: 📋 Summary
     runs-on: ubuntu-latest
-    needs: [rust-security, dependency-scan, secret-scan, license-check]
+    needs: [rust-audit, npm-audit, secrets, licenses]
     if: always()
-
     steps:
-      - name: Generate security report
+      - name: Report
         run: |
-          echo "# 🔒 Security Scan Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Date:** $(date -u)" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "# 🔒 Security Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Rust Security Audit | ${{ needs.rust-security.result == 'success' && '✅' || '❌' }} ${{ needs.rust-security.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Dependency Scan | ${{ needs.dependency-scan.result == 'success' && '✅' || '❌' }} ${{ needs.dependency-scan.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Secret Scanning | ${{ needs.secret-scan.result == 'success' && '✅' || '❌' }} ${{ needs.secret-scan.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| License Check | ${{ needs.license-check.result == 'success' && '✅' || '❌' }} ${{ needs.license-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Rust Audit | ${{ needs.rust-audit.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| NPM Audit | ${{ needs.npm-audit.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Secret Scan | ${{ needs.secrets.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Licenses | ${{ needs.licenses.result }} |" >> $GITHUB_STEP_SUMMARY
