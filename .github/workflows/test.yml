@@ -46,6 +46,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev protobuf-compiler
+          protoc --version
+          echo "PROTOC=$(which protoc)" >> $GITHUB_ENV
 
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
@@ -106,6 +108,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev protobuf-compiler
+          protoc --version
+          echo "PROTOC=$(which protoc)" >> $GITHUB_ENV
 
       - name: Cache Cargo
         uses: actions/cache@v4
@@ -162,6 +166,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev protobuf-compiler
+          protoc --version
+          echo "PROTOC=$(which protoc)" >> $GITHUB_ENV
 
       - name: Install npm dependencies
         run: npm ci

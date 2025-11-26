@@ -37,6 +37,8 @@ jobs:
       
       - name: Install Dependencies
         run: |
+          brew install protobuf
+          protoc --version
           npm install
           cargo fetch
       
