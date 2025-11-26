@@ -59,6 +59,16 @@ jobs:
             apps/core/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Pin AWS SDK dependencies to Rust 1.87.0 compatible versions
+        run: |
+          cd apps/core
+          cargo update aws-sdk-dynamodb@1.100.0 --precise 1.82.0
+          cargo update aws-sdk-sso@1.90.0 --precise 1.76.0
+          cargo update aws-sdk-ssooidc@1.92.0 --precise 1.79.0
+          cargo update aws-sdk-sts@1.94.0 --precise 1.79.0
+          cargo update home@0.5.12 --precise 0.5.11
+        continue-on-error: true
+
       - name: Run all Rust tests
         run: cargo test --manifest-path apps/core/Cargo.toml -- --nocapture
         env:
@@ -93,6 +103,16 @@ jobs:
             ~/.cargo/git/
             apps/core/target/
           key: ${{ runner.os }}-cargo-chaos-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Pin AWS SDK dependencies to compatible versions
+        run: |
+          cd apps/core
+          cargo update aws-sdk-dynamodb@1.100.0 --precise 1.82.0
+          cargo update aws-sdk-sso@1.90.0 --precise 1.76.0
+          cargo update aws-sdk-ssooidc@1.92.0 --precise 1.79.0
+          cargo update aws-sdk-sts@1.94.0 --precise 1.79.0
+          cargo update home@0.5.12 --precise 0.5.11
+        continue-on-error: true
 
       - name: Run chaos tests
         run: cargo test --manifest-path apps/core/Cargo.toml chaos_test -- --nocapture
@@ -132,6 +152,16 @@ jobs:
 
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
+
+      - name: Pin AWS SDK dependencies to compatible versions
+        run: |
+          cd apps/core
+          cargo update aws-sdk-dynamodb@1.100.0 --precise 1.82.0
+          cargo update aws-sdk-sso@1.90.0 --precise 1.76.0
+          cargo update aws-sdk-ssooidc@1.92.0 --precise 1.79.0
+          cargo update aws-sdk-sts@1.94.0 --precise 1.79.0
+          cargo update home@0.5.12 --precise 0.5.11
+        continue-on-error: true
 
       - name: Build application
         run: npm run tauri build
