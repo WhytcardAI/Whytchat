@@ -38,6 +38,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev protobuf-compiler
+          protoc --version
+          echo "PROTOC=$(which protoc)" >> $GITHUB_ENV
 
       - name: Install Protoc (Windows)
         if: runner.os == 'Windows'
@@ -83,6 +85,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev protobuf-compiler
+          protoc --version
+          echo "PROTOC=$(which protoc)" >> $GITHUB_ENV
 
       - name: Build tests
         run: cargo test --manifest-path apps/core/Cargo.toml --no-run
@@ -117,6 +121,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev protobuf-compiler
+          protoc --version
+          echo "PROTOC=$(which protoc)" >> $GITHUB_ENV
 
       - name: Run fuzzing (short duration)
         run: |
@@ -146,6 +152,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev protobuf-compiler
+          protoc --version
+          echo "PROTOC=$(which protoc)" >> $GITHUB_ENV
 
       - name: Cache Cargo
         uses: actions/cache@v4
