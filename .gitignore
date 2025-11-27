@@ -120,3 +120,7 @@ site/
 
 # === GitHub Copilot Instructions (dev only) ===
 .github/instructions/codacy.instructions.md
+
+
+#Ignore insiders AI rules
+.github\instructions\codacy.instructions.md

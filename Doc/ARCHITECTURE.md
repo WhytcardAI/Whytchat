@@ -1,117 +1,63 @@
-# 🏗️ Architecture du Système
+# WhytChat V1 Architecture
 
-Ce document décrit l'architecture de haut niveau de WhytChat, une application de chat locale sécurisée utilisant Tauri, Rust et des modèles d'IA locaux.
+## Overview
 
-## 🧩 Vue d'Ensemble
+WhytChat V1 is a **local-first AI application** built on a modern, high-performance stack. It leverages Rust for backend logic and system operations, combined with a React-based frontend for a responsive user interface.
 
-WhytChat suit une architecture **Monolithique Modulaire** distribuée en deux processus principaux (Frontend & Backend) communiquant via IPC.
+## 🛠️ Tech Stack
 
-### Diagramme de Haut Niveau
+### Frontend (UI)
+- **Framework**: React 18 + Vite
+- **Language**: JavaScript (ES Modules)
+- **Styling**: Tailwind CSS + clsx/tailwind-merge
+- **State Management**: Zustand
+- **Internationalization**: i18next
+- **Drag & Drop**: @dnd-kit
 
-```mermaid
-graph TD
-    subgraph "Frontend (Electron-like)"
-        UI[React UI] -->|Invoke / Events| IPC[Tauri IPC Bridge]
-        Store[Zustand Store] <--> UI
-    end
+### Backend (Core)
+- **Framework**: Tauri 2.0 (RC)
+- **Language**: Rust (v1.80.0+)
+- **Database**: SQLite (via SQLx)
+- **Vector Database**: LanceDB (local embedding storage)
+- **AI Engine**: `llama-server` (GGUF models) + custom RAG pipeline
 
-    subgraph "Backend (Rust Core)"
-        IPC --> Main[Main Entry Point]
-        Main --> AppState[AppState (Global Lock)]
+## 📐 System Design
 
-        subgraph "Actor System (Tokio)"
-            AppState --> Supervisor[Supervisor Actor]
-            Supervisor --> LLM[LLM Actor]
-            Supervisor --> RAG[RAG Actor]
-            Supervisor --> Brain[Brain Analyzer]
-        end
+### Global Library Architecture
 
-        subgraph "Persistence"
-            RAG --> VectorDB[LanceDB (Vectors)]
-            Main --> SQLite[SQLite (Chat History)]
-            Main --> FS[PortablePathManager (Files)]
-        end
-    end
+Unlike traditional session-based chat apps, WhytChat uses a **Global Library** for document management:
 
-    LLM -->|HTTP| LlamaServer[llama-server.exe (GGUF)]
-```
+1.  **Upload Once**: Files are uploaded to a central library (`library_files` table).
+2.  **Link Anywhere**: A many-to-many relationship (`session_files_link`) allows a single file to be referenced in multiple chat sessions without duplication.
+3.  **Centralized RAG**: Vectors are generated once per file and stored in LanceDB. The RAG system filters by file ID during retrieval.
 
----
+### Database Schema (SQLite)
 
-## 🛠️ Stack Technique
+*   **`sessions`**: Stores chat sessions (UUID, title, model config).
+*   **`messages`**: Stores chat history linked to sessions.
+*   **`folders`**: Hierarchical organization for sessions.
+*   **`library_files`**: The master list of all uploaded documents.
+*   **`session_files_link`**: Connects library files to sessions.
 
-### Frontend (`apps/desktop-ui`)
+### RAG Pipeline (Rust Actors)
 
-- **Framework** : React 18
-- **Build Tool** : Vite
-- **Styling** : Tailwind CSS
-- **State Management** : Zustand (avec persistance)
-- **Langue** : JavaScript (ES6+)
+The backend uses an actor-based concurrency model:
 
-### Backend (`apps/core`)
+1.  **Supervisor Actor**: Orchestrates the flow. Receives user input, decides on RAG usage, and dispatches tasks.
+2.  **RAG Actor**:
+    *   **Ingest**: Chunks text, generates embeddings (AllMiniLML6V2), and stores them in LanceDB.
+    *   **Search**: Retrieves relevant chunks based on cosine similarity, filtered by file IDs linked to the current session.
+3.  **LLM Actor**: Interfaces with the local `llama-server` API to generate responses using the retrieved context.
 
-- **Langage** : Rust (Edition 2021)
-- **Framework App** : Tauri 2.0 (Beta/RC)
-- **Async Runtime** : Tokio
-- **Base de Données** :
-  - Relationnelle : `sqlx` (SQLite)
-  - Vectorielle : `lancedb` + `fastembed`
-- **Architecture** : Actor Model (implémentation custom sur Tokio Channels)
+### Planned UI: Split View
 
-### Intelligence Artificielle
+The target interface for WhytChat V1 is a **Split View** design:
+-   **Left Pane**: Standard chat interface.
+-   **Right Pane**: Document viewer/Knowledge graph.
+-   **Goal**: To allow users to see the source material side-by-side with the AI's analysis.
 
-- **Inférence LLM** : `llama-server` (binaire externe piloté via HTTP)
-- **Modèle LLM** : GGUF (ex: Qwen 2.5 7B)
-- **Embeddings** : ONNX Runtime via `fastembed` (`AllMiniLML6V2`)
-- **Classification** : "The Brain" (Regex + Fallback Sémantique)
+## 🔒 Security & Privacy
 
----
-
-## 🧠 Le Module "Brain"
-
-Le "Brain" est un module d'analyse pré-LLM conçu pour router les requêtes intelligemment sans latence.
-
-```mermaid
-graph LR
-    Input[User Input] --> Intent{Intent Classification}
-
-    Intent -->|Regex Match| FastPath[Fast Path (~1ms)]
-    Intent -->|No Match| Semantic[Semantic Fallback (~50ms)]
-
-    FastPath --> ContextBuilder
-    Semantic --> ContextBuilder
-
-    ContextBuilder -->|Context Packet| Supervisor
-```
-
-Voir [IA_INTERNALS.md](./IA_INTERNALS.md) pour les détails.
-
----
-
-## 💾 Gestion des Données
-
-### Système de Fichiers (PortablePathManager)
-
-Pour assurer la portabilité (notamment sur clé USB), aucun chemin absolu n'est utilisé en dur. Le `fs_manager.rs` résout dynamiquement les chemins :
-
-- `data/` : Base de données, vecteurs, modèles.
-- `config/` : Fichiers de configuration.
-
-### Base de Données (SQLite)
-
-- **Sessions** : Conversations actives.
-- **Messages** : Historique des chats.
-- **Library_Files** : Registre global des fichiers importés.
-- **Session_Files_Link** : Table de liaison (Many-to-Many) entre Sessions et Fichiers.
-
----
-
-## 🔒 Sécurité
-
-- **Chiffrement** : Les configurations sensibles (clés API si existantes, paramètres système) sont chiffrées au repos (`encryption.rs`) utilisant `Aes256Gcm`.
-- **Isolation** : Le LLM tourne dans un processus séparé. Le Frontend n'a pas d'accès direct au disque (passe par le Backend).
-- **Contrôle d'Accès** : Les fichiers ne sont accessibles au RAG que s'ils sont explicitement liés à la session active.
-
----
-
-_Dernière mise à jour : Novembre 2025_
+-   **Local Storage**: All data resides in `AppLocalData`.
+-   **Offline Capable**: No internet connection required after model download.
+-   **Encryption**: Sensitive fields (like future API keys) are encrypted using AES-256-GCM.
