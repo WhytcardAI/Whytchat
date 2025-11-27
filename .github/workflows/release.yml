@@ -64,7 +64,9 @@ jobs:
 
       - name: Install dependencies (macOS)
         if: contains(matrix.platform, 'macos')
-        run: brew install protobuf
+        run: |
+          brew install protobuf
+          echo "PROTOC=$(which protoc)" >> $GITHUB_ENV
 
       - name: Install dependencies (Windows)
         if: matrix.platform == 'windows'
@@ -79,6 +81,9 @@ jobs:
           key: ${{ matrix.target }}
 
       - run: npm ci
+
+      - name: Build frontend
+        run: npm run build --workspace=apps/desktop-ui
 
       - name: Build Tauri
         run: npm run tauri build -- --target ${{ matrix.target }}
