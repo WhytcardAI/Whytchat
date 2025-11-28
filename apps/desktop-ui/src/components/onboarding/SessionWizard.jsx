@@ -47,9 +47,10 @@ export function SessionWizard({ onClose }) {
       if (selectedFileIds.length > 0 && sessionId) {
         for (const fileId of selectedFileIds) {
           logger.file.link(fileId, sessionId);
+          // Tauri auto-converts camelCase to snake_case
           await invoke('link_library_file_to_session', {
-            session_id: sessionId,
-            file_id: fileId
+            sessionId: sessionId,
+            fileId: fileId
           });
         }
       }

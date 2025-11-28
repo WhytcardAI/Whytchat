@@ -47,9 +47,8 @@ export function useChatStream(sessionId) {
 
       if (sessionId && isMountedRef.current) {
         try {
-          // Send both snake_case and camelCase to satisfy Tauri bindings
+          // Tauri auto-converts camelCase to snake_case
           const sessionMessages = await invoke('get_session_messages', {
-            session_id: sessionId,
             sessionId: sessionId
           });
           if (isMountedRef.current && isActive) {
@@ -73,7 +72,8 @@ export function useChatStream(sessionId) {
     return () => {
       isActive = false;
     };
-  }, [sessionId, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]); // 't' intentionally excluded - translation changes shouldn't reload messages
 
   // Register handlers that will be called by global listeners
   useEffect(() => {
@@ -188,8 +188,9 @@ export function useChatStream(sessionId) {
       try {
         // 3. Call Backend (Real Thinking Mode)
         // The backend will emit 'chat-token' events for the response
+        // Tauri auto-converts camelCase to snake_case
         await invoke('debug_chat', {
-          session_id: targetSessionId,
+          sessionId: targetSessionId,
           message: text
         });
 
@@ -206,9 +207,8 @@ export function useChatStream(sessionId) {
   const refreshMessages = useCallback(async () => {
       if (sessionId) {
           try {
-            // Send both snake_case and camelCase to satisfy Tauri bindings
+            // Tauri auto-converts camelCase to snake_case
             const sessionMessages = await invoke('get_session_messages', {
-              session_id: sessionId,
               sessionId: sessionId
             });
             const formattedMessages = sessionMessages.map(msg => ({
@@ -220,10 +220,10 @@ export function useChatStream(sessionId) {
             setMessages(formattedMessages);
           } catch (error) {
             logger.chat.error(error);
-            toast.error(t('chat.error_refreshing', 'Failed to refresh messages'));
+            toast.error('Failed to refresh messages');
           }
       }
-  }, [sessionId, t]);
+  }, [sessionId]); // Note: 't' removed - use static string for error
 
   const addSystemMessage = useCallback((text) => {
     setMessages(prev => [...prev, { id: generateMessageId(), role: 'system', content: text }]);

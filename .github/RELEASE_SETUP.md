@@ -25,6 +25,7 @@ The password used when generating the signing key (if any).
 ### Option 1: Tag-based Release
 
 1. Create and push a tag:
+
    ```bash
    git tag v1.0.0
    git push origin v1.0.0
@@ -42,6 +43,7 @@ The password used when generating the signing key (if any).
 ## Pre-flight Validation
 
 The release workflow includes a validation job that:
+
 - ✅ Checks code formatting (`cargo fmt`)
 - ✅ Runs ESLint on frontend code
 - ✅ Runs Clippy for Rust linting
@@ -54,18 +56,19 @@ Only if validation passes will the multi-platform builds begin.
 
 The workflow produces the following artifacts:
 
-| Platform | Artifacts |
-|----------|-----------|
-| Windows | `.exe` (NSIS installer), `.msi` (WiX installer) |
-| Linux | `.AppImage`, `.deb` |
-| macOS Intel | `.dmg` |
-| macOS ARM | `.dmg` |
+| Platform    | Artifacts                                       |
+| ----------- | ----------------------------------------------- |
+| Windows     | `.exe` (NSIS installer), `.msi` (WiX installer) |
+| Linux       | `.AppImage`, `.deb`                             |
+| macOS Intel | `.dmg`                                          |
+| macOS ARM   | `.dmg`                                          |
 
 ## Troubleshooting
 
 ### Build Fails on Specific Platform
 
 Check the workflow logs for the specific platform. Common issues:
+
 - Missing system dependencies
 - Protobuf compiler not found
 - Signing key issues
@@ -73,6 +76,7 @@ Check the workflow logs for the specific platform. Common issues:
 ### Validation Job Fails
 
 Run the following locally to identify issues:
+
 ```bash
 # Check formatting
 cargo fmt --manifest-path apps/core/Cargo.toml -- --check
