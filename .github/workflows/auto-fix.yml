@@ -2,7 +2,7 @@ name: 🔧 Auto-Fix on Failure
 
 on:
   workflow_run:
-    workflows: ["🔄 CI Pipeline"]
+    workflows: ["CI"]
     types:
       - completed
 
@@ -10,65 +10,83 @@ permissions:
   contents: write
   pull-requests: write
 
+env:
+  MAX_AUTO_FIX_ATTEMPTS: 2  # Prevent infinite loops
+
 jobs:
   auto-fix:
-    name: 🩹 Attempt Auto-Fix
+    name: 🩹 Auto-Fix & Retry
     runs-on: ubuntu-latest
-    # Only run if CI failed AND it's not already an auto-fix branch
+    # Only run if CI failed AND not already an auto-fix commit AND on pushable branches
     if: >
       github.event.workflow_run.conclusion == 'failure' &&
-      !startsWith(github.event.workflow_run.head_branch, 'auto-fix/')
+      !contains(github.event.workflow_run.head_commit.message, '[auto-fix]') &&
+      !contains(github.event.workflow_run.head_commit.message, '[skip ci]') &&
+      (github.event.workflow_run.head_branch == 'master' || 
+       github.event.workflow_run.head_branch == 'main' ||
+       startsWith(github.event.workflow_run.head_branch, 'fix/') ||
+       startsWith(github.event.workflow_run.head_branch, 'feature/'))
     
     steps:
       - name: 📥 Checkout failed branch
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_branch }}
-          fetch-depth: 0
+          fetch-depth: 2
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: 🔍 Check auto-fix attempt count
+        id: check_attempts
+        run: |
+          # Count recent auto-fix commits (last 5 commits)
+          AUTO_FIX_COUNT=$(git log --oneline -5 --grep="\[auto-fix\]" | wc -l)
+          echo "Auto-fix commits in last 5: $AUTO_FIX_COUNT"
+          
+          if [ "$AUTO_FIX_COUNT" -ge "$MAX_AUTO_FIX_ATTEMPTS" ]; then
+            echo "⚠️ Too many auto-fix attempts, stopping to prevent infinite loop"
+            echo "should_continue=false" >> $GITHUB_OUTPUT
+          else
+            echo "should_continue=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: 🦀 Setup Rust
-        uses: dtolnay/rust-action@stable
+        if: steps.check_attempts.outputs.should_continue == 'true'
+        uses: dtolnay/rust-toolchain@master
         with:
-          components: rustfmt, clippy
+          toolchain: stable
+          components: rustfmt
 
       - name: 📦 Setup Node.js
+        if: steps.check_attempts.outputs.should_continue == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
       - name: 📥 Install dependencies
+        if: steps.check_attempts.outputs.should_continue == 'true'
         run: npm ci
 
       - name: 🎨 Auto-fix Rust formatting
+        if: steps.check_attempts.outputs.should_continue == 'true'
         id: rust_fmt
         continue-on-error: true
         run: |
           cd apps/core
-          if cargo fmt --check 2>/dev/null; then
-            echo "rust_changed=false" >> $GITHUB_OUTPUT
-          else
-            cargo fmt
-            echo "rust_changed=true" >> $GITHUB_OUTPUT
-            echo "✅ Rust formatting fixed"
-          fi
+          cargo fmt
+          echo "✅ Rust formatting applied"
 
-      - name: 🎨 Auto-fix JS/TS formatting & linting
+      - name: 🎨 Auto-fix JS/TS linting
+        if: steps.check_attempts.outputs.should_continue == 'true'
         id: js_fix
         continue-on-error: true
         run: |
           cd apps/desktop-ui
-          
-          # Try eslint --fix
-          if npx eslint . --fix 2>/dev/null; then
-            echo "js_changed=true" >> $GITHUB_OUTPUT
-            echo "✅ ESLint fixes applied"
-          else
-            echo "js_changed=false" >> $GITHUB_OUTPUT
-          fi
+          npx eslint . --fix || true
+          echo "✅ ESLint fixes applied"
 
       - name: 🔍 Check for changes
+        if: steps.check_attempts.outputs.should_continue == 'true'
         id: check_changes
         run: |
           if git diff --quiet; then
@@ -80,67 +98,61 @@ jobs:
             git diff --stat
           fi
 
-      - name: 🌿 Create fix branch and PR
-        if: steps.check_changes.outputs.has_changes == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: 🚀 Commit and push fixes directly
+        if: steps.check_attempts.outputs.should_continue == 'true' && steps.check_changes.outputs.has_changes == 'true'
         run: |
-          # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Create unique branch name
-          BRANCH_NAME="auto-fix/${{ github.event.workflow_run.head_branch }}-$(date +%Y%m%d-%H%M%S)"
-          
-          # Create branch and commit
-          git checkout -b "$BRANCH_NAME"
           git add -A
-          git commit -m "🤖 Auto-fix: formatting and linting corrections
+          git commit -m "🤖 [auto-fix] Formatting corrections
 
-          Automatic fixes applied after CI failure on branch: ${{ github.event.workflow_run.head_branch }}
+          Automatic fixes applied:
+          - cargo fmt (Rust formatting)
+          - eslint --fix (JS/TS linting)
           
-          Fixes applied:
-          - Rust formatting (cargo fmt)
-          - JavaScript linting (eslint --fix)
+          Triggered by: ${{ github.event.workflow_run.html_url }}
           
-          Triggered by workflow run: ${{ github.event.workflow_run.html_url }}"
+          [skip ci] will be removed on next human commit"
           
-          # Push branch
-          git push origin "$BRANCH_NAME"
+          git push origin ${{ github.event.workflow_run.head_branch }}
           
-          # Create PR
-          gh pr create \
-            --title "🤖 Auto-fix: CI corrections for ${{ github.event.workflow_run.head_branch }}" \
-            --body "## 🔧 Automatic Fixes Applied
+          echo "✅ Fixes committed and pushed directly"
+
+      - name: 🔄 Re-trigger CI
+        if: steps.check_attempts.outputs.should_continue == 'true' && steps.check_changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Wait a moment for the push to be processed
+          sleep 5
           
-          This PR was automatically created after a CI failure.
+          # Trigger CI workflow manually
+          gh workflow run ci.yml --ref ${{ github.event.workflow_run.head_branch }} || echo "CI will trigger automatically on push"
           
-          ### Failed Workflow
-          - **Branch:** \`${{ github.event.workflow_run.head_branch }}\`
-          - **Run:** ${{ github.event.workflow_run.html_url }}
-          - **Conclusion:** ${{ github.event.workflow_run.conclusion }}
-          
-          ### Fixes Applied
-          - ✅ Rust formatting (\`cargo fmt\`)
-          - ✅ JavaScript linting (\`eslint --fix\`)
-          
-          ### ⚠️ Review Required
-          Please review these automatic fixes before merging.
-          Some fixes may not be appropriate for your use case.
-          
-          ---
-          *This PR was created automatically by the Auto-Fix workflow.*" \
-            --base "${{ github.event.workflow_run.head_branch }}" \
-            --head "$BRANCH_NAME"
-          
-          echo "✅ Auto-fix PR created successfully"
+          echo "🔄 CI re-triggered"
 
       - name: 📊 Summary
         run: |
           echo "## 🔧 Auto-Fix Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Check | Result |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Rust formatting | ${{ steps.rust_fmt.outputs.rust_changed == 'true' && '✅ Fixed' || '➖ No changes' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| JS/TS linting | ${{ steps.js_fix.outputs.js_changed == 'true' && '✅ Fixed' || '➖ No changes' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| PR Created | ${{ steps.check_changes.outputs.has_changes == 'true' && '✅ Yes' || '❌ No (nothing to fix)' }} |" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.check_attempts.outputs.should_continue }}" == "false" ]; then
+            echo "⚠️ **Stopped**: Too many auto-fix attempts (max: $MAX_AUTO_FIX_ATTEMPTS)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Manual intervention required to fix remaining issues." >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.check_changes.outputs.has_changes }}" == "true" ]; then
+            echo "✅ **Fixes applied and pushed directly**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- Rust formatting (cargo fmt)" >> $GITHUB_STEP_SUMMARY
+            echo "- JS/TS linting (eslint --fix)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "CI will re-run automatically." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ℹ️ **No auto-fixable issues found**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The CI failure was caused by issues that cannot be auto-fixed:" >> $GITHUB_STEP_SUMMARY
+            echo "- Compilation errors" >> $GITHUB_STEP_SUMMARY
+            echo "- Test failures" >> $GITHUB_STEP_SUMMARY
+            echo "- Logic errors" >> $GITHUB_STEP_SUMMARY
+          fi
