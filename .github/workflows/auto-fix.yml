@@ -11,7 +11,7 @@ permissions:
   pull-requests: write
 
 env:
-  MAX_AUTO_FIX_ATTEMPTS: 2  # Prevent infinite loops
+  MAX_AUTO_FIX_ATTEMPTS: 2 # Prevent infinite loops
 
 jobs:
   auto-fix:
@@ -22,11 +22,11 @@ jobs:
       github.event.workflow_run.conclusion == 'failure' &&
       !contains(github.event.workflow_run.head_commit.message, '[auto-fix]') &&
       !contains(github.event.workflow_run.head_commit.message, '[skip ci]') &&
-      (github.event.workflow_run.head_branch == 'master' || 
+      (github.event.workflow_run.head_branch == 'master' ||
        github.event.workflow_run.head_branch == 'main' ||
        startsWith(github.event.workflow_run.head_branch, 'fix/') ||
        startsWith(github.event.workflow_run.head_branch, 'feature/'))
-    
+
     steps:
       - name: 📥 Checkout failed branch
         uses: actions/checkout@v4
@@ -41,7 +41,7 @@ jobs:
           # Count recent auto-fix commits (last 5 commits)
           AUTO_FIX_COUNT=$(git log --oneline -5 --grep="\[auto-fix\]" | wc -l)
           echo "Auto-fix commits in last 5: $AUTO_FIX_COUNT"
-          
+
           if [ "$AUTO_FIX_COUNT" -ge "$MAX_AUTO_FIX_ATTEMPTS" ]; then
             echo "⚠️ Too many auto-fix attempts, stopping to prevent infinite loop"
             echo "should_continue=false" >> $GITHUB_OUTPUT
@@ -60,8 +60,8 @@ jobs:
         if: steps.check_attempts.outputs.should_continue == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: 📥 Install dependencies
         if: steps.check_attempts.outputs.should_continue == 'true'
@@ -103,20 +103,20 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           git add -A
           git commit -m "🤖 [auto-fix] Formatting corrections
 
           Automatic fixes applied:
           - cargo fmt (Rust formatting)
           - eslint --fix (JS/TS linting)
-          
+
           Triggered by: ${{ github.event.workflow_run.html_url }}
-          
+
           [skip ci] will be removed on next human commit"
-          
+
           git push origin ${{ github.event.workflow_run.head_branch }}
-          
+
           echo "✅ Fixes committed and pushed directly"
 
       - name: 🔄 Re-trigger CI
@@ -126,17 +126,17 @@ jobs:
         run: |
           # Wait a moment for the push to be processed
           sleep 5
-          
+
           # Trigger CI workflow manually
           gh workflow run ci.yml --ref ${{ github.event.workflow_run.head_branch }} || echo "CI will trigger automatically on push"
-          
+
           echo "🔄 CI re-triggered"
 
       - name: 📊 Summary
         run: |
           echo "## 🔧 Auto-Fix Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ steps.check_attempts.outputs.should_continue }}" == "false" ]; then
             echo "⚠️ **Stopped**: Too many auto-fix attempts (max: $MAX_AUTO_FIX_ATTEMPTS)" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY

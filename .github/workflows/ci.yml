@@ -102,6 +102,11 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set PROTOC env (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: echo "PROTOC=$(Get-Command protoc).Source" >> $env:GITHUB_ENV
+
       - name: Cache Cargo
         uses: actions/cache@v4
         with:
@@ -169,6 +174,11 @@ jobs:
         uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set PROTOC env (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: echo "PROTOC=$(Get-Command protoc).Source" >> $env:GITHUB_ENV
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2

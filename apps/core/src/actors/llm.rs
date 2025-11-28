@@ -208,11 +208,10 @@ impl LlmActorRunner {
             #[cfg(not(windows))]
             {
                 // On Unix, use SIGKILL for immediate termination
-                use std::os::unix::process::CommandExt;
                 let _ = std::process::Command::new("kill")
                     .args(["-9", &pid.to_string()])
                     .output();
-                info!("llama-server process killed via SIGKILL (PID: {})", pid);
+                info!("llama-server process killed via SIGKILL (PID: {pid})");
             }
         }
     }
@@ -229,10 +228,10 @@ impl LlmActorRunner {
                 self.restart_attempts = 0;
             }
         } else if self.restart_attempts >= MAX_RESTART_ATTEMPTS {
+            let restart_attempts = self.restart_attempts;
+            let reset_secs = RESET_TIMEOUT.as_secs();
             let msg = format!(
-                "Circuit breaker OPEN. Too many restart attempts ({}) in the last {} seconds.",
-                self.restart_attempts,
-                RESET_TIMEOUT.as_secs()
+                "Circuit breaker OPEN. Too many restart attempts ({restart_attempts}) in the last {reset_secs} seconds."
             );
             error!("{}", msg);
             return Err(AppError::Actor(ActorError::Internal(msg)));
@@ -323,8 +322,7 @@ impl LlmActorRunner {
         }
 
         Err(AppError::Actor(ActorError::Internal(format!(
-            "llama-server failed to become ready after {} seconds",
-            max_retries
+            "llama-server failed to become ready after {max_retries} seconds"
         ))))
     }
 
@@ -335,13 +333,12 @@ impl LlmActorRunner {
     ) -> Result<reqwest::RequestBuilder, AppError> {
         let mut headers = HeaderMap::new();
         if let Some(token) = &self.auth_token {
-            let auth_value = format!("Bearer {}", token);
+            let auth_value = format!("Bearer {token}");
             headers.insert(
                 AUTHORIZATION,
                 auth_value.parse().map_err(|e| {
                     AppError::Actor(ActorError::Internal(format!(
-                        "Failed to parse auth token: {}",
-                        e
+                        "Failed to parse auth token: {e}"
                     )))
                 })?,
             );
@@ -496,8 +493,7 @@ impl LlmActorRunner {
         if !status.is_success() {
             let body = res.text().await.unwrap_or_default();
             return Err(AppError::Actor(ActorError::LlmError(format!(
-                "Completion request failed with status {}: {}",
-                status, body
+                "Completion request failed with status {status}: {body}"
             ))));
         }
 
@@ -516,25 +512,22 @@ impl LlmActorRunner {
         temperature: Option<f32>,
         chunk_sender: mpsc::Sender<Result<String, AppError>>,
     ) -> Result<(), AppError> {
-        info!("LLM Streaming for prompt: {}", prompt);
+        info!("LLM Streaming for prompt: {prompt}");
 
         // Build the full prompt using ChatML format for Qwen2.5
         let full_prompt = if let Some(system) = &system_prompt {
             if !system.is_empty() {
                 format!(
-                    "<|im_start|>system\n{}<|im_end|>\n<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n",
-                    system, prompt
+                    "<|im_start|>system\n{system}<|im_end|>\n<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n"
                 )
             } else {
                 format!(
-                    "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n",
-                    prompt
+                    "<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n"
                 )
             }
         } else {
             format!(
-                "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n",
-                prompt
+                "<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n"
             )
         };
 
@@ -570,7 +563,7 @@ impl LlmActorRunner {
             match timeout(STREAM_CHUNK_TIMEOUT, stream.next()).await {
                 Ok(Some(chunk_result)) => {
                     let chunk = chunk_result.map_err(|e| {
-                        AppError::Actor(ActorError::Internal(format!("Stream chunk error: {}", e)))
+                        AppError::Actor(ActorError::Internal(format!("Stream chunk error: {e}")))
                     })?;
 
                     let text = String::from_utf8_lossy(&chunk);
