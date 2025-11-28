@@ -117,9 +117,31 @@ jobs:
 
       - name: Install dependencies (Windows)
         if: matrix.platform == 'windows'
+        id: protoc-windows
         uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set PROTOC env (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $protocPath = "${{ steps.protoc-windows.outputs.path }}/bin/protoc.exe"
+          if (Test-Path $protocPath) {
+            $protocExe = $protocPath
+          } else {
+            # Fallback to PATH lookup
+            $protocCmd = Get-Command protoc -ErrorAction SilentlyContinue
+            if ($null -eq $protocCmd -or -not $protocCmd.Source) {
+              Write-Error "protoc executable not found: neither '${{ steps.protoc-windows.outputs.path }}/bin/protoc.exe' nor a 'protoc' command on PATH is available."
+              exit 1
+            }
+            $protocExe = $protocCmd.Source
+          }
+
+          $env:PROTOC = $protocExe
+          echo "PROTOC=$protocExe" >> $env:GITHUB_ENV
+          echo "PROTOC env set to: $env:PROTOC"
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
