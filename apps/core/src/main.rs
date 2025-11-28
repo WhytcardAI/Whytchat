@@ -1,4 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+// Allow format! with variables as arguments (common pattern, not a bug)
+#![allow(clippy::uninlined_format_args)]
 
 /// WhytChat V1 Backend Entry Point
 /// "The Brain" - Orchestrator of Cognitive Actors
