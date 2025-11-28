@@ -63,7 +63,6 @@ jobs:
 
       - name: Clippy
         run: cargo clippy --manifest-path apps/core/Cargo.toml -- -D warnings
-        continue-on-error: true
 
   # ============================================================================
   # Tests
@@ -93,7 +92,9 @@ jobs:
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
-        run: brew install protobuf
+        run: |
+          brew install protobuf
+          echo "PROTOC=$(which protoc)" >> $GITHUB_ENV
 
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
@@ -170,13 +171,10 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cache Cargo
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry/
-            ~/.cargo/git/
-            apps/core/target/
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+          workspaces: apps/core
+          key: ${{ matrix.target }}
 
       - run: npm ci
 
@@ -185,7 +183,6 @@ jobs:
 
       - name: Build Tauri
         run: npm run tauri build -- --target ${{ matrix.target }}
-        continue-on-error: true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

@@ -37,6 +37,10 @@
     "resources": {
       "data/.gitkeep": "data/.gitkeep"
     },
+    "publisher": "WhytCard",
+    "shortDescription": "AI Chat Application with Local LLM",
+    "longDescription": "WhytChat is a local-first AI chat application built with Tauri 2.0, supporting RAG and local LLMs.",
+    "category": "Utility",
     "macOS": {
       "signingIdentity": "-",
       "minimumSystemVersion": "10.15",
@@ -44,12 +48,18 @@
     },
     "windows": {
       "nsis": {
-        "installMode": "currentUser"
-      }
+        "installMode": "currentUser",
+        "displayLanguageSelector": true
+      },
+      "wix": null
     },
     "linux": {
       "appimage": {
         "bundleMediaFramework": false
+      },
+      "deb": {
+        "section": "utils",
+        "priority": "optional"
       }
     }
   },
