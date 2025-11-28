@@ -7,6 +7,7 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { setupTauriMock } from './helpers/tauri-mock.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,6 +70,15 @@ async function createNewSession(page, title = 'Test Session') {
   // Wait for chat interface
   await page.waitForSelector('#chat-input', { timeout: TIMEOUTS.medium });
 }
+
+// ============================================================================
+// Global Test Setup - Tauri Mock
+// ============================================================================
+
+test.beforeEach(async ({ page }) => {
+  // Setup Tauri mock BEFORE any navigation
+  await setupTauriMock(page);
+});
 
 // ============================================================================
 // App Initialization Tests

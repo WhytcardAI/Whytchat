@@ -1,222 +1,264 @@
-# 🏗️ Architecture Technique - WhytChat V1
+# 🏛️ Architecture - WhytChat V1
 
-> Structure détaillée du projet et patterns architecturaux
-
----
-
-## 📂 Structure Monorepo
-
-```
-WhytChat_V1/
-├── apps/
-│   ├── core/                 # Backend Rust (Tauri)
-│   │   ├── src/
-│   │   │   ├── actors/       # Système d'acteurs (Supervisor, LLM, RAG)
-│   │   │   ├── brain/        # Analyse intelligente pré-LLM
-│   │   │   └── tests/        # Tests unitaires et chaos
-│   │   ├── migrations/       # Schéma SQLite
-│   │   └── tools/            # Binaires (llama-server)
-│   │
-│   └── desktop-ui/           # Frontend React
-│       ├── src/
-│       │   ├── components/   # UI Components
-│       │   ├── hooks/        # React Hooks
-│       │   ├── store/        # Zustand State
-│       │   └── locales/      # Traductions
-│       └── public/
-│
-├── data/                     # Données locales
-│   ├── db/                   # SQLite database
-│   ├── models/               # GGUF models + embeddings
-│   ├── vectors/              # LanceDB vectors
-│   └── files/                # Fichiers uploadés
-│
-└── documentation/            # Documentation
-    └── fr/                   # Documentation française
-```
+> Système d'acteurs Tokio avec orchestration Supervisor
 
 ---
 
-## 🔄 Architecture Actor System
+## 🎭 Système d'Acteurs
 
-Le backend utilise un système d'acteurs asynchrones basé sur Tokio.
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        SUPERVISOR                            │
-│  (Orchestrateur principal - routes les messages)             │
-├─────────────────────────────────────────────────────────────┤
-│                           │                                  │
-│    ┌──────────────┐      │      ┌──────────────┐            │
-│    │   BRAIN      │      │      │    DATABASE  │            │
-│    │  Analyzer    │◄─────┼─────►│   (SQLite)   │            │
-│    └──────────────┘      │      └──────────────┘            │
-│           │              │              │                    │
-│           ▼              │              │                    │
-│    ┌──────────────┐      │      ┌──────────────┐            │
-│    │  RAG ACTOR   │◄─────┼─────►│   LLM ACTOR  │            │
-│    │  (LanceDB)   │      │      │(llama-server)│            │
-│    └──────────────┘      │      └──────────────┘            │
-│                          │                                   │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Responsabilités des Acteurs
-
-| Acteur | Responsabilité |
-|--------|----------------|
-| **Supervisor** | Orchestration, routing, émission d'événements |
-| **Brain** | Analyse pré-LLM (intent, keywords, complexity) |
-| **RAG** | Embeddings, stockage vectoriel, recherche sémantique |
-| **LLM** | Communication avec llama-server, streaming |
-| **Database** | CRUD SQLite avec chiffrement |
-
----
-
-## 🔗 Communication Frontend ↔ Backend
-
-### Pattern IPC Tauri
+Le backend utilise un pattern **Actor Model** basé sur les channels `tokio::sync::mpsc`.
 
 ```
-Frontend (React)              Tauri IPC              Backend (Rust)
-      │                           │                        │
-      │  invoke('debug_chat')     │                        │
-      ├──────────────────────────►├───────────────────────►│
-      │                           │                        │
-      │                           │   emit('chat-token')   │
-      │◄──────────────────────────┼◄───────────────────────┤
-      │                           │                        │
-      │                           │ emit('thinking-step')  │
-      │◄──────────────────────────┼◄───────────────────────┤
-```
-
-### Événements Émis
-
-| Événement | Payload | Description |
-|-----------|---------|-------------|
-| `chat-token` | `{ content: string }` | Token de réponse LLM |
-| `thinking-step` | `{ step: string, details: string }` | Étape de réflexion |
-| `brain-analysis` | `{ intent, keywords, ... }` | Résultat analyse Brain |
-
----
-
-## 💾 Architecture des Données
-
-### SQLite (Données Structurées)
-
-```sql
-sessions ────────────┬──────────── messages
-    │                │
-    │                └──── session_files
-    │
-folders ─────────────┴──────────── library_files
-```
-
-### LanceDB (Vecteurs)
-
-```
-knowledge_base.lance/
-├── data/           # Chunks de texte vectorisés
-└── index/          # Index pour recherche rapide
-```
-
-### Schéma de Chiffrement
-
-```
-ModelConfig (JSON) 
-    │
-    ▼ AES-256-GCM
-Ciphertext (Base64)
-    │
-    ▼ SQLite TEXT
-sessions.model_config
+┌─────────────────────────────────────────────────────────────────┐
+│                         TAURI COMMANDS                          │
+│                  (22 commandes dans main.rs)                    │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                       AppState (Mutex)                          │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                  InitializedState                        │   │
+│  │  • supervisor: SupervisorHandle                          │   │
+│  │  • pool: SqlitePool                                      │   │
+│  │  • rate_limiter: Mutex<RateLimiter>                      │   │
+│  └─────────────────────────────────────────────────────────┘   │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    SupervisorHandle                             │
+│              (mpsc::Sender<SupervisorMessage>)                  │
+│                                                                 │
+│  Messages:                                                      │
+│  • ProcessUserMessage { session_id, content, window, responder }│
+│  • IngestContent { content, metadata, responder }               │
+│  • ReindexFile { file_id, content, responder }                  │
+│  • Shutdown                                                     │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+          ┌──────────────┼──────────────┐
+          │              │              │
+          ▼              ▼              ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│ BrainAnalyzer│  │ LlmActorHandle│  │ RagActorHandle│
+│             │  │             │  │             │
+│ • Intent    │  │ • generate  │  │ • ingest    │
+│ • Keywords  │  │ • stream    │  │ • search    │
+│ • Complexity│  │             │  │ • delete    │
+└─────────────┘  └─────────────┘  └─────────────┘
 ```
 
 ---
 
-## 🎯 Patterns Utilisés
+## 📦 Modules Backend (apps/core/src/)
 
-### 1. Handle Pattern (Actors)
+### Fichiers Principaux
+
+| Fichier           | Lignes | Rôle                                         |
+| ----------------- | ------ | -------------------------------------------- |
+| `main.rs`         | ~1530  | Point d'entrée, 22 commandes Tauri, download |
+| `database.rs`     | ~350   | CRUD sessions, messages, folders, files      |
+| `encryption.rs`   | ~180   | AES-256-GCM encrypt/decrypt                  |
+| `error.rs`        | ~100   | AppError enum centralisé                     |
+| `fs_manager.rs`   | ~180   | PortablePathManager (chemins portables)      |
+| `models.rs`       | ~120   | Structs: Session, Message, Folder, etc.      |
+| `rate_limiter.rs` | ~90    | Limite 20 req/min par session                |
+| `text_extract.rs` | ~170   | Extraction PDF, DOCX, TXT, CSV, JSON         |
+| `preflight.rs`    | -      | Vérifications au démarrage                   |
+| `diagnostics.rs`  | -      | Tests runtime catégorisés                    |
+
+### Dossier actors/
+
+| Fichier         | Rôle                                             |
+| --------------- | ------------------------------------------------ |
+| `mod.rs`        | Exporte: llm, messages, rag, supervisor, traits  |
+| `supervisor.rs` | Orchestrateur principal (SupervisorRunner)       |
+| `llm.rs`        | Communication llama-server HTTP                  |
+| `rag.rs`        | LanceDB + FastEmbed embeddings                   |
+| `messages.rs`   | Enums: LlmMessage, RagMessage, SupervisorMessage |
+| `traits.rs`     | Traits: LlmActor, RagActor                       |
+
+### Dossier brain/
+
+| Fichier              | Rôle                                    |
+| -------------------- | --------------------------------------- |
+| `mod.rs`             | Exporte tous les sous-modules           |
+| `analyzer.rs`        | BrainAnalyzer - orchestrateur principal |
+| `intent.rs`          | Classification regex rapide             |
+| `semantic_intent.rs` | Classification embeddings (fallback)    |
+| `keywords.rs`        | Extraction TF-IDF                       |
+| `complexity.rs`      | Score de complexité texte               |
+| `context_packet.rs`  | Struct ContextPacket de sortie          |
+
+---
+
+## 🔄 Pattern Handle/Runner
+
+Chaque acteur utilise le pattern **Handle + Runner** :
 
 ```rust
-// Séparation entre l'acteur et son interface
+// Handle (public, cloneable)
 pub struct SupervisorHandle {
     sender: mpsc::Sender<SupervisorMessage>,
 }
 
-impl SupervisorHandle {
-    pub async fn process_message(...) -> Result<...> {
-        let (tx, rx) = oneshot::channel();
-        self.sender.send(Message { response_tx: tx }).await?;
-        rx.await?
-    }
+// Runner (internal, owns the receiver)
+struct SupervisorRunner<L, R> {
+    receiver: mpsc::Receiver<SupervisorMessage>,
+    llm_actor: Arc<L>,
+    rag_actor: Arc<R>,
+    brain_analyzer: Arc<BrainAnalyzer>,
+    db_pool: Option<SqlitePool>,
 }
 ```
 
-### 2. State Singleton (Tauri)
+**Avantages :**
+
+- Handle clonable pour partage entre threads
+- Runner isolé avec son propre état
+- Communication via messages typés
+- Timeout sur les réponses (oneshot channels)
+
+---
+
+## 🧠 Brain Module (Analyse Pré-LLM)
+
+Le module Brain analyse le message AVANT d'appeler le LLM :
 
 ```rust
-pub struct AppState {
-    pub is_initialized: AtomicBool,
-    pub initialized: OnceLock<InitializedState>,
-}
+pub fn analyze(&self, query: &str) -> ContextPacket {
+    // 1. Classification intent (regex puis semantic)
+    packet.intent = self.classify_intent_smart(query);
 
-// Usage dans commandes
-#[tauri::command]
-async fn my_command(state: State<'_, AppState>) -> Result<...> {
-    if !state.is_initialized.load(Ordering::SeqCst) {
-        return Err("Not initialized");
-    }
-    // ...
+    // 2. Extraction keywords TF-IDF
+    packet.keywords = self.keyword_extractor.extract(query, Some(10));
+
+    // 3. Score complexité
+    packet.complexity = self.complexity_scorer.analyze(query);
+
+    // 4. Détection langue (fr/en)
+    packet.language = self.detect_language(query);
+
+    // 5. Stratégies suggérées
+    packet.suggested_strategies = self.suggest_strategies(&packet);
+
+    // 6. Décision RAG
+    packet.should_use_rag = self.should_use_rag(&packet);
+
+    packet
 }
 ```
 
-### 3. Zustand Persist (Frontend)
+### Intents Supportés
 
-```javascript
-const useAppStore = create(
-  persist(
-    (set, get) => ({ /* state & actions */ }),
-    {
-      name: 'whytchat-storage',
-      partialize: (state) => ({
-        // Seuls ces champs sont persistés
-        theme: state.theme,
-        currentSessionId: state.currentSessionId,
-      }),
-    }
-  )
-);
+```rust
+pub enum Intent {
+    Greeting,      // "Bonjour", "Hello"
+    Farewell,      // "Au revoir", "Bye"
+    Question,      // "Comment...", "What is..."
+    Command,       // "Fais...", "Create..."
+    CodeRequest,   // "Écris du code", "Write a function"
+    Explanation,   // "Explique...", "Explain..."
+    Translation,   // "Traduis...", "Translate..."
+    Analysis,      // "Analyse...", "Analyze..."
+    Creative,      // "Imagine...", "Write a story"
+    Help,          // "Aide...", "Help..."
+    Unknown,       // Fallback
+}
 ```
 
 ---
 
-## 🔌 Ports Réseau
+## 📊 Flux de Données Principal
 
-| Port | Service | Usage |
-|------|---------|-------|
-| 1420 | Vite dev server | Frontend dev |
-| 8080 | llama-server | LLM inference |
-| 18080 | llama-server (test) | Preflight checks |
+```
+[User Message]
+      │
+      ▼
+┌─────────────────┐
+│  debug_chat()   │  ← Commande Tauri
+│    main.rs      │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  RateLimiter    │  ← 20 req/min/session
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ SupervisorHandle│
+│ process_message │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  BrainAnalyzer  │  ← Analyse intent, keywords, complexity
+│    analyze()    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   RagActor      │  ← Si should_use_rag = true
+│   search()      │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   LlmActor      │  ← Streaming via llama-server
+│ stream_generate │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Window.emit()  │  ← Events: "chat-token", "thinking-step"
+│   → Frontend    │
+└─────────────────┘
+```
 
 ---
 
-## 🔐 Variables d'Environnement
+## 🔐 Gestion d'État (AppState)
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `ENCRYPTION_KEY` | Clé AES-256 (32 bytes hex) | Auto-généré |
-| `LLAMA_AUTH_TOKEN` | Token auth llama-server | Auto-généré |
-| `RUST_LOG` | Niveau de log | `info` |
+```rust
+struct AppState {
+    is_initialized: Arc<AtomicBool>,
+    app_handle: Arc<Mutex<Option<InitializedState>>>,
+}
+
+struct InitializedState {
+    supervisor: SupervisorHandle,
+    pool: SqlitePool,
+    rate_limiter: Mutex<RateLimiter>,
+}
+```
+
+**Fonctions utilitaires :**
+
+- `get_initialized_state()` - Récupère le lock
+- `get_pool()` - Extrait le pool SQLite
+- `get_pool_and_supervisor()` - Pool + Supervisor
+- `check_rate_limit_and_get_resources()` - Rate limit + resources
 
 ---
 
-## 📚 Voir Aussi
+## 🌐 Communication Frontend ↔ Backend
 
-- [03_BACKEND_RUST.md](03_BACKEND_RUST.md) - Détails des modules Rust
-- [04_FRONTEND_REACT.md](04_FRONTEND_REACT.md) - Détails des composants React
-- [05_FLUX_DONNEES.md](05_FLUX_DONNEES.md) - Flux complets
+### Events Émis (Backend → Frontend)
+
+| Event               | Payload                  | Source           |
+| ------------------- | ------------------------ | ---------------- |
+| `chat-token`        | `String` (token LLM)     | LlmActorRunner   |
+| `thinking-step`     | `String` (étape analyse) | SupervisorRunner |
+| `brain-analysis`    | `ContextPacket` (JSON)   | SupervisorRunner |
+| `download-progress` | `u64` (0-100)            | download_model   |
+| `download-status`   | `{step, detail}` (JSON)  | download_model   |
+
+### Commands Invoquées (Frontend → Backend)
+
+Voir [06_COMMANDES_TAURI.md](06_COMMANDES_TAURI.md) pour la liste complète des 22 commandes.
 
 ---
 
-_Document généré le 27 novembre 2025_
+_Généré depuis lecture directe de: supervisor.rs, llm.rs, rag.rs, messages.rs, traits.rs, analyzer.rs, main.rs_

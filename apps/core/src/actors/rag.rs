@@ -595,3 +595,370 @@ impl RagActorRunner {
         Ok(())
     }
 }
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+    use tokio::time::{timeout, Duration};
+
+    /// Helper to create a RAG actor with a temporary database
+    async fn create_test_rag_actor() -> (RagActorHandle, TempDir) {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test_vectors");
+
+        let handle = RagActorHandle::new_with_options(Some(db_path), None);
+
+        // Give the actor time to initialize
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        (handle, temp_dir)
+    }
+
+    #[tokio::test]
+    async fn test_rag_actor_creation() {
+        let (handle, _temp_dir) = create_test_rag_actor().await;
+
+        // Actor should be running - test by attempting a search (should return empty)
+        let result = timeout(
+            Duration::from_secs(10),
+            handle.search_with_filters("test query".to_string(), vec![]),
+        )
+        .await;
+
+        assert!(result.is_ok(), "Search should complete within timeout");
+        let search_result = result.unwrap();
+        assert!(
+            search_result.is_ok(),
+            "Search should succeed: {:?}",
+            search_result
+        );
+    }
+
+    #[tokio::test]
+    async fn test_ingest_single_document() {
+        let (handle, _temp_dir) = create_test_rag_actor().await;
+
+        let content = "This is a test document about machine learning and artificial intelligence. \
+                       It contains information about neural networks and deep learning algorithms.";
+
+        let result = timeout(
+            Duration::from_secs(30),
+            handle.ingest(content.to_string(), Some("file:test-doc-1".to_string())),
+        )
+        .await;
+
+        assert!(result.is_ok(), "Ingest should complete within timeout");
+        let ingest_result = result.unwrap();
+        assert!(
+            ingest_result.is_ok(),
+            "Ingest should succeed: {:?}",
+            ingest_result
+        );
+
+        let message = ingest_result.unwrap();
+        assert!(
+            message.contains("Ingested") || message.contains("chunks"),
+            "Should return confirmation message: {}",
+            message
+        );
+    }
+
+    #[tokio::test]
+    async fn test_ingest_and_search() {
+        let (handle, _temp_dir) = create_test_rag_actor().await;
+
+        // Ingest a document about Rust programming
+        let content = "Rust is a systems programming language focused on safety and performance. \
+                       It provides memory safety without garbage collection. \
+                       The borrow checker ensures safe memory access at compile time. \
+                       Rust is great for building reliable and efficient software.";
+
+        let ingest_result = timeout(
+            Duration::from_secs(30),
+            handle.ingest(content.to_string(), Some("file:rust-doc".to_string())),
+        )
+        .await
+        .expect("Ingest timeout")
+        .expect("Ingest failed");
+
+        assert!(ingest_result.contains("Ingested"));
+
+        // Search for relevant content
+        let search_result = timeout(
+            Duration::from_secs(10),
+            handle.search_with_filters("memory safety in Rust".to_string(), vec![]),
+        )
+        .await
+        .expect("Search timeout")
+        .expect("Search failed");
+
+        assert!(!search_result.is_empty(), "Should find relevant documents");
+
+        // Verify content relevance
+        let found_content = search_result
+            .iter()
+            .any(|r| r.content.to_lowercase().contains("memory"));
+        assert!(found_content, "Search results should contain memory-related content");
+    }
+
+    #[tokio::test]
+    async fn test_search_with_file_filter() {
+        let (handle, _temp_dir) = create_test_rag_actor().await;
+
+        // Ingest two different documents
+        let doc1 = "Python is a high-level programming language known for its simplicity.";
+        let doc2 = "JavaScript is the language of the web browser.";
+
+        timeout(
+            Duration::from_secs(30),
+            handle.ingest(doc1.to_string(), Some("file:python-doc".to_string())),
+        )
+        .await
+        .expect("Ingest timeout")
+        .expect("Ingest doc1 failed");
+
+        timeout(
+            Duration::from_secs(30),
+            handle.ingest(doc2.to_string(), Some("file:js-doc".to_string())),
+        )
+        .await
+        .expect("Ingest timeout")
+        .expect("Ingest doc2 failed");
+
+        // Search with filter for python doc only
+        let result = timeout(
+            Duration::from_secs(10),
+            handle.search_with_filters(
+                "programming language".to_string(),
+                vec!["python-doc".to_string()],
+            ),
+        )
+        .await
+        .expect("Search timeout")
+        .expect("Search failed");
+
+        // Should only return Python-related content
+        for doc in &result {
+            if let Some(meta) = &doc.metadata {
+                assert!(
+                    meta.contains("python"),
+                    "Filtered results should only contain python docs"
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_delete_document_vectors() {
+        let (handle, _temp_dir) = create_test_rag_actor().await;
+
+        let file_id = "delete-test-doc";
+        let content = "This document will be deleted from the vector database.";
+
+        // Ingest document
+        timeout(
+            Duration::from_secs(30),
+            handle.ingest(content.to_string(), Some(format!("file:{}", file_id))),
+        )
+        .await
+        .expect("Ingest timeout")
+        .expect("Ingest failed");
+
+        // Verify it was ingested
+        let search_before = timeout(
+            Duration::from_secs(10),
+            handle.search_with_filters("deleted vector database".to_string(), vec![]),
+        )
+        .await
+        .expect("Search timeout")
+        .expect("Search failed");
+
+        assert!(
+            !search_before.is_empty(),
+            "Document should be found before deletion"
+        );
+
+        // Delete the document
+        let delete_result = timeout(
+            Duration::from_secs(10),
+            handle.delete_for_file(file_id.to_string()),
+        )
+        .await
+        .expect("Delete timeout");
+
+        assert!(delete_result.is_ok(), "Delete should succeed");
+
+        // Verify it was deleted (search with filter should return empty)
+        let search_after = timeout(
+            Duration::from_secs(10),
+            handle.search_with_filters(
+                "deleted vector database".to_string(),
+                vec![file_id.to_string()],
+            ),
+        )
+        .await
+        .expect("Search timeout")
+        .expect("Search failed");
+
+        assert!(
+            search_after.is_empty(),
+            "Document should not be found after deletion"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_ingest_empty_content() {
+        let (handle, _temp_dir) = create_test_rag_actor().await;
+
+        let result = timeout(
+            Duration::from_secs(10),
+            handle.ingest("".to_string(), None),
+        )
+        .await
+        .expect("Ingest timeout")
+        .expect("Ingest failed");
+
+        // Should handle empty content gracefully
+        assert!(
+            result.contains("No valid chunks") || result.contains("Ingested 0"),
+            "Should handle empty content: {}",
+            result
+        );
+    }
+
+    #[tokio::test]
+    async fn test_ingest_large_document_chunking() {
+        let (handle, _temp_dir) = create_test_rag_actor().await;
+
+        // Create a large document with newlines to trigger chunking
+        // The chunking algorithm splits on '\n' and chunks at ~512 chars
+        let large_content = (0..50)
+            .map(|i| {
+                format!(
+                    "This is paragraph number {} of the comprehensive test document.\n\
+                     It contains extensive information about topic {} which includes various details.\n\
+                     The purpose of this paragraph is to ensure chunking works properly.\n\
+                     Additional context about subject {} is provided here for testing.\n",
+                    i,
+                    i % 10,
+                    i % 5
+                )
+            })
+            .collect::<String>();
+
+        let result = timeout(
+            Duration::from_secs(60),
+            handle.ingest(large_content, Some("file:large-doc".to_string())),
+        )
+        .await
+        .expect("Ingest timeout")
+        .expect("Ingest failed");
+
+        // Should have created chunks
+        assert!(
+            result.contains("Ingested"),
+            "Should successfully ingest large document: {}",
+            result
+        );
+
+        // Extract chunk count - for large docs we expect multiple chunks
+        // But the exact number depends on chunking algorithm, so just verify success
+        info!("Large document ingest result: {}", result);
+    }
+
+    #[tokio::test]
+    async fn test_search_empty_database() {
+        let (handle, _temp_dir) = create_test_rag_actor().await;
+
+        // Search on empty database should return empty results, not error
+        let result = timeout(
+            Duration::from_secs(10),
+            handle.search_with_filters("any query".to_string(), vec![]),
+        )
+        .await
+        .expect("Search timeout")
+        .expect("Search should succeed on empty DB");
+
+        assert!(result.is_empty(), "Empty database should return no results");
+    }
+
+    #[tokio::test]
+    async fn test_semantic_search_quality() {
+        let (handle, _temp_dir) = create_test_rag_actor().await;
+
+        // Ingest documents about different topics
+        let docs = vec![
+            ("file:cooking", "Recipes for delicious pasta dishes. How to cook Italian food. Ingredients include tomatoes and basil."),
+            ("file:programming", "Software development best practices. Code review guidelines. Writing clean and maintainable code."),
+            ("file:gardening", "Growing vegetables in your backyard. Planting tomatoes and herbs. Organic gardening tips."),
+        ];
+
+        for (meta, content) in docs {
+            timeout(
+                Duration::from_secs(30),
+                handle.ingest(content.to_string(), Some(meta.to_string())),
+            )
+            .await
+            .expect("Ingest timeout")
+            .expect("Ingest failed");
+        }
+
+        // Search for programming-related content
+        let result = timeout(
+            Duration::from_secs(10),
+            handle.search_with_filters("software code development".to_string(), vec![]),
+        )
+        .await
+        .expect("Search timeout")
+        .expect("Search failed");
+
+        assert!(!result.is_empty(), "Should find results");
+
+        // The top result should be programming-related
+        let top_result = &result[0];
+        let is_programming_related = top_result.content.to_lowercase().contains("code")
+            || top_result.content.to_lowercase().contains("software")
+            || top_result.content.to_lowercase().contains("development");
+
+        assert!(
+            is_programming_related,
+            "Top result should be programming-related, got: {}",
+            top_result.content
+        );
+    }
+
+    #[tokio::test]
+    async fn test_multiple_ingests_same_file() {
+        let (handle, _temp_dir) = create_test_rag_actor().await;
+
+        let file_id = "multi-ingest-doc";
+
+        // Ingest same file multiple times (simulating updates)
+        for i in 0..3 {
+            let content = format!("Version {} of the document content.", i);
+            timeout(
+                Duration::from_secs(30),
+                handle.ingest(content, Some(format!("file:{}", file_id))),
+            )
+            .await
+            .expect("Ingest timeout")
+            .expect("Ingest failed");
+        }
+
+        // Search should return results (all versions are stored)
+        let result = timeout(
+            Duration::from_secs(10),
+            handle.search_with_filters("Version document".to_string(), vec![file_id.to_string()]),
+        )
+        .await
+        .expect("Search timeout")
+        .expect("Search failed");
+
+        assert!(!result.is_empty(), "Should find ingested documents");
+    }
+}

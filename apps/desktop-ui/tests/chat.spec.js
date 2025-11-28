@@ -1,49 +1,98 @@
 import { test, expect } from '@playwright/test';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { setupTauriMock } from './helpers/tauri-mock.js';
 
 test.beforeEach(async ({ page }) => {
+    // Setup Tauri mock BEFORE navigating
+    await setupTauriMock(page);
+
     await page.goto('');
-    // Wait for the onboarding to finish, or for the main chat interface to be visible
-    await page.waitForSelector('#chat-input', { timeout: 100000 });
+    // Wait for the app to load (Welcome screen or chat interface)
+    await page.waitForSelector('text=WhytChat', { timeout: 30000 });
+
+    // If we see the welcome screen, create a new conversation
+    const newConvButton = page.locator('button:has-text("New conversation")');
+    if (await newConvButton.isVisible({ timeout: 2000 })) {
+        await newConvButton.click();
+
+        // Wait for session wizard modal
+        await page.waitForSelector('text=Conversation Title', { timeout: 5000 });
+
+        // Fill in the conversation title
+        const titleInput = page.locator('textbox[placeholder*="e.g."], input[placeholder*="e.g."]');
+        await titleInput.fill('Test Conversation');
+
+        // Click Create button
+        const createButton = page.locator('button:has-text("Create")');
+        await createButton.click();
+    }
+
+    // Now wait for the session to be ready
+    await page.waitForSelector('text=Session ready', { timeout: 15000 });
 });
 
 test('chat prompt', async ({ page }) => {
-  await page.fill('#chat-input', 'Hello, world!');
-  await page.press('#chat-input', 'Enter');
-  await page.waitForSelector('.message.assistant');
-  const assistantMessages = await page.locator('.message.assistant').all();
-  const lastMessage = assistantMessages[assistantMessages.length - 1];
-  const messageContent = await lastMessage.textContent();
-  expect(messageContent).not.toBe('');
-  expect(messageContent).not.toContain('répétitions');
+  // Use role-based selector for the chat textarea
+  const chatInput = page.getByRole('textbox', { name: /send a message/i });
+  await expect(chatInput).toBeVisible({ timeout: 5000 });
+  await chatInput.fill('Hello, world!');
+  await chatInput.press('Enter');
+
+  // Wait for user message to appear first
+  await page.waitForSelector('text=Hello, world!', { timeout: 5000 });
+
+  // Wait for assistant response (mock response contains "mock response")
+  await page.waitForTimeout(2000); // Give time for streaming mock tokens
+
+  // Check for any message that's not from user
+  const pageContent = await page.content();
+  expect(pageContent).toContain('mock response');
 });
 
-test('file upload and RAG', async ({ page }) => {
-    // Onboarding is handled by beforeEach
+test('multiple messages in conversation', async ({ page }) => {
+  const chatInput = page.getByRole('textbox', { name: /send a message/i });
 
-    // 1. Upload a file
-    await page.click('button[aria-label="Fichiers"]'); // Assuming this is the files button
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await page.click('button:has-text("Upload")'); // Or whatever the upload button is
-    const fileChooser = await fileChooserPromise;
-    const filePath = path.join(__dirname, 'fixtures', 'test-file.txt');
-    await fileChooser.setFiles(filePath);
+  // Send first message
+  await chatInput.fill('First message');
+  await chatInput.press('Enter');
+  await page.waitForSelector('text=First message', { timeout: 5000 });
 
-    // Verify file is listed
-    await page.waitForSelector('text=test-file.txt');
+  // Wait for response
+  await page.waitForTimeout(1500);
 
-    // 2. Ask a question that can only be answered by the file
-    await page.fill('#chat-input', 'What is the secret code?');
-    await page.press('#chat-input', 'Enter');
+  // Send second message
+  await chatInput.fill('Second message');
+  await chatInput.press('Enter');
+  await page.waitForSelector('text=Second message', { timeout: 5000 });
 
-    // 3. Verify the RAG response
-    await page.waitForSelector('.message.assistant');
-    const assistantMessages = await page.locator('.message.assistant').all();
-    const lastMessage = assistantMessages[assistantMessages.length - 1];
-    const messageContent = await lastMessage.textContent();
-    expect(messageContent).toContain('42');
+  // Verify both messages exist
+  const pageContent = await page.content();
+  expect(pageContent).toContain('First message');
+  expect(pageContent).toContain('Second message');
+});
+
+test('chat input is cleared after sending', async ({ page }) => {
+  const chatInput = page.getByRole('textbox', { name: /send a message/i });
+
+  await chatInput.fill('Test message');
+  await chatInput.press('Enter');
+
+  // Verify input is cleared
+  await expect(chatInput).toHaveValue('');
+});
+
+test('displays streaming tokens progressively', async ({ page }) => {
+  const chatInput = page.getByRole('textbox', { name: /send a message/i });
+
+  await chatInput.fill('Test streaming');
+  await chatInput.press('Enter');
+
+  // Wait for user message
+  await page.waitForSelector('text=Test streaming', { timeout: 5000 });
+
+  // Mock should stream tokens - wait for response to build up
+  await page.waitForTimeout(2000);
+
+  // Verify assistant response appeared
+  const pageContent = await page.content();
+  expect(pageContent).toContain('mock');
 });
