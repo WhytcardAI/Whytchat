@@ -10,6 +10,10 @@
     "library": "Library",
     "no_files": "No files in your library yet",
     "upload_first": "Upload your first document",
+    "move_to": "Move to...",
+    "root": "Root",
+    "unfiled": "Unfiled Documents",
+    "empty_folder": "Empty folder",
     "stats": {
       "documents": "Documents",
       "documents_desc": "Indexed in local database",
@@ -269,6 +273,8 @@
     "allPassed": "All tests passed!",
     "someFailures": "{{count}} test(s) failed",
     "summary": "{{passed}}/{{total}} tests passed",
+    "debugTools": "Debug Tools",
+    "simulateCrash": "Simulate Crash",
     "categories": {
       "database": "Database",
       "rag": "RAG (Search)",

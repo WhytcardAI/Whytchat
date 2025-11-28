@@ -20,7 +20,7 @@ import {
   Link,
   Bug,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '../../lib/utils';
 
 // Category icons mapping
 const categoryIcons = {
@@ -369,14 +369,14 @@ export function TestConsole({ onComplete, autoStart = false, className }) {
       <div className="px-4 py-3 bg-gray-800/30 border-t border-gray-700 flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs text-gray-400">
           <Bug size={14} />
-          <span>Debug Tools</span>
+          <span>{t('diagnostics.debugTools', 'Debug Tools')}</span>
         </div>
         <button
           onClick={() => setSimulateCrash(true)}
           className="px-3 py-1.5 bg-destructive/20 text-destructive hover:bg-destructive/30 border border-destructive/30 rounded-lg text-xs font-medium transition-colors flex items-center gap-2"
         >
           <AlertTriangle size={12} />
-          Simulate Crash
+          {t('diagnostics.simulateCrash', 'Simulate Crash')}
         </button>
       </div>
 

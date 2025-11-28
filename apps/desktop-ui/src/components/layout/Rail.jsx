@@ -2,10 +2,16 @@ import { useAppStore } from '../../store/appStore';
 import { LayoutGrid, MessageSquare, Settings, Database } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useTranslation } from 'react-i18next';
+import { logger } from '../../lib/logger';
 
 export function Rail() {
-  const { currentView, setView } = useAppStore();
+  const { currentView, setView, setDiagnosticsOpen } = useAppStore();
   const { t } = useTranslation('common');
+
+  const handleSettingsClick = () => {
+    logger.ui.click('Rail:Settings');
+    setDiagnosticsOpen(true);
+  };
 
   const navItems = [
     {
@@ -55,6 +61,7 @@ export function Rail() {
 
       <div className="mt-auto flex flex-col gap-2 w-full px-2">
         <button
+          onClick={handleSettingsClick}
           className="w-full aspect-square rounded-xl flex items-center justify-center text-muted hover:text-text hover:bg-surface/80 transition-colors"
           title={t('nav.settings', 'Settings')}
         >

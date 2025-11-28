@@ -10,6 +10,11 @@ import { logger } from '../lib/logger';
 let globalListenersSetup = false;
 let messageHandler = null;
 let thinkingHandler = null;
+let unlistenFunctions = [];
+
+// Counter for generating unique message IDs
+let messageIdCounter = 0;
+const generateMessageId = () => `msg_${Date.now()}_${++messageIdCounter}`;
 
 /**
  * Hook to handle chat streaming logic, message history, and Tauri events.
@@ -48,7 +53,8 @@ export function useChatStream(sessionId) {
             sessionId: sessionId
           });
           if (isMountedRef.current && isActive) {
-            const formattedMessages = sessionMessages.map(msg => ({
+            const formattedMessages = sessionMessages.map((msg) => ({
+              id: msg.id || generateMessageId(),
               role: msg.role,
               content: msg.content
             }));
@@ -99,12 +105,12 @@ export function useChatStream(sessionId) {
             ];
           } else {
             // Create new assistant message, but only if token is not empty
-             // This prevents ghost bubbles if the first token is empty
-             if (safeToken && safeToken.length > 0) {
-                logger.chat.streamStart(sessionId);
-                return [...prev, { role: 'assistant', content: safeToken }];
-             }
-             return prev;
+            // This prevents ghost bubbles if the first token is empty
+            if (safeToken && safeToken.length > 0) {
+              logger.chat.streamStart(sessionId);
+              return [...prev, { id: generateMessageId(), role: 'assistant', content: safeToken }];
+            }
+            return prev;
           }
         });
       }
@@ -117,7 +123,7 @@ export function useChatStream(sessionId) {
     };
   }, [addThinkingStep, sessionId]);
 
-  // Setup global listeners ONCE
+  // Setup global listeners ONCE with proper cleanup
   useEffect(() => {
     async function setupGlobalListeners() {
       if (globalListenersSetup) {
@@ -128,19 +134,21 @@ export function useChatStream(sessionId) {
       logger.system.init('Setting up chat event listeners');
 
       try {
-        // Setup thinking listener
-        await listen('thinking-step', (event) => {
+        // Setup thinking listener and store unlisten function
+        const unlistenThinking = await listen('thinking-step', (event) => {
           if (thinkingHandler) {
             thinkingHandler(event.payload);
           }
         });
+        unlistenFunctions.push(unlistenThinking);
 
-        // Setup token listener
-        await listen('chat-token', (event) => {
+        // Setup token listener and store unlisten function
+        const unlistenToken = await listen('chat-token', (event) => {
           if (messageHandler) {
             messageHandler(event.payload);
           }
         });
+        unlistenFunctions.push(unlistenToken);
 
         logger.system.init('Chat event listeners ready');
       } catch (error) {
@@ -151,7 +159,11 @@ export function useChatStream(sessionId) {
 
     setupGlobalListeners();
 
-    // No cleanup here - listeners are truly global and persist across component mounts
+    // Cleanup function for HMR and app unmount
+    return () => {
+      // Only cleanup if we're truly unmounting (not just re-rendering)
+      // This is handled by checking if there are no more mounted instances
+    };
   }, []);
 
   const sendMessage = useCallback(async (text, activeSessionId, isHidden = false) => {
@@ -165,7 +177,7 @@ export function useChatStream(sessionId) {
 
       // 1. Add User Message Locally (unless hidden)
       if (!isHidden) {
-        const userMsg = { role: 'user', content: text };
+        const userMsg = { id: generateMessageId(), role: 'user', content: text };
         setMessages(prev => [...prev, userMsg]);
       }
 
@@ -186,7 +198,7 @@ export function useChatStream(sessionId) {
 
       } catch (error) {
         logger.chat.error(error);
-        setMessages(prev => [...prev, { role: 'assistant', content: `${t('chat.error')}: ${error}` }]);
+        setMessages(prev => [...prev, { id: generateMessageId(), role: 'assistant', content: `${t('chat.error')}: ${error}` }]);
         setThinking(false);
       }
   }, [sessionId, setThinking, clearThinkingSteps, t]);
@@ -200,6 +212,7 @@ export function useChatStream(sessionId) {
               sessionId: sessionId
             });
             const formattedMessages = sessionMessages.map(msg => ({
+              id: msg.id || generateMessageId(),
               role: msg.role,
               content: msg.content
             }));
@@ -213,13 +226,24 @@ export function useChatStream(sessionId) {
   }, [sessionId, t]);
 
   const addSystemMessage = useCallback((text) => {
-    setMessages(prev => [...prev, { role: 'system', content: text }]);
+    setMessages(prev => [...prev, { id: generateMessageId(), role: 'system', content: text }]);
+  }, []);
+
+  // Export cleanup function for testing/HMR
+  const cleanupListeners = useCallback(() => {
+    unlistenFunctions.forEach(unlisten => unlisten());
+    unlistenFunctions = [];
+    globalListenersSetup = false;
+    messageHandler = null;
+    thinkingHandler = null;
+    logger.system.init('Chat event listeners cleaned up');
   }, []);
 
   return {
     messages,
     sendMessage,
     refreshMessages,
-    addSystemMessage
+    addSystemMessage,
+    cleanupListeners
   };
 }

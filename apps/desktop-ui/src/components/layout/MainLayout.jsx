@@ -30,7 +30,6 @@ export function MainLayout({ children }) {
     isBackendInitialized,
     isBackendInitializing,
     initializationError,
-    initializeApp,
     sessions,
     currentSessionId,
     setCurrentSessionId,
@@ -51,9 +50,10 @@ export function MainLayout({ children }) {
   const [expandedFolders, setExpandedFolders] = useState({});
 
   useEffect(() => {
-    initializeApp();
+    // initializeApp is called in App.jsx during preflight
+    // Only load folders here
     loadFolders();
-  }, [initializeApp, loadFolders]);
+  }, [loadFolders]);
 
   const handleNewChat = useCallback(() => {
     setIsCreatingSession(true);

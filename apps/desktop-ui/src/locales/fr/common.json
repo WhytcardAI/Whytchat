@@ -1,4 +1,33 @@
 {
+  "knowledge": {
+    "title": "Base de Connaissances",
+    "subtitle": "Gérez vos documents et sources de données",
+    "new_folder": "Nouveau dossier",
+    "reindex": "Réindexer",
+    "reindexing": "Réindexation...",
+    "reindex_tooltip": "Retraiter tous les fichiers pour mettre à jour l'index de recherche",
+    "reindex_confirm": "Ceci va retraiter tous les fichiers de votre bibliothèque. Cela peut prendre du temps. Continuer ?",
+    "library": "Bibliothèque",
+    "no_files": "Aucun fichier dans votre bibliothèque",
+    "upload_first": "Téléversez votre premier document",
+    "move_to": "Déplacer vers...",
+    "root": "Racine",
+    "unfiled": "Documents non classés",
+    "empty_folder": "Dossier vide",
+    "stats": {
+      "documents": "Documents",
+      "documents_desc": "Indexés dans la base locale",
+      "storage": "Stockage local",
+      "storage_desc": "Taille totale sur le disque",
+      "rag": "Moteur RAG",
+      "rag_desc": "Base vectorielle active"
+    }
+  },
+  "data": {
+    "import": "Importer des données",
+    "delete_confirm": "Êtes-vous sûr de vouloir supprimer ce fichier ?",
+    "select_session_first": "Veuillez sélectionner ou créer une session pour téléverser des fichiers."
+  },
   "app": {
     "title": "Interface WhytChat V1.0.0 Chargée",
     "status": {
@@ -243,6 +272,8 @@
     "allPassed": "Tous les tests sont passés !",
     "someFailures": "{{count}} test(s) échoué(s)",
     "summary": "{{passed}}/{{total}} tests réussis",
+    "debugTools": "Outils de débogage",
+    "simulateCrash": "Simuler un crash",
     "categories": {
       "database": "Base de Données",
       "rag": "RAG (Recherche)",

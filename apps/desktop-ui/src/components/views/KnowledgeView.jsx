@@ -270,13 +270,13 @@ export function KnowledgeView() {
                 </button>
                 <div className="absolute right-0 top-full mt-1 w-48 bg-surface border border-border rounded-lg shadow-lg z-50 hidden group-hover/menu:block">
                     <div className="p-1">
-                        <div className="text-xs font-medium text-muted px-2 py-1">Move to...</div>
+                        <div className="text-xs font-medium text-muted px-2 py-1">{t('knowledge.move_to', 'Move to...')}</div>
                         <button
                             onClick={() => moveFileToFolder(file.id, null).then(loadLibraryFiles)}
                             className="w-full text-left px-2 py-1.5 text-sm hover:bg-primary/10 hover:text-primary rounded-md flex items-center gap-2"
                         >
                             <Database size={12} />
-                            Root
+                            {t('knowledge.root', 'Root')}
                         </button>
                         {documentFolders.map(folder => (
                             <button

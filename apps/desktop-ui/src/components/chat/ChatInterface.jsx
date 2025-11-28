@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback, useMemo } from 'react';
 import { MessageBubble } from './MessageBubble';
-// import { ThinkingBubble } from './ThinkingBubble';
+import { ThinkingBubble } from './ThinkingBubble';
 import { ChatInput } from './ChatInput';
 import { MessageSquare } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
@@ -12,7 +12,7 @@ import { logger } from '../../lib/logger';
 
 export function ChatInterface() {
   const { t } = useTranslation();
-  const { isThinking, currentSessionId, setCurrentSessionId, loadSessions, createSession, quickAction, clearQuickAction, setIsCreatingSession } = useAppStore();
+  const { isThinking, thinkingSteps, currentSessionId, setCurrentSessionId, loadSessions, createSession, quickAction, clearQuickAction, setIsCreatingSession } = useAppStore();
 
   const { messages, sendMessage, addSystemMessage } = useChatStream(currentSessionId);
 
@@ -31,14 +31,13 @@ export function ChatInterface() {
   // Load sessions on mount
   useEffect(() => {
     loadSessions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  }, [loadSessions]);
 
-  // Handle Quick Actions (RAG)
+  // Handle Quick Actions (RAG) - ChatInterface is the ONLY handler for sending messages
   useEffect(() => {
     // Guard conditions to prevent multiple executions
     if (!quickAction) return;
-    if (!currentSessionId) return; // Wait for session to be set (Dashboard handles session creation)
+    if (!currentSessionId) return; // Wait for session (Dashboard creates it if needed)
     if (processingQuickActionRef.current) return;
 
     // Check if we already processed this exact action (by comparing prompt)
@@ -105,8 +104,8 @@ export function ChatInterface() {
   }, [currentSessionId, createSession, setCurrentSessionId, sendMessage, t]);
 
   const renderedMessages = useMemo(() => {
-    return messages.map((msg, idx) => (
-      <MessageBubble key={idx} role={msg.role} content={msg.content} sessionId={currentSessionId} />
+    return messages.map((msg) => (
+      <MessageBubble key={msg.id} role={msg.role} content={msg.content} sessionId={currentSessionId} />
     ));
   }, [messages, currentSessionId]);
 
@@ -148,9 +147,9 @@ export function ChatInterface() {
         {renderedMessages}
 
         {/* Thinking Bubble - Shows during generation or if steps exist */}
-        {/* {(isThinking || thinkingSteps.length > 0) && (
+        {(isThinking || thinkingSteps.length > 0) && (
           <ThinkingBubble steps={thinkingSteps} isThinking={isThinking} />
-        )} */}
+        )}
 
         <div ref={messagesEndRef} />
       </div>

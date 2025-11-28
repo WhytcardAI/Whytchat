@@ -8,17 +8,17 @@ import { logger } from '../../lib/logger';
 
 export function Dashboard({ onNewChat }) {
   const { t } = useTranslation('common');
-  const { createSession, uploadFile, setCurrentSessionId, setQuickAction, quickAction, clearQuickAction } = useAppStore();
+  const { createSession, uploadFile, setCurrentSessionId, setQuickAction, quickAction, clearQuickAction, currentSessionId } = useAppStore();
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [isCreating, setIsCreating] = useState(false);
   const fileInputRef = useRef(null);
   const handledQuickActionRef = useRef(null); // Track which quickAction we've handled
 
   // Handle quickAction from KnowledgeView when no session exists
-  // This effect creates a new session and keeps the quickAction for ChatInterface
+  // Dashboard is responsible for creating the session, ChatInterface handles sending the message
   useEffect(() => {
-    // Guard: Skip if no action, already creating, or already handled this exact action
-    if (!quickAction || isCreating) {
+    // Guard: Skip if no action, already creating, or session already exists
+    if (!quickAction || isCreating || currentSessionId) {
       return;
     }
 
@@ -32,7 +32,7 @@ export function Dashboard({ onNewChat }) {
     // Mark this action as being handled
     handledQuickActionRef.current = actionId;
 
-    logger.chat.quickAction('Dashboard detected quickAction, creating session', quickAction);
+    logger.info('DASHBOARD', 'Creating session for quickAction', { type: quickAction.type });
 
     const createSessionForQuickAction = async () => {
       setIsCreating(true);
@@ -42,7 +42,7 @@ export function Dashboard({ onNewChat }) {
 
       try {
         const title = actionData.payload
-          ? `Analysis: ${actionData.payload}`
+          ? t('dashboard.analysis_title', 'Analysis: {{name}}', { name: actionData.payload })
           : t('chat.new_chat', 'New Chat');
 
         logger.session.create(title);
@@ -50,8 +50,7 @@ export function Dashboard({ onNewChat }) {
 
         if (sessionId) {
           logger.session.createSuccess(sessionId);
-          // DON'T re-set quickAction here - it's already in the store
-          // Just switch to the new session, ChatInterface will pick up the quickAction
+          // DON'T clear quickAction - ChatInterface will pick it up and send the message
           setCurrentSessionId(sessionId);
         } else {
           // Session creation failed silently
@@ -69,7 +68,7 @@ export function Dashboard({ onNewChat }) {
     };
 
     createSessionForQuickAction();
-  }, [quickAction, isCreating, createSession, setCurrentSessionId, clearQuickAction, t]);
+  }, [quickAction, isCreating, currentSessionId, createSession, setCurrentSessionId, clearQuickAction, t]);
 
   const handleFileSelect = (e) => {
     const files = Array.from(e.target.files || []);

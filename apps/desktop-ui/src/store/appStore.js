@@ -97,7 +97,7 @@ export const useAppStore = create(
 
     loadSessionFiles: function(sessionId) {
       return new Promise(function(resolve, reject) {
-        invoke('get_session_files', { session_id: sessionId, sessionId: sessionId }).then(function(files) {
+        invoke('get_session_files', { sessionId: sessionId }).then(function(files) {
           logger.store.action('loadSessionFiles', { sessionId, count: files.length });
           set({ sessionFiles: files });
           resolve(files);
@@ -133,11 +133,8 @@ export const useAppStore = create(
             const fileData = Array.from(content);
 
             await invoke('upload_file_for_session', {
-              session_id: sessionId,
               sessionId: sessionId,
-              file_name: file.name,
               fileName: file.name,
-              file_data: fileData,
               fileData: fileData
             });
 
@@ -162,7 +159,7 @@ export const useAppStore = create(
     deleteFile: function(fileId) {
       logger.file.delete(fileId);
       return new Promise(function(resolve, reject) {
-        invoke('delete_file', { file_id: fileId, fileId: fileId }).then(function() {
+        invoke('delete_file', { fileId: fileId }).then(function() {
           set(function(state) {
             return { libraryFiles: state.libraryFiles.filter(function(f) { return f.id !== fileId; }) };
           });
@@ -201,7 +198,6 @@ export const useAppStore = create(
         invoke('create_session', {
           title: title,
           language: language,
-          system_prompt: systemPrompt,
           systemPrompt: systemPrompt,
           temperature: temperature
         }).then(function(sessionId) {
@@ -223,10 +219,8 @@ export const useAppStore = create(
       logger.store.action('updateSession', { sessionId, title });
       return new Promise(function(resolve, reject) {
         invoke('update_session', {
-          session_id: sessionId,
           sessionId: sessionId,
           title: title,
-          model_config: modelConfig,
           modelConfig: modelConfig
         }).then(function() {
           // Reload sessions to get updated data
@@ -242,8 +236,7 @@ export const useAppStore = create(
     // Toggle favorite status
     toggleFavorite: function(sessionId) {
       return new Promise(function(resolve, reject) {
-        // Send both snake_case and camelCase to satisfy Tauri bindings
-        invoke('toggle_session_favorite', { session_id: sessionId, sessionId: sessionId }).then(function(isFavorite) {
+        invoke('toggle_session_favorite', { sessionId: sessionId }).then(function(isFavorite) {
           logger.session.favorite(sessionId, isFavorite);
           // Update local state
           set(function(state) {
@@ -275,8 +268,7 @@ export const useAppStore = create(
       }
 
       return new Promise(function(resolve, reject) {
-        // Try both snake_case and camelCase to be safe with Tauri 2.0 bindings
-        invoke('delete_session', { sessionId: sessionId, session_id: sessionId }).then(function() {
+        invoke('delete_session', { sessionId: sessionId }).then(function() {
           set(function(state) {
             // Remove from sessions list
             var newSessions = state.sessions.filter(function(s) { return s.id !== sessionId; });
@@ -317,7 +309,7 @@ export const useAppStore = create(
     createFolder: function(name, color, folderType) {
       logger.store.action('createFolder', { name, folderType });
       return new Promise(function(resolve, reject) {
-        invoke('create_folder', { name: name, color: color, folder_type: folderType, folderType: folderType }).then(function(folder) {
+        invoke('create_folder', { name: name, color: color, folderType: folderType }).then(function(folder) {
           set(function(state) {
             return { folders: state.folders.concat([folder]) };
           });
@@ -333,8 +325,7 @@ export const useAppStore = create(
     deleteFolder: function(folderId) {
       logger.store.action('deleteFolder', { folderId });
       return new Promise(function(resolve, reject) {
-        // Send both snake_case and camelCase to satisfy Tauri bindings
-        invoke('delete_folder', { folder_id: folderId, folderId: folderId }).then(function() {
+        invoke('delete_folder', { folderId: folderId }).then(function() {
           set(function(state) {
             return { folders: state.folders.filter(function(f) { return f.id !== folderId; }) };
           });
@@ -353,11 +344,8 @@ export const useAppStore = create(
     moveSessionToFolder: function(sessionId, folderId) {
       logger.session.moveToFolder(sessionId, folderId);
       return new Promise(function(resolve, reject) {
-        // Send both snake_case and camelCase to satisfy Tauri bindings
         invoke('move_session_to_folder', {
-          session_id: sessionId,
           sessionId: sessionId,
-          folder_id: folderId,
           folderId: folderId
         }).then(function() {
           // Update local state
@@ -381,9 +369,7 @@ export const useAppStore = create(
       logger.store.action('moveFileToFolder', { fileId, folderId });
       return new Promise(function(resolve, reject) {
         invoke('move_file_to_folder', {
-          file_id: fileId,
           fileId: fileId,
-          folder_id: folderId,
           folderId: folderId
         }).then(function() {
           // Update local state
