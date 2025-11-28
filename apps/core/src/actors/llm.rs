@@ -521,14 +521,10 @@ impl LlmActorRunner {
                     "<|im_start|>system\n{system}<|im_end|>\n<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n"
                 )
             } else {
-                format!(
-                    "<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n"
-                )
+                format!("<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n")
             }
         } else {
-            format!(
-                "<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n"
-            )
+            format!("<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n")
         };
 
         let mut payload = serde_json::json!({
