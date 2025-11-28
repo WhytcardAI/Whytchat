@@ -176,7 +176,9 @@ jobs:
 
       - name: Install dependencies (macOS)
         if: matrix.platform == 'macos'
-        run: brew install protobuf
+        run: |
+          brew install protobuf
+          echo "PROTOC=$(which protoc)" >> $GITHUB_ENV
 
       - name: Install dependencies (Windows)
         if: matrix.platform == 'windows'
