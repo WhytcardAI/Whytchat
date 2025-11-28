@@ -1,0 +1,1695 @@
+﻿{
+    "backend":  {
+                    "files":  [
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  54,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  30
+                                                           },
+                                      "impls":  1,
+                                      "path":  "apps\\core\\src\\database.rs",
+                                      "enums":  0,
+                                      "structs":  2,
+                                      "functions":  52,
+                                      "tests":  28,
+                                      "lines":  1260,
+                                      "imports":  [
+                                                      "crate::encryption",
+                                                      "crate::fs_manager::PortablePathManager",
+                                                      "crate::models::{Folder, LibraryFile, Message, ModelConfig, Session, SessionFile}",
+                                                      "chrono::Utc",
+                                                      "serde::{Deserialize, Serialize}",
+                                                      "sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions}",
+                                                      "sqlx::types::Json",
+                                                      "std::str::FromStr",
+                                                      "tracing::info",
+                                                      "uuid::Uuid",
+                                                      "super::*",
+                                                      "sqlx::sqlite::SqlitePoolOptions",
+                                                      "tempfile::TempDir"
+                                                  ],
+                                      "modules":  [
+                                                      "tests"
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  0
+                                                           },
+                                      "impls":  1,
+                                      "path":  "apps\\core\\src\\diagnostics.rs",
+                                      "enums":  0,
+                                      "structs":  3,
+                                      "functions":  34,
+                                      "tests":  0,
+                                      "lines":  1803,
+                                      "imports":  [
+                                                      "crate::brain::BrainAnalyzer",
+                                                      "crate::database",
+                                                      "crate::fs_manager::PortablePathManager",
+                                                      "crate::models::ModelConfig",
+                                                      "futures::StreamExt",
+                                                      "serde::{Deserialize, Serialize}",
+                                                      "std::time::{Duration, Instant}",
+                                                      "tracing::{error, info}",
+                                                      "fastembed::{EmbeddingModel, InitOptions, TextEmbedding}",
+                                                      "crate::actors::rag::RagActorHandle",
+                                                      "crate::actors::traits::RagActor",
+                                                      "crate::actors::rag::RagActorHandle",
+                                                      "crate::actors::traits::RagActor",
+                                                      "crate::brain::Intent",
+                                                      "crate::brain::Intent",
+                                                      "crate::brain::Intent",
+                                                      "crate::actors::llm::LlmActorHandle",
+                                                      "crate::actors::traits::LlmActor",
+                                                      "crate::actors::rag::RagActorHandle",
+                                                      "crate::actors::traits::RagActor",
+                                                      "crate::actors::rag::RagActorHandle",
+                                                      "crate::actors::traits::RagActor",
+                                                      "crate::actors::llm::LlmActorHandle",
+                                                      "crate::actors::traits::LlmActor"
+                                                  ],
+                                      "modules":  [
+
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  2
+                                                           },
+                                      "impls":  0,
+                                      "path":  "apps\\core\\src\\encryption.rs",
+                                      "enums":  0,
+                                      "structs":  0,
+                                      "functions":  6,
+                                      "tests":  1,
+                                      "lines":  196,
+                                      "imports":  [
+                                                      "aes_gcm::{\r\n    aead::{Aead, KeyInit},\r\n    Aes256Gcm, Key, Nonce,\r\n}",
+                                                      "base64::{engine::general_purpose, Engine as _}",
+                                                      "rand::Rng",
+                                                      "std::env",
+                                                      "std::fs",
+                                                      "std::path::PathBuf",
+                                                      "std::sync::OnceLock",
+                                                      "crate::fs_manager::PortablePathManager",
+                                                      "std::os::unix::fs::PermissionsExt",
+                                                      "super::*"
+                                                  ],
+                                      "modules":  [
+                                                      "tests"
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  0
+                                                           },
+                                      "impls":  12,
+                                      "path":  "apps\\core\\src\\error.rs",
+                                      "enums":  1,
+                                      "structs":  0,
+                                      "functions":  12,
+                                      "tests":  0,
+                                      "lines":  120,
+                                      "imports":  [
+                                                      "std::io",
+                                                      "thiserror::Error"
+                                                  ],
+                                      "modules":  [
+
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  2
+                                                           },
+                                      "impls":  1,
+                                      "path":  "apps\\core\\src\\fs_manager.rs",
+                                      "enums":  0,
+                                      "structs":  2,
+                                      "functions":  11,
+                                      "tests":  0,
+                                      "lines":  182,
+                                      "imports":  [
+                                                      "std::fs",
+                                                      "std::path::PathBuf",
+                                                      "std::sync::OnceLock",
+                                                      "tracing::info",
+                                                      "workspace root\r\n    #[cfg(not(debug_assertions))]\r\n    fn exe_dir() -\u003e Option\u003cPathBuf\u003e {\r\n        std::env::current_exe()\r\n            .ok()\r\n            .and_then(|p| p.parent().map(|p| p.to_path_buf()))\r\n    }\r\n\r\n    /// Retrieves the application\u0027s root directory.\r\n    ///\r\n    /// Priority order in Release mode:\r\n    /// 1. Custom path set via `set_custom_path()` (user choice during onboarding)\r\n    /// 2. ALWAYS use the executable directory (Portable/Self-contained mode)\r\n    ///\r\n    /// # Returns\r\n    ///\r\n    /// A `PathBuf` to the calculated root directory.\r\n    pub fn root_dir() -\u003e PathBuf {\r\n        // Check for custom path first (highest priority)\r\n        if let Some(custom) = CUSTOM_DATA_PATH.get() {\r\n            return custom.clone()",
+                                                      "tracing::error",
+                                                      "the executable directory.\r\n            // This ensures all data (models, db, vectors) stays within the installation folder.\r\n            // NOTE: If installed to Program Files, the app must be run as Admin to write data.\r\n            if let Some(exe_dir) = Self::exe_dir() {\r\n                info!(\"Using Installation Directory as Root: {:?}\", exe_dir)"
+                                                  ],
+                                      "modules":  [
+
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  2
+                                                           },
+                                      "impls":  1,
+                                      "path":  "apps\\core\\src\\main.rs",
+                                      "enums":  0,
+                                      "structs":  3,
+                                      "functions":  35,
+                                      "tests":  0,
+                                      "lines":  1532,
+                                      "imports":  [
+                                                      "actors::supervisor::SupervisorHandle",
+                                                      "fs_manager::PortablePathManager",
+                                                      "rate_limiter::RateLimiter",
+                                                      "std::sync::{\r\n    atomic::{AtomicBool, Ordering},\r\n    Arc, Mutex,\r\n}",
+                                                      "futures::StreamExt",
+                                                      "std::fs::File",
+                                                      "std::time::Duration",
+                                                      "tauri::{Emitter, RunEvent, State, WindowEvent}",
+                                                      "tokio::io::AsyncWriteExt",
+                                                      "tracing::{error, info, subscriber::set_global_default, warn}",
+                                                      "tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer}",
+                                                      "tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry}",
+                                                      "zip::ZipArchive",
+                                                      "provided one\r\n    let final_system_prompt = if let Some(prompt) = system_prompt {\r\n        prompt\r\n    } else {\r\n        match language.as_deref() {\r\n            Some(\"fr\") =\u003e \"Tu es un assistant IA utile et amical. Réponds toujours en français de manière claire et concise.\".to_string(),\r\n            _ =\u003e \"You are a helpful and friendly AI assistant. Always respond clearly and concisely.\".to_string(),\r\n        }\r\n    }",
+                                                      "content-length from response headers if available\r\n            range_res.content_length().unwrap_or(0)\r\n        }\r\n    } else {\r\n        total_size\r\n    }",
+                                                      "std::io::Read",
+                                                      "fastembed::{EmbeddingModel, InitOptions, TextEmbedding}"
+                                                  ],
+                                      "modules":  [
+                                                      "actors",
+                                                      "brain",
+                                                      "database",
+                                                      "diagnostics",
+                                                      "error",
+                                                      "fs_manager",
+                                                      "models",
+                                                      "preflight",
+                                                      "rate_limiter",
+                                                      "text_extract",
+                                                      "encryption"
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  8
+                                                           },
+                                      "impls":  1,
+                                      "path":  "apps\\core\\src\\models.rs",
+                                      "enums":  0,
+                                      "structs":  6,
+                                      "functions":  22,
+                                      "tests":  19,
+                                      "lines":  432,
+                                      "imports":  [
+                                                      "serde::{Deserialize, Serialize}",
+                                                      "sqlx::types::Json",
+                                                      "sqlx::FromRow",
+                                                      "validator::Validate",
+                                                      "super::*",
+                                                      "validator::Validate"
+                                                  ],
+                                      "modules":  [
+                                                      "tests"
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  0
+                                                           },
+                                      "impls":  1,
+                                      "path":  "apps\\core\\src\\preflight.rs",
+                                      "enums":  0,
+                                      "structs":  2,
+                                      "functions":  13,
+                                      "tests":  0,
+                                      "lines":  614,
+                                      "imports":  [
+                                                      "crate::fs_manager::PortablePathManager",
+                                                      "serde::{Deserialize, Serialize}",
+                                                      "std::time::Duration",
+                                                      "tracing::{info, warn}",
+                                                      "fastembed::{EmbeddingModel, InitOptions, TextEmbedding}"
+                                                  ],
+                                      "modules":  [
+
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  0
+                                                           },
+                                      "impls":  1,
+                                      "path":  "apps\\core\\src\\rate_limiter.rs",
+                                      "enums":  0,
+                                      "structs":  1,
+                                      "functions":  4,
+                                      "tests":  2,
+                                      "lines":  88,
+                                      "imports":  [
+                                                      "std::collections::HashMap",
+                                                      "std::time::{Duration, Instant}",
+                                                      "super::*",
+                                                      "std::thread"
+                                                  ],
+                                      "modules":  [
+                                                      "tests"
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  6,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  0
+                                                           },
+                                      "impls":  0,
+                                      "path":  "apps\\core\\src\\text_extract.rs",
+                                      "enums":  0,
+                                      "structs":  0,
+                                      "functions":  12,
+                                      "tests":  8,
+                                      "lines":  192,
+                                      "imports":  [
+                                                      "tracing::{info, warn}",
+                                                      "super::*"
+                                                  ],
+                                      "modules":  [
+                                                      "tests"
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  2
+                                                           },
+                                      "impls":  4,
+                                      "path":  "apps\\core\\src\\actors\\llm.rs",
+                                      "enums":  0,
+                                      "structs":  3,
+                                      "functions":  15,
+                                      "tests":  0,
+                                      "lines":  605,
+                                      "imports":  [
+                                                      "crate::actors::messages::{ActorError, AppError, LlmMessage}",
+                                                      "crate::actors::traits::LlmActor",
+                                                      "crate::fs_manager::PortablePathManager",
+                                                      "async_trait::async_trait",
+                                                      "futures::StreamExt",
+                                                      "reqwest::header::{HeaderMap, AUTHORIZATION}",
+                                                      "reqwest::Client",
+                                                      "std::env",
+                                                      "std::process::Stdio",
+                                                      "std::time::{Duration, Instant}",
+                                                      "tokio::process::Command",
+                                                      "tokio::sync::{mpsc, oneshot}",
+                                                      "tokio::time::timeout",
+                                                      "tracing::{error, info, warn}",
+                                                      "uuid::Uuid",
+                                                      "in Drop\n    /// Uses platform-specific process killing for reliability\n    fn stop_server_sync(\u0026mut self) {\n        if let Some(child) = self.child.take() {\n            let pid = match child.id() {\n                Some(pid) =\u003e pid,\n                None =\u003e {\n                    info!(\"llama-server process already exited\")",
+                                                      "taskkill for reliable process termination\n                let _ = std::process::Command::new(\"taskkill\")\n                    .args([\"/F\", \"/PID\", \u0026pid.to_string()])\n                    .output()",
+                                                      "SIGKILL for immediate termination\n                let _ = std::process::Command::new(\"kill\")\n                    .args([\"-9\", \u0026pid.to_string()])\n                    .output()",
+                                                      "0.7 as default\n        let temp = temperature.unwrap_or(0.7)",
+                                                      "0.7 as default\n        let temp = temperature.unwrap_or(0.7)"
+                                                  ],
+                                      "modules":  [
+
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  0
+                                                           },
+                                      "impls":  1,
+                                      "path":  "apps\\core\\src\\actors\\messages.rs",
+                                      "enums":  4,
+                                      "structs":  1,
+                                      "functions":  1,
+                                      "tests":  0,
+                                      "lines":  139,
+                                      "imports":  [
+                                                      "serde::Serialize",
+                                                      "tauri::Window",
+                                                      "tokio::sync::oneshot",
+                                                      "crate::error::AppError"
+                                                  ],
+                                      "modules":  [
+
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  0
+                                                           },
+                                      "impls":  0,
+                                      "path":  "apps\\core\\src\\actors\\mod.rs",
+                                      "enums":  0,
+                                      "structs":  0,
+                                      "functions":  0,
+                                      "tests":  0,
+                                      "lines":  6,
+                                      "imports":  [
+
+                                                  ],
+                                      "modules":  [
+                                                      "llm",
+                                                      "messages",
+                                                      "rag",
+                                                      "supervisor",
+                                                      "traits"
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  1,
+                                                               "todos":  0,
+                                                               "unwraps":  3,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  32
+                                                           },
+                                      "impls":  3,
+                                      "path":  "apps\\core\\src\\actors\\rag.rs",
+                                      "enums":  0,
+                                      "structs":  4,
+                                      "functions":  24,
+                                      "tests":  10,
+                                      "lines":  966,
+                                      "imports":  [
+                                                      "crate::actors::messages::{ActorError, AppError, RagMessage, SearchResult}",
+                                                      "crate::actors::traits::RagActor",
+                                                      "crate::fs_manager::PortablePathManager",
+                                                      "arrow::array::{\n    Array, FixedSizeListBuilder, Float32Array, Float32Builder, RecordBatch, RecordBatchIterator,\n    StringArray, StringBuilder,\n}",
+                                                      "arrow::datatypes::{DataType, Field, Schema}",
+                                                      "async_trait::async_trait",
+                                                      "fastembed::{EmbeddingModel, InitOptions, TextEmbedding}",
+                                                      "futures::TryStreamExt",
+                                                      "lancedb::{\n    connect,\n    query::{ExecutableQuery, QueryBase},\n    Connection,\n}",
+                                                      "lru::LruCache",
+                                                      "sqlx::sqlite::SqlitePool",
+                                                      "std::num::NonZeroUsize",
+                                                      "std::path::PathBuf",
+                                                      "std::sync::Arc",
+                                                      "tokio::sync::{mpsc, oneshot}",
+                                                      "tracing::{error, info, warn}",
+                                                      "new_unchecked because Option::expect is not const-stable in Rust 1.80.0 (requires 1.83.0)\n    const CACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(1000) }",
+                                                      "super::*",
+                                                      "tempfile::TempDir",
+                                                      "tokio::time::{timeout, Duration}"
+                                                  ],
+                                      "modules":  [
+                                                      "tests"
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  11,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  5
+                                                           },
+                                      "impls":  2,
+                                      "path":  "apps\\core\\src\\actors\\supervisor.rs",
+                                      "enums":  0,
+                                      "structs":  2,
+                                      "functions":  29,
+                                      "tests":  14,
+                                      "lines":  849,
+                                      "imports":  [
+                                                      "crate::actors::llm::LlmActorHandle",
+                                                      "crate::actors::messages::{AppError, SupervisorMessage}",
+                                                      "crate::actors::rag::RagActorHandle",
+                                                      "crate::actors::traits::{LlmActor, RagActor}",
+                                                      "crate::brain::BrainAnalyzer",
+                                                      "crate::database",
+                                                      "crate::fs_manager::PortablePathManager",
+                                                      "sqlx::sqlite::SqlitePool",
+                                                      "std::sync::Arc",
+                                                      "tauri::{Emitter, Window}",
+                                                      "tokio::sync::{mpsc, oneshot}",
+                                                      "tokio::time::{timeout, Duration}",
+                                                      "tracing::{error, info, instrument, warn}",
+                                                      "a very long timeout because the LLM generation can take time,\n        // but the connection is kept alive via streaming events.\n        // The responder returns the final full response string.\n        timeout(Duration::from_secs(3600), recv)\n            .await?\n            .map_err(|e| {\n                AppError::Actor(crate::actors::messages::ActorError::Internal(e.to_string()))\n            })?\n    }\n\n    /// Ingests content into the knowledge base.\n    ///\n    /// This method delegates the request to the `RagActor`.\n    ///\n    /// # Arguments\n    ///\n    /// * `content` - The text content to ingest.\n    /// * `metadata` - Optional JSON string metadata to associate with the content.\n    ///\n    /// # Returns\n    ///\n    /// A `Result` containing a confirmation message on success.\n    #[instrument(skip(self))]\n    pub async fn ingest_content(\n        \u0026self,\n        content: String,\n        metadata: Option\u003cString\u003e,\n    ) -\u003e Result\u003cString, AppError\u003e {\n        let (send, recv) = oneshot::channel()",
+                                                      "super::*",
+                                                      "crate::actors::messages::SearchResult",
+                                                      "crate::actors::traits::mocks::{MockLlmActor, MockRagActor}",
+                                                      "crate::database",
+                                                      "crate::models::ModelConfig",
+                                                      "sqlx::sqlite::SqlitePoolOptions",
+                                                      "std::sync::Arc",
+                                                      "tempfile::TempDir",
+                                                      "RAG\n        let result = supervisor\n            .process_message(\n                session.id.clone(),\n                \"Explain the difference between microservices and monolith architecture in terms of database transactions\".to_string(),\n                None,\n            )\n            .await",
+                                                      "DB is not initialized\n        assert!(result.is_err())"
+                                                  ],
+                                      "modules":  [
+                                                      "tests"
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  2,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  0
+                                                           },
+                                      "impls":  5,
+                                      "path":  "apps\\core\\src\\actors\\traits.rs",
+                                      "enums":  0,
+                                      "structs":  2,
+                                      "functions":  24,
+                                      "tests":  6,
+                                      "lines":  323,
+                                      "imports":  [
+                                                      "crate::actors::messages::{AppError, SearchResult}",
+                                                      "async_trait::async_trait",
+                                                      "tokio::sync::mpsc",
+                                                      "super::*",
+                                                      "std::sync::atomic::{AtomicUsize, Ordering}",
+                                                      "std::sync::Arc",
+                                                      "tokio::sync::Mutex",
+                                                      "super::mocks::*",
+                                                      "super::*"
+                                                  ],
+                                      "modules":  [
+                                                      "mocks",
+                                                      "tests"
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  0
+                                                           },
+                                      "impls":  2,
+                                      "path":  "apps\\core\\src\\brain\\analyzer.rs",
+                                      "enums":  0,
+                                      "structs":  1,
+                                      "functions":  18,
+                                      "tests":  9,
+                                      "lines":  387,
+                                      "imports":  [
+                                                      "chrono::Utc",
+                                                      "std::sync::OnceLock",
+                                                      "std::time::Instant",
+                                                      "tracing::info",
+                                                      "super::complexity::ComplexityScorer",
+                                                      "super::context_packet::{ContextPacket, Language, RagResult, Strategy}",
+                                                      "super::intent::{Intent, IntentClassifier, IntentResult}",
+                                                      "super::keywords::KeywordExtractor",
+                                                      "super::semantic_intent::SemanticIntentClassifier",
+                                                      "it\n        if regex_result.intent != Intent::Unknown \u0026\u0026 regex_result.confidence \u003e= 0.5 {\n            return regex_result",
+                                                      "it\n            if semantic_confidence \u003e regex_result.confidence \u0026\u0026 semantic_intent != Intent::Unknown {\n                info!(\n                    \"Using semantic intent: {:?} ({:.2}) over regex: {:?} ({:.2})\",\n                    semantic_intent,\n                    semantic_confidence,\n                    regex_result.intent,\n                    regex_result.confidence\n                )",
+                                                      "super::*"
+                                                  ],
+                                      "modules":  [
+                                                      "tests"
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  0
+                                                           },
+                                      "impls":  2,
+                                      "path":  "apps\\core\\src\\brain\\complexity.rs",
+                                      "enums":  0,
+                                      "structs":  2,
+                                      "functions":  14,
+                                      "tests":  6,
+                                      "lines":  350,
+                                      "imports":  [
+                                                      "serde::{Deserialize, Serialize}",
+                                                      "std::collections::HashSet",
+                                                      "super::*"
+                                                  ],
+                                      "modules":  [
+                                                      "tests"
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  0
+                                                           },
+                                      "impls":  2,
+                                      "path":  "apps\\core\\src\\brain\\context_packet.rs",
+                                      "enums":  2,
+                                      "structs":  2,
+                                      "functions":  9,
+                                      "tests":  3,
+                                      "lines":  202,
+                                      "imports":  [
+                                                      "chrono::{DateTime, Utc}",
+                                                      "serde::{Deserialize, Serialize}",
+                                                      "super::complexity::ComplexityMetrics",
+                                                      "super::intent::IntentResult",
+                                                      "super::keywords::KeywordResult",
+                                                      "super::*"
+                                                  ],
+                                      "modules":  [
+                                                      "tests"
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  53
+                                                           },
+                                      "impls":  4,
+                                      "path":  "apps\\core\\src\\brain\\intent.rs",
+                                      "enums":  1,
+                                      "structs":  3,
+                                      "functions":  11,
+                                      "tests":  6,
+                                      "lines":  456,
+                                      "imports":  [
+                                                      "regex::Regex",
+                                                      "serde::{Deserialize, Serialize}",
+                                                      "std::fmt",
+                                                      "std::sync::LazyLock",
+                                                      "super::*"
+                                                  ],
+                                      "modules":  [
+                                                      "tests"
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  0
+                                                           },
+                                      "impls":  2,
+                                      "path":  "apps\\core\\src\\brain\\keywords.rs",
+                                      "enums":  0,
+                                      "structs":  2,
+                                      "functions":  15,
+                                      "tests":  6,
+                                      "lines":  466,
+                                      "imports":  [
+                                                      "serde::{Deserialize, Serialize}",
+                                                      "std::collections::{HashMap, HashSet}",
+                                                      "super::*"
+                                                  ],
+                                      "modules":  [
+                                                      "tests"
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  0
+                                                           },
+                                      "impls":  0,
+                                      "path":  "apps\\core\\src\\brain\\mod.rs",
+                                      "enums":  0,
+                                      "structs":  0,
+                                      "functions":  0,
+                                      "tests":  0,
+                                      "lines":  35,
+                                      "imports":  [
+                                                      "in Brain Module integration\n#[allow(unused_imports)]\npub use analyzer::BrainAnalyzer",
+                                                      "complexity::{ComplexityMetrics, ComplexityScorer}",
+                                                      "context_packet::{ContextPacket, Language, Strategy}",
+                                                      "intent::{Intent, IntentClassifier, IntentResult}",
+                                                      "keywords::{KeywordExtractor, KeywordResult}",
+                                                      "semantic_intent::SemanticIntentClassifier"
+                                                  ],
+                                      "modules":  [
+                                                      "analyzer",
+                                                      "complexity",
+                                                      "context_packet",
+                                                      "intent",
+                                                      "keywords",
+                                                      "semantic_intent"
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  0
+                                                           },
+                                      "impls":  1,
+                                      "path":  "apps\\core\\src\\brain\\semantic_intent.rs",
+                                      "enums":  0,
+                                      "structs":  2,
+                                      "functions":  8,
+                                      "tests":  3,
+                                      "lines":  295,
+                                      "imports":  [
+                                                      "crate::brain::intent::Intent",
+                                                      "fastembed::{EmbeddingModel, InitOptions, TextEmbedding}",
+                                                      "std::sync::Arc",
+                                                      "tracing::{info, warn}",
+                                                      "super::*"
+                                                  ],
+                                      "modules":  [
+                                                      "tests"
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  5,
+                                                               "fixmes":  0,
+                                                               "panics":  1,
+                                                               "expects":  0
+                                                           },
+                                      "impls":  2,
+                                      "path":  "apps\\core\\src\\tests\\chaos_test.rs",
+                                      "enums":  0,
+                                      "structs":  2,
+                                      "functions":  7,
+                                      "tests":  2,
+                                      "lines":  198,
+                                      "imports":  [
+                                                      "crate::actors::supervisor::SupervisorHandle",
+                                                      "crate::actors::traits::{LlmActor, RagActor}",
+                                                      "crate::actors::messages::AppError",
+                                                      "async_trait::async_trait",
+                                                      "std::sync::{Arc, atomic::{AtomicUsize, Ordering}}",
+                                                      "tokio::sync::mpsc",
+                                                      "tokio::time::{sleep, Duration}",
+                                                      "sqlx::sqlite::SqlitePool"
+                                                  ],
+                                      "modules":  [
+
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  3,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  0
+                                                           },
+                                      "impls":  0,
+                                      "path":  "apps\\core\\src\\tests\\download_tests.rs",
+                                      "enums":  0,
+                                      "structs":  0,
+                                      "functions":  1,
+                                      "tests":  1,
+                                      "lines":  33,
+                                      "imports":  [
+                                                      "crate::download_file",
+                                                      "tempfile::tempdir",
+                                                      "mockito::mock"
+                                                  ],
+                                      "modules":  [
+
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  0
+                                                           },
+                                      "impls":  0,
+                                      "path":  "apps\\core\\src\\tests\\mod.rs",
+                                      "enums":  0,
+                                      "structs":  0,
+                                      "functions":  0,
+                                      "tests":  0,
+                                      "lines":  24,
+                                      "imports":  [
+
+                                                  ],
+                                      "modules":  [
+                                                      "supervisor_tests",
+                                                      "chaos_test",
+                                                      "download_tests",
+                                                      "brain_tests",
+                                                      "database_tests",
+                                                      "actor_tests",
+                                                      "encryption_tests",
+                                                      "text_extract_tests",
+                                                      "integration_tests"
+                                                  ]
+                                  },
+                                  {
+                                      "potential_issues":  {
+                                                               "unsafe_blocks":  0,
+                                                               "todos":  0,
+                                                               "unwraps":  0,
+                                                               "fixmes":  0,
+                                                               "panics":  0,
+                                                               "expects":  0
+                                                           },
+                                      "impls":  2,
+                                      "path":  "apps\\core\\src\\tests\\supervisor_tests.rs",
+                                      "enums":  0,
+                                      "structs":  2,
+                                      "functions":  5,
+                                      "tests":  1,
+                                      "lines":  95,
+                                      "imports":  [
+                                                      "crate::actors::llm::LlmActorHandle",
+                                                      "crate::actors::rag::RagActorHandle",
+                                                      "crate::actors::supervisor::SupervisorHandle",
+                                                      "crate::actors::traits::{LlmActor, RagActor}",
+                                                      "crate::actors::messages::{AppError, LlmMessage, RagMessage}",
+                                                      "async_trait::async_trait",
+                                                      "std::sync::Arc",
+                                                      "tokio::sync::{mpsc, oneshot}",
+                                                      "tokio::time::{sleep, Duration}",
+                                                      "sqlx::sqlite::SqlitePool",
+                                                      "this file to define the mocks that COULD be used if we refactored for DI.\n//\n// Ideally, we should add a `new_with_actors` to SupervisorHandle for testing.\n// Let\u0027s see if we can assume we can add that to `apps/core/src/actors/supervisor.rs` or if we should just test logic.\n//\n// Actually, let\u0027s try to verify the non-blocking behavior by sending two messages.\n// If the first blocks, the second won\u0027t be processed until timeout or finish.\n// With tokio::spawn, the second should be processed immediately (accepted).\n//\n// Since we don\u0027t have DI, we can\u0027t inject the slow mock.\n// So we will rely on the actual logic code structure for now,\n// AND create a placeholder test that documents what *would* be tested with DI,\n// or try to test the `handle_user_message` static method directly if we can make it public/testable.\n\n#[cfg(test)]\nmod tests {\n    use super::*"
+                                                  ],
+                                      "modules":  [
+                                                      "tests"
+                                                  ]
+                                  }
+                              ],
+                    "stats":  {
+                                  "total_lines":  11848,
+                                  "total_files":  27,
+                                  "total_enums":  8,
+                                  "total_functions":  382,
+                                  "total_structs":  47,
+                                  "total_impls":  51,
+                                  "total_tests":  125
+                              },
+                    "errors":  [
+
+                               ],
+                    "dependencies":  {
+                                         "external":  [
+                                                          "chrono",
+                                                          "serde",
+                                                          "sqlx",
+                                                          "std",
+                                                          "tracing",
+                                                          "uuid",
+                                                          "tempfile",
+                                                          "futures",
+                                                          "fastembed",
+                                                          "aes_gcm",
+                                                          "base64",
+                                                          "rand",
+                                                          "thiserror",
+                                                          "workspace root\r\n    #[cfg(not(debug_assertions))]\r\n    fn exe_dir() -\u003e Option\u003cPathBuf\u003e {\r\n        std",
+                                                          "the executable directory.\r\n            // This ensures all data (models, db, vectors) stays within the installation folder.\r\n            // NOTE: If installed to Program Files, the app must be run as Admin to write data.\r\n            if let Some(exe_dir) = Self",
+                                                          "actors",
+                                                          "fs_manager",
+                                                          "rate_limiter",
+                                                          "tauri",
+                                                          "tokio",
+                                                          "tracing_bunyan_formatter",
+                                                          "tracing_subscriber",
+                                                          "zip",
+                                                          "provided one\r\n    let final_system_prompt = if let Some(prompt) = system_prompt {\r\n        prompt\r\n    } else {\r\n        match language.as_deref() {\r\n            Some(\"fr\") =\u003e \"Tu es un assistant IA utile et amical. Réponds toujours en français de manière claire et concise.\".to_string(),\r\n            _ =\u003e \"You are a helpful and friendly AI assistant. Always respond clearly and concisely.\".to_string(),\r\n        }\r\n    }",
+                                                          "content-length from response headers if available\r\n            range_res.content_length().unwrap_or(0)\r\n        }\r\n    } else {\r\n        total_size\r\n    }",
+                                                          "validator",
+                                                          "async_trait",
+                                                          "reqwest",
+                                                          "in Drop\n    /// Uses platform-specific process killing for reliability\n    fn stop_server_sync(\u0026mut self) {\n        if let Some(child) = self.child.take() {\n            let pid = match child.id() {\n                Some(pid) =\u003e pid,\n                None =\u003e {\n                    info!(\"llama-server process already exited\")",
+                                                          "taskkill for reliable process termination\n                let _ = std",
+                                                          "SIGKILL for immediate termination\n                let _ = std",
+                                                          "0.7 as default\n        let temp = temperature.unwrap_or(0.7)",
+                                                          "arrow",
+                                                          "lancedb",
+                                                          "lru",
+                                                          "new_unchecked because Option",
+                                                          "a very long timeout because the LLM generation can take time,\n        // but the connection is kept alive via streaming events.\n        // The responder returns the final full response string.\n        timeout(Duration",
+                                                          "RAG\n        let result = supervisor\n            .process_message(\n                session.id.clone(),\n                \"Explain the difference between microservices and monolith architecture in terms of database transactions\".to_string(),\n                None,\n            )\n            .await",
+                                                          "DB is not initialized\n        assert!(result.is_err())",
+                                                          "it\n        if regex_result.intent != Intent",
+                                                          "it\n            if semantic_confidence \u003e regex_result.confidence \u0026\u0026 semantic_intent != Intent",
+                                                          "regex",
+                                                          "in Brain Module integration\n#[allow(unused_imports)]\npub use analyzer",
+                                                          "complexity",
+                                                          "context_packet",
+                                                          "intent",
+                                                          "keywords",
+                                                          "semantic_intent",
+                                                          "mockito",
+                                                          "this file to define the mocks that COULD be used if we refactored for DI.\n//\n// Ideally, we should add a `new_with_actors` to SupervisorHandle for testing.\n// Let\u0027s see if we can assume we can add that to `apps/core/src/actors/supervisor.rs` or if we should just test logic.\n//\n// Actually, let\u0027s try to verify the non-blocking behavior by sending two messages.\n// If the first blocks, the second won\u0027t be processed until timeout or finish.\n// With tokio"
+                                                      ],
+                                         "internal":  [
+                                                          "crate::encryption",
+                                                          "crate::fs_manager::PortablePathManager",
+                                                          "crate::models::{Folder, LibraryFile, Message, ModelConfig, Session, SessionFile}",
+                                                          "super::*",
+                                                          "crate::brain::BrainAnalyzer",
+                                                          "crate::database",
+                                                          "crate::models::ModelConfig",
+                                                          "crate::actors::rag::RagActorHandle",
+                                                          "crate::actors::traits::RagActor",
+                                                          "crate::brain::Intent",
+                                                          "crate::actors::llm::LlmActorHandle",
+                                                          "crate::actors::traits::LlmActor",
+                                                          "crate::actors::messages::{ActorError, AppError, LlmMessage}",
+                                                          "crate::error::AppError",
+                                                          "crate::actors::messages::{ActorError, AppError, RagMessage, SearchResult}",
+                                                          "crate::actors::messages::{AppError, SupervisorMessage}",
+                                                          "crate::actors::traits::{LlmActor, RagActor}",
+                                                          "crate::actors::messages::SearchResult",
+                                                          "crate::actors::traits::mocks::{MockLlmActor, MockRagActor}",
+                                                          "crate::actors::messages::{AppError, SearchResult}",
+                                                          "super::mocks::*",
+                                                          "super::complexity::ComplexityScorer",
+                                                          "super::context_packet::{ContextPacket, Language, RagResult, Strategy}",
+                                                          "super::intent::{Intent, IntentClassifier, IntentResult}",
+                                                          "super::keywords::KeywordExtractor",
+                                                          "super::semantic_intent::SemanticIntentClassifier",
+                                                          "super::complexity::ComplexityMetrics",
+                                                          "super::intent::IntentResult",
+                                                          "super::keywords::KeywordResult",
+                                                          "crate::brain::intent::Intent",
+                                                          "crate::actors::supervisor::SupervisorHandle",
+                                                          "crate::actors::messages::AppError",
+                                                          "crate::download_file",
+                                                          "crate::actors::messages::{AppError, LlmMessage, RagMessage}"
+                                                      ]
+                                     },
+                    "warnings":  [
+                                     "[apps\\core\\src\\database.rs] 54 unwrap() calls (consider using ? operator)",
+                                     "[apps\\core\\src\\text_extract.rs] 6 unwrap() calls (consider using ? operator)",
+                                     "[apps\\core\\src\\actors\\rag.rs] 3 unwrap() calls (consider using ? operator)",
+                                     "[apps\\core\\src\\actors\\rag.rs] 1 unsafe block(s) - ensure SAFETY comments exist",
+                                     "[apps\\core\\src\\actors\\supervisor.rs] 11 unwrap() calls (consider using ? operator)",
+                                     "[apps\\core\\src\\actors\\traits.rs] 2 unwrap() calls (consider using ? operator)"
+                                 ],
+                    "modules":  {
+
+                                }
+                },
+    "frontend":  {
+                     "files":  [
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\components\\chat\\ChatInput.jsx",
+                                       "imports":  [
+                                                       "react",
+                                                       "lucide-react",
+                                                       "../../lib/utils",
+                                                       "react-i18next",
+                                                       "../../lib/logger"
+                                                   ],
+                                       "tauri_commands":  [
+
+                                                          ],
+                                       "lines":  113
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\components\\chat\\ChatInterface.jsx",
+                                       "imports":  [
+                                                       "react",
+                                                       "./MessageBubble",
+                                                       "./ThinkingBubble",
+                                                       "./ChatInput",
+                                                       "lucide-react",
+                                                       "../../store/appStore",
+                                                       "react-i18next",
+                                                       "../../i18n",
+                                                       "../../hooks/useChatStream",
+                                                       "react-hot-toast",
+                                                       "../../lib/logger"
+                                                   ],
+                                       "tauri_commands":  [
+
+                                                          ],
+                                       "lines":  164
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\components\\chat\\MessageBubble.jsx",
+                                       "imports":  [
+                                                       "lucide-react",
+                                                       "../../lib/utils",
+                                                       "@tauri-apps/api/core",
+                                                       "react-i18next",
+                                                       "react-hot-toast",
+                                                       "../../lib/logger"
+                                                   ],
+                                       "tauri_commands":  [
+                                                              "save_generated_file",
+                                                              "save_generated_file"
+                                                          ],
+                                       "lines":  407
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\components\\chat\\ThinkingBubble.jsx",
+                                       "imports":  [
+                                                       "react",
+                                                       "lucide-react",
+                                                       "react-i18next",
+                                                       "../../lib/utils"
+                                                   ],
+                                       "tauri_commands":  [
+
+                                                          ],
+                                       "lines":  110
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\components\\dashboard\\Dashboard.jsx",
+                                       "imports":  [
+                                                       "react",
+                                                       "lucide-react",
+                                                       "react-i18next",
+                                                       "../../store/appStore",
+                                                       "../../i18n",
+                                                       "react-hot-toast",
+                                                       "../../lib/logger"
+                                                   ],
+                                       "tauri_commands":  [
+
+                                                          ],
+                                       "lines":  223
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\components\\diagnostics\\index.js",
+                                       "imports":  [
+
+                                                   ],
+                                       "tauri_commands":  [
+
+                                                          ],
+                                       "lines":  2
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\components\\diagnostics\\TestConsole.jsx",
+                                       "imports":  [
+                                                       "react",
+                                                       "@tauri-apps/api/core",
+                                                       "react-i18next",
+                                                       "lucide-react",
+                                                       "../../lib/utils"
+                                                   ],
+                                       "tauri_commands":  [
+                                                              "run_diagnostic_category"
+                                                          ],
+                                       "lines":  430
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\components\\layout\\FilesDropdown.jsx",
+                                       "imports":  [
+                                                       "react",
+                                                       "lucide-react",
+                                                       "react-i18next",
+                                                       "../../store/appStore",
+                                                       "@tauri-apps/api/core",
+                                                       "../../i18n"
+                                                   ],
+                                       "tauri_commands":  [
+                                                              "get_session_files",
+                                                              "upload_file_for_session"
+                                                          ],
+                                       "lines":  178
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\components\\layout\\HeaderActions.jsx",
+                                       "imports":  [
+                                                       "react",
+                                                       "lucide-react",
+                                                       "react-i18next",
+                                                       "../../store/appStore",
+                                                       "../../lib/utils",
+                                                       "./SettingsDropdown",
+                                                       "../../lib/logger"
+                                                   ],
+                                       "tauri_commands":  [
+
+                                                          ],
+                                       "lines":  66
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\components\\layout\\MainLayout.jsx",
+                                       "imports":  [
+                                                       "../../store/appStore",
+                                                       "lucide-react",
+                                                       "../../lib/utils",
+                                                       "react-i18next",
+                                                       "../onboarding/SessionWizard",
+                                                       "./HeaderActions",
+                                                       "./SessionItem",
+                                                       "./Rail",
+                                                       "../views/KnowledgeView",
+                                                       "./TitleBar"
+                                                   ],
+                                       "tauri_commands":  [
+
+                                                          ],
+                                       "lines":  409
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\components\\layout\\Rail.jsx",
+                                       "imports":  [
+                                                       "../../store/appStore",
+                                                       "lucide-react",
+                                                       "../../lib/utils",
+                                                       "react-i18next",
+                                                       "../../lib/logger"
+                                                   ],
+                                       "tauri_commands":  [
+
+                                                          ],
+                                       "lines":  74
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\components\\layout\\SessionItem.jsx",
+                                       "imports":  [
+                                                       "react",
+                                                       "lucide-react",
+                                                       "react-i18next",
+                                                       "../../store/appStore",
+                                                       "../../lib/utils",
+                                                       "../../lib/logger"
+                                                   ],
+                                       "tauri_commands":  [
+
+                                                          ],
+                                       "lines":  184
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\components\\layout\\SettingsDropdown.jsx",
+                                       "imports":  [
+                                                       "react",
+                                                       "lucide-react",
+                                                       "react-i18next",
+                                                       "../../store/appStore",
+                                                       "../../lib/utils",
+                                                       "../../i18n",
+                                                       "../../lib/logger"
+                                                   ],
+                                       "tauri_commands":  [
+
+                                                          ],
+                                       "lines":  161
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\components\\layout\\TitleBar.jsx",
+                                       "imports":  [
+                                                       "react",
+                                                       "@tauri-apps/api/window",
+                                                       "lucide-react"
+                                                   ],
+                                       "tauri_commands":  [
+
+                                                          ],
+                                       "lines":  67
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\components\\onboarding\\OnboardingWizard.jsx",
+                                       "imports":  [
+                                                       "react",
+                                                       "lucide-react",
+                                                       "../../store/appStore",
+                                                       "../../lib/utils",
+                                                       "@tauri-apps/api/core",
+                                                       "@tauri-apps/api/event",
+                                                       "react-i18next",
+                                                       "../diagnostics/TestConsole"
+                                                   ],
+                                       "tauri_commands":  [
+                                                              "download_model",
+                                                              "check_model_exists"
+                                                          ],
+                                       "lines":  332
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\components\\onboarding\\SessionWizard.jsx",
+                                       "imports":  [
+                                                       "react",
+                                                       "lucide-react",
+                                                       "../../store/appStore",
+                                                       "../../lib/utils",
+                                                       "react-i18next",
+                                                       "../../i18n",
+                                                       "../../lib/logger",
+                                                       "@tauri-apps/api/core"
+                                                   ],
+                                       "tauri_commands":  [
+                                                              "link_library_file_to_session"
+                                                          ],
+                                       "lines":  254
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\components\\preflight\\PreflightCheck.jsx",
+                                       "imports":  [
+                                                       "lucide-react",
+                                                       "react-i18next",
+                                                       "../../lib/utils"
+                                                   ],
+                                       "tauri_commands":  [
+
+                                                          ],
+                                       "lines":  119
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\components\\views\\KnowledgeView.jsx",
+                                       "imports":  [
+                                                       "react",
+                                                       "../../store/appStore",
+                                                       "react-i18next",
+                                                       "react-hot-toast",
+                                                       "../../lib/logger",
+                                                       "lucide-react"
+                                                   ],
+                                       "tauri_commands":  [
+
+                                                          ],
+                                       "lines":  487
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\components\\ErrorBoundary.jsx",
+                                       "imports":  [
+                                                       "react",
+                                                       "lucide-react",
+                                                       "../lib/logger"
+                                                   ],
+                                       "tauri_commands":  [
+
+                                                          ],
+                                       "lines":  85
+                                   },
+                                   {
+                                       "hooks":  [
+                                                     "useChatStream"
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\hooks\\useChatStream.js",
+                                       "imports":  [
+                                                       "react",
+                                                       "@tauri-apps/api/core",
+                                                       "@tauri-apps/api/event",
+                                                       "../store/appStore",
+                                                       "react-i18next",
+                                                       "react-hot-toast",
+                                                       "../lib/logger"
+                                                   ],
+                                       "tauri_commands":  [
+                                                              "get_session_messages",
+                                                              "debug_chat",
+                                                              "get_session_messages"
+                                                          ],
+                                       "lines":  250
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\lib\\logger.js",
+                                       "imports":  [
+
+                                                   ],
+                                       "tauri_commands":  [
+
+                                                          ],
+                                       "lines":  207
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\lib\\utils.js",
+                                       "imports":  [
+                                                       "clsx",
+                                                       "tailwind-merge"
+                                                   ],
+                                       "tauri_commands":  [
+
+                                                          ],
+                                       "lines":  12
+                                   },
+                                   {
+                                       "hooks":  [
+                                                     "useAppStore"
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\store\\appStore.js",
+                                       "imports":  [
+                                                       "zustand",
+                                                       "zustand/middleware",
+                                                       "@tauri-apps/api/core",
+                                                       "react-hot-toast",
+                                                       "../lib/logger"
+                                                   ],
+                                       "tauri_commands":  [
+                                                              "list_sessions",
+                                                              "get_session_files",
+                                                              "list_library_files",
+                                                              "upload_file_for_session",
+                                                              "delete_file",
+                                                              "reindex_library",
+                                                              "create_session",
+                                                              "update_session",
+                                                              "toggle_session_favorite",
+                                                              "delete_session",
+                                                              "list_folders",
+                                                              "create_folder",
+                                                              "delete_folder",
+                                                              "move_session_to_folder",
+                                                              "move_file_to_folder",
+                                                              "initialize_app"
+                                                          ],
+                                       "lines":  485
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\App.jsx",
+                                       "imports":  [
+                                                       "./components/layout/MainLayout",
+                                                       "./components/chat/ChatInterface",
+                                                       "./components/dashboard/Dashboard",
+                                                       "./components/onboarding/OnboardingWizard",
+                                                       "./components/preflight/PreflightCheck",
+                                                       "./components/diagnostics/TestConsole",
+                                                       "./store/appStore",
+                                                       "react",
+                                                       "@tauri-apps/api/core",
+                                                       "lucide-react",
+                                                       "./lib/logger"
+                                                   ],
+                                       "tauri_commands":  [
+                                                              "run_quick_preflight_check"
+                                                          ],
+                                       "lines":  126
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\i18n.js",
+                                       "imports":  [
+                                                       "i18next",
+                                                       "react-i18next",
+                                                       "i18next-browser-languagedetector",
+                                                       "./locales/en/common.json",
+                                                       "./locales/fr/common.json"
+                                                   ],
+                                       "tauri_commands":  [
+
+                                                          ],
+                                       "lines":  33
+                                   },
+                                   {
+                                       "hooks":  [
+
+                                                 ],
+                                       "components":  [
+
+                                                      ],
+                                       "is_store":  false,
+                                       "path":  "apps\\desktop-ui\\src\\main.jsx",
+                                       "imports":  [
+                                                       "react",
+                                                       "react-dom/client",
+                                                       "./App",
+                                                       "./components/ErrorBoundary",
+                                                       "./store/appStore"
+                                                   ],
+                                       "tauri_commands":  [
+
+                                                          ],
+                                       "lines":  23
+                                   }
+                               ],
+                     "warnings":  [
+
+                                  ],
+                     "dependencies":  {
+                                          "external":  [
+                                                           "react",
+                                                           "lucide-react",
+                                                           "react-i18next",
+                                                           "react-hot-toast",
+                                                           "clsx",
+                                                           "tailwind-merge",
+                                                           "zustand",
+                                                           "i18next",
+                                                           "i18next-browser-languagedetector",
+                                                           "react-dom"
+                                                       ],
+                                          "internal":  [
+                                                           "../../lib/utils",
+                                                           "../../lib/logger",
+                                                           "./MessageBubble",
+                                                           "./ThinkingBubble",
+                                                           "./ChatInput",
+                                                           "../../store/appStore",
+                                                           "../../i18n",
+                                                           "../../hooks/useChatStream",
+                                                           "./SettingsDropdown",
+                                                           "../onboarding/SessionWizard",
+                                                           "./HeaderActions",
+                                                           "./SessionItem",
+                                                           "./Rail",
+                                                           "../views/KnowledgeView",
+                                                           "./TitleBar",
+                                                           "../diagnostics/TestConsole",
+                                                           "../lib/logger",
+                                                           "../store/appStore",
+                                                           "./components/layout/MainLayout",
+                                                           "./components/chat/ChatInterface",
+                                                           "./components/dashboard/Dashboard",
+                                                           "./components/onboarding/OnboardingWizard",
+                                                           "./components/preflight/PreflightCheck",
+                                                           "./components/diagnostics/TestConsole",
+                                                           "./store/appStore",
+                                                           "./lib/logger",
+                                                           "./locales/en/common.json",
+                                                           "./locales/fr/common.json",
+                                                           "./App",
+                                                           "./components/ErrorBoundary"
+                                                       ],
+                                          "tauri":  [
+                                                        "@tauri-apps/api/core",
+                                                        "@tauri-apps/api/window",
+                                                        "@tauri-apps/api/event"
+                                                    ]
+                                      },
+                     "hooks":  [
+                                   "useChatStream",
+                                   "useAppStore"
+                               ],
+                     "components":  [
+
+                                    ],
+                     "stores":  [
+
+                                ],
+                     "stats":  {
+                                   "total_hooks":  2,
+                                   "total_components":  0,
+                                   "total_files":  26,
+                                   "total_lines":  5001
+                               }
+                 },
+    "tauri_coherence":  {
+                            "backend_commands":  [
+                                                     "check_model_exists",
+                                                     "create_folder",
+                                                     "create_session",
+                                                     "debug_chat",
+                                                     "delete_file",
+                                                     "delete_folder",
+                                                     "delete_session",
+                                                     "download_model",
+                                                     "get_session_files",
+                                                     "get_session_messages",
+                                                     "initialize_app",
+                                                     "link_library_file_to_session",
+                                                     "list_folders",
+                                                     "list_library_files",
+                                                     "list_sessions",
+                                                     "move_file_to_folder",
+                                                     "move_session_to_folder",
+                                                     "reindex_library",
+                                                     "run_diagnostic_category",
+                                                     "run_quick_preflight_check",
+                                                     "save_generated_file",
+                                                     "toggle_session_favorite",
+                                                     "update_session",
+                                                     "upload_file_for_session"
+                                                 ],
+                            "is_coherent":  true,
+                            "frontend_commands":  [
+                                                      "check_model_exists",
+                                                      "create_folder",
+                                                      "create_session",
+                                                      "debug_chat",
+                                                      "delete_file",
+                                                      "delete_folder",
+                                                      "delete_session",
+                                                      "download_model",
+                                                      "get_session_files",
+                                                      "get_session_messages",
+                                                      "initialize_app",
+                                                      "link_library_file_to_session",
+                                                      "list_folders",
+                                                      "list_library_files",
+                                                      "list_sessions",
+                                                      "move_file_to_folder",
+                                                      "move_session_to_folder",
+                                                      "reindex_library",
+                                                      "run_diagnostic_category",
+                                                      "run_quick_preflight_check",
+                                                      "save_generated_file",
+                                                      "toggle_session_favorite",
+                                                      "update_session",
+                                                      "upload_file_for_session"
+                                                  ],
+                            "unused_by_frontend":  {
+
+                                                   },
+                            "missing_in_backend":  {
+
+                                                   }
+                        },
+    "metadata":  {
+                     "timestamp":  "2025-11-28_10-26-09",
+                     "project":  "WhytChat V1",
+                     "analyzer_version":  "1.0"
+                 }
+}
