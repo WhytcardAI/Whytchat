@@ -301,7 +301,10 @@ mod tests {
         let result = mock.ingest("New content".to_string(), None).await;
 
         assert!(result.is_ok());
-        assert_eq!(mock.ingest_count.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert_eq!(
+            mock.ingest_count.load(std::sync::atomic::Ordering::SeqCst),
+            1
+        );
     }
 
     #[tokio::test]
@@ -311,6 +314,9 @@ mod tests {
         let result = mock.delete_for_file("file-123".to_string()).await;
 
         assert!(result.is_ok());
-        assert_eq!(mock.delete_count.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert_eq!(
+            mock.delete_count.load(std::sync::atomic::Ordering::SeqCst),
+            1
+        );
     }
 }

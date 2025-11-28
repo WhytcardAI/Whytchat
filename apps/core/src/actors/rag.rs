@@ -643,7 +643,8 @@ mod tests {
     async fn test_ingest_single_document() {
         let (handle, _temp_dir) = create_test_rag_actor().await;
 
-        let content = "This is a test document about machine learning and artificial intelligence. \
+        let content =
+            "This is a test document about machine learning and artificial intelligence. \
                        It contains information about neural networks and deep learning algorithms.";
 
         let result = timeout(
@@ -703,7 +704,10 @@ mod tests {
         let found_content = search_result
             .iter()
             .any(|r| r.content.to_lowercase().contains("memory"));
-        assert!(found_content, "Search results should contain memory-related content");
+        assert!(
+            found_content,
+            "Search results should contain memory-related content"
+        );
     }
 
     #[tokio::test]
@@ -815,13 +819,10 @@ mod tests {
     async fn test_ingest_empty_content() {
         let (handle, _temp_dir) = create_test_rag_actor().await;
 
-        let result = timeout(
-            Duration::from_secs(10),
-            handle.ingest("".to_string(), None),
-        )
-        .await
-        .expect("Ingest timeout")
-        .expect("Ingest failed");
+        let result = timeout(Duration::from_secs(10), handle.ingest("".to_string(), None))
+            .await
+            .expect("Ingest timeout")
+            .expect("Ingest failed");
 
         // Should handle empty content gracefully
         assert!(

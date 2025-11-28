@@ -743,9 +743,7 @@ mod tests {
             .unwrap();
 
         // Make session A a favorite
-        toggle_session_favorite(&pool, &session_a.id)
-            .await
-            .unwrap();
+        toggle_session_favorite(&pool, &session_a.id).await.unwrap();
 
         let sessions = list_sessions(&pool).await.unwrap();
         assert_eq!(sessions.len(), 2);
@@ -1002,11 +1000,15 @@ mod tests {
             .await
             .unwrap();
 
-        add_message(&pool, &session.id, "user", "First").await.unwrap();
+        add_message(&pool, &session.id, "user", "First")
+            .await
+            .unwrap();
         add_message(&pool, &session.id, "assistant", "Second")
             .await
             .unwrap();
-        add_message(&pool, &session.id, "user", "Third").await.unwrap();
+        add_message(&pool, &session.id, "user", "Third")
+            .await
+            .unwrap();
 
         let messages = get_session_messages(&pool, &session.id)
             .await
@@ -1073,9 +1075,16 @@ mod tests {
     async fn test_get_library_file() {
         let (pool, _temp) = setup_test_db().await;
 
-        add_library_file(&pool, "file-456", "test.txt", "/files/test.txt", "text/plain", 100)
-            .await
-            .unwrap();
+        add_library_file(
+            &pool,
+            "file-456",
+            "test.txt",
+            "/files/test.txt",
+            "text/plain",
+            100,
+        )
+        .await
+        .unwrap();
 
         let file = get_library_file(&pool, "file-456")
             .await
@@ -1168,9 +1177,16 @@ mod tests {
     async fn test_delete_library_file() {
         let (pool, _temp) = setup_test_db().await;
 
-        add_library_file(&pool, "delete-file", "to_delete.txt", "/to_delete", "text/plain", 50)
-            .await
-            .unwrap();
+        add_library_file(
+            &pool,
+            "delete-file",
+            "to_delete.txt",
+            "/to_delete",
+            "text/plain",
+            50,
+        )
+        .await
+        .unwrap();
 
         let path = delete_library_file(&pool, "delete-file")
             .await
@@ -1196,9 +1212,16 @@ mod tests {
         .await
         .unwrap();
 
-        add_library_file(&pool, "movable-file", "movable.pdf", "/movable", "application/pdf", 100)
-            .await
-            .unwrap();
+        add_library_file(
+            &pool,
+            "movable-file",
+            "movable.pdf",
+            "/movable",
+            "application/pdf",
+            100,
+        )
+        .await
+        .unwrap();
 
         move_file_to_folder(&pool, "movable-file", Some(&folder.id))
             .await

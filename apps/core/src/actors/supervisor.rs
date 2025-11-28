@@ -564,7 +564,10 @@ mod tests {
             .await;
 
         assert!(result.is_ok());
-        assert_eq!(rag.ingest_count.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert_eq!(
+            rag.ingest_count.load(std::sync::atomic::Ordering::SeqCst),
+            1
+        );
     }
 
     #[tokio::test]
@@ -597,8 +600,14 @@ mod tests {
 
         assert!(result.is_ok());
         // Reindex should delete then ingest
-        assert_eq!(rag.delete_count.load(std::sync::atomic::Ordering::SeqCst), 1);
-        assert_eq!(rag.ingest_count.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert_eq!(
+            rag.delete_count.load(std::sync::atomic::Ordering::SeqCst),
+            1
+        );
+        assert_eq!(
+            rag.ingest_count.load(std::sync::atomic::Ordering::SeqCst),
+            1
+        );
     }
 
     #[tokio::test]
@@ -606,13 +615,10 @@ mod tests {
         let (pool, _temp) = setup_test_db().await;
 
         // Create a session
-        let session = database::create_session(
-            &pool,
-            "Test Session".to_string(),
-            ModelConfig::default(),
-        )
-        .await
-        .expect("Failed to create session");
+        let session =
+            database::create_session(&pool, "Test Session".to_string(), ModelConfig::default())
+                .await
+                .expect("Failed to create session");
 
         let llm = Arc::new(MockLlmActor::new("This is the AI response."));
         let rag = Arc::new(MockRagActor::new());
@@ -653,7 +659,9 @@ mod tests {
         .await
         .unwrap();
 
-        let llm = Arc::new(MockLlmActor::new("Based on the context, here is my answer."));
+        let llm = Arc::new(MockLlmActor::new(
+            "Based on the context, here is my answer.",
+        ));
 
         // Create RAG with pre-populated results
         let rag_results = vec![SearchResult {
@@ -712,7 +720,11 @@ mod tests {
         let search_count = rag.search_count.load(std::sync::atomic::Ordering::SeqCst);
         // Note: Depends on brain analyzer classification
         // If it detects "Bonjour" as greeting, RAG is skipped
-        assert!(search_count <= 1, "RAG was called {} times for a greeting", search_count);
+        assert!(
+            search_count <= 1,
+            "RAG was called {} times for a greeting",
+            search_count
+        );
     }
 
     #[tokio::test]
@@ -753,13 +765,10 @@ mod tests {
     async fn test_supervisor_conversation_history() {
         let (pool, _temp) = setup_test_db().await;
 
-        let session = database::create_session(
-            &pool,
-            "History Session".to_string(),
-            ModelConfig::default(),
-        )
-        .await
-        .unwrap();
+        let session =
+            database::create_session(&pool, "History Session".to_string(), ModelConfig::default())
+                .await
+                .unwrap();
 
         // Add some history
         database::add_message(&pool, &session.id, "user", "First question")
