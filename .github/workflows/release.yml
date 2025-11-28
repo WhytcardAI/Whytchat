@@ -128,11 +128,19 @@ jobs:
         run: |
           $protocPath = "${{ steps.protoc-windows.outputs.path }}/bin/protoc.exe"
           if (Test-Path $protocPath) {
-            echo "PROTOC=$protocPath" >> $env:GITHUB_ENV
+            $protocExe = $protocPath
           } else {
             # Fallback to PATH lookup
-            echo "PROTOC=$(Get-Command protoc -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)" >> $env:GITHUB_ENV
+            $protocCmd = Get-Command protoc -ErrorAction SilentlyContinue
+            if ($null -eq $protocCmd -or -not $protocCmd.Source) {
+              Write-Error "protoc executable not found: neither '${{ steps.protoc-windows.outputs.path }}/bin/protoc.exe' nor a 'protoc' command on PATH is available."
+              exit 1
+            }
+            $protocExe = $protocCmd.Source
           }
+
+          $env:PROTOC = $protocExe
+          echo "PROTOC=$protocExe" >> $env:GITHUB_ENV
           echo "PROTOC env set to: $env:PROTOC"
 
       - name: Cache Cargo
